@@ -3,9 +3,8 @@ import sys
 import time
 
 from PyQt5.QtWidgets import (
-    QApplication, QDialog, QMainWindow, QMessageBox
+    QApplication, QMainWindow
 )
-from PyQt5.uic import loadUi
 
 from test_ui import Ui_w_event
 
@@ -20,10 +19,12 @@ import validators
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
+# Exit reasons from the dialog
 EXIT_REASON_NONE = 0
 EXIT_REASON_DISMISS = 1
 EXIT_REASON_SNOOZE = 2
 
+# The notification window
 class Window(QMainWindow, Ui_w_event):
     snooze_buttons = []
 
@@ -32,23 +33,7 @@ class Window(QMainWindow, Ui_w_event):
         self.setupUi(self)
         self.connectSignalsSlots()
 
-        '''
-        self.snooze_buttons = [
-            {'button':self.pb_m10m, 'time':-10},
-            {'button':self.pb_m5m, 'time':-5},
-            {'button':self.pb_m2m, 'time':-2},
-            {'button':self.pb_m1m, 'time':-1},
-            {'button':self.pb_0m, 'time':0},
-            {'button':self.pb_5m, 'time':5},
-            {'button':self.pb_15m, 'time':15},
-            {'button':self.pb_30m, 'time':30},
-            {'button':self.pb_1h, 'time':60},
-            {'button':self.pb_2h, 'time':120},
-            {'button':self.pb_4h, 'time':240},
-            {'button':self.pb_8h, 'time':480}
-        ]
-        '''
-
+        # Initialize the snooze buttons
         self.snooze_buttons = {
             self.pb_m10m:-10,
             self.pb_m5m:-5,
@@ -64,6 +49,7 @@ class Window(QMainWindow, Ui_w_event):
             self.pb_8h:480
         }
 
+    # Set the event handlers
     def connectSignalsSlots(self):
         self.pb_dismiss.clicked.connect(self.clickedDismiss)
         self.pb_m10m.clicked.connect(lambda: self.snooze_general(self.pb_m10m))
@@ -101,6 +87,7 @@ class Window(QMainWindow, Ui_w_event):
     
         self.close()
 
+# Identify the video meeting softwate via its URL
 def identify_video_meeting(win_label, url, text_if_not_identified):
     if ("zoom.us" in url):
         label_text = "Zoom Link"
@@ -117,18 +104,11 @@ def identify_video_meeting(win_label, url, text_if_not_identified):
     win_label.setOpenExternalLinks(True)
     win_label.setToolTip(url)
 
-def gCalMain(token_path):
-    global win_exit_reason
-    global dismissed_events
-    global snooze_time_in_minutes
-    global snoozed_events
-
-    """Shows basic usage of the Google Calendar API.
-    Prints the start and name of the next 10 events on the user's calendar.
-    """
+def get_events_from_google_cal(google_account):
+    # Connect to the Google Account
     creds = None
-    token_file = token_path + '/token.json'
-    Credentials_file = token_path + '/credentials.json'
+    token_file = google_account + '/token.json'
+    Credentials_file = google_account + '/credentials.json'
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
@@ -148,10 +128,6 @@ def gCalMain(token_path):
 
     service = build('calendar', 'v3', credentials=creds)
 
-    # Handled the snoozed events
-    now_datetime = datetime.datetime.now().astimezone()
-    events_to_notify = {}
-
     # Call the Calendar API
     now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
     print('Getting the upcoming 10 events')
@@ -160,207 +136,105 @@ def gCalMain(token_path):
                                         orderBy='startTime').execute()
     events = events_result.get('items', [])
 
-    if not events:
-        print('No upcoming events found.')
+    return(events)
 
-    for event in events:
-        #print(event)
-        parsed_event = {}
-        now_datetime = datetime.datetime.now().astimezone()
-        a_snoozed_event_to_wakeup = False
+def get_now_datetime():
+    return(datetime.datetime.now().astimezone())
 
-        event_id = event['id']
-        #print(event_id)
+def show_window_and_parse_exit_status(event_id, parsed_event):
+    global win_exit_reason
+    global dismissed_events
+    global snoozed_events
+    global snooze_time_in_minutes
 
-        parsed_event['event_name'] = event['summary']
-        #print(parsed_event['event_name'])
+    win = Window()
 
-        if (event_id in dismissed_events):
-            #print("Skipping dismissed event")
-            continue
+    win.l_account.setText(parsed_event['google_account'])
 
-        if (event_id in snoozed_events):
-            # A snoozed event
-            snoozed_event = snoozed_events[event_id]
+    win.l_event_name.setText(parsed_event['event_name'])
 
-            if (snoozed_event['event_wakeup_time'] > now_datetime):
-                # The time of the snoozed event has not arrived yet
-                #print("Skipping snoozed event that should not be woke up yet")
-                continue
-            else:
-                # Its time to wake up the snoozed even
-                #print("Time to wake up the snoozed event")
-                a_snoozed_event_to_wakeup = True
-                parsed_event = snoozed_event
+    if parsed_event['all_day_event']:
+        win.l_all_day.setText("An all day event")
+    else:
+        win.l_all_day.setText("Not an all day event")
 
-                del snoozed_events[event_id]
+    win.l_event_start.setText('Starting on ' + str(parsed_event['start_date']))
+    win.l_event_end.setText('Ending on ' + str(parsed_event['end_date']))
 
-        if (a_snoozed_event_to_wakeup == False):                
-            # Check if the event needs to be reminded, and if so, when
-            if (event['reminders'].get('useDefault') == True):
-                minutes_before = 15
-            else:
-                override_rule = event['reminders'].get('overrides')
-                if (override_rule):
-                    override_set = override_rule[0]
-                    minutes_before = override_set['minutes']
-                else:
-                    #print("No need to remind")
-                    continue
+    #print(html_link)
+    win.l_event_link.setText("<a href=\"" + parsed_event['html_link'] + "\">Link to event in GCal</a>")
+    win.l_event_link.setToolTip(parsed_event['html_link'])
 
-            # Event needs to be reminded, check if it is the time to remind
-            start_day = event['start'].get('dateTime')
-            if not start_day:
-                parsed_event['all_day_event'] = True
-                start_day = event['start'].get('date')
-                end_day = event['end'].get('date')
-                parsed_event['start_date']=datetime.datetime.strptime(start_day, '%Y-%m-%d').astimezone()
-                parsed_event['end_date']=datetime.datetime.strptime(end_day, '%Y-%m-%d').astimezone()
-            else:
-                parsed_event['all_day_event'] = False
-                end_day = event['end'].get('dateTime')
-                parsed_event['start_date']=datetime.datetime.strptime(start_day, '%Y-%m-%dT%H:%M:%S%z')
-                parsed_event['end_date']=datetime.datetime.strptime(end_day, '%Y-%m-%dT%H:%M:%S%z')
-
-            delta_diff = datetime.timedelta(minutes=minutes_before)
-            reminder_time = parsed_event['start_date'] - delta_diff
-            if(now_datetime >= reminder_time):
-                print("Time to remind")
-            else:
-                time_to_reminder =  now_datetime - reminder_time
-                #print("Time until reminding " + str(time_to_reminder))
-                continue;
-
-            parsed_event['html_link'] = event['htmlLink']
-
-            parsed_event['event_location'] = event.get('location', "No location")
-
-            # Get the video conf data
-            parsed_event['video_link'] = "No Video"
-            conf_data = event.get('conferenceData')
-            if (conf_data):
-                entry_points = conf_data.get('entryPoints')
-                if (entry_points):
-                    for entry_point in entry_points:
-                        entry_point_type = entry_point.get('entryPointType')
-                        if (entry_point_type and entry_point_type == 'video'):
-                            uri = entry_point.get('uri')
-                            if (uri):
-                                parsed_event['video_link'] = uri
-
-            # parsed_event['event_meet_link'] = event.get('hangoutLink', "No Meet")
-
-        win = Window()
-
-        #if(now_datetime >= parsed_event['start_date']):
-            # Don't show the time until options for snooze
-            #win.rb_snooze_until.setHidden(True)
-            #win.cb_snooze_time_until.setHidden(True)
-            #win.l_label_until.setHidden(True)
-
-            # Set the RB of Snooze For to be selected
-            #win.rb_snooze_for.setChecked(True)
-        #else:
-            # Set the RB of Snooze Until to be selected
-            #win.rb_snooze_until.setChecked(True)
-
-        win.l_account.setText(token_path)
-
-        win.l_event_name.setText(parsed_event['event_name'])
-
-        if parsed_event['all_day_event']:
-            win.l_all_day.setText("An all day event")
-        else:
-            win.l_all_day.setText("Not an all day event")
-
-
-        win.l_event_start.setText('Starting on ' + str(parsed_event['start_date']))
-        win.l_event_end.setText('Ending on ' + str(parsed_event['end_date']))
-
-        #print(html_link)
-        win.l_event_link.setText("<a href=\"" + parsed_event['html_link'] + "\">Link to event in GCal</a>")
-        win.l_event_link.setToolTip(parsed_event['html_link'])
-
-        if (parsed_event['event_location'] == "No location"):
-            win.l_location_or_video_link.setHidden(True)
-        else:
-            valid_url = validators.url(parsed_event['event_location'])
-            if (valid_url):
-                identify_video_meeting(
-                    win.l_location_or_video_link,
-                    parsed_event['event_location'],
-                    "Link to location or to a video URL"
-                )
-                '''
-                win.l_location_or_video_link.setText("<a href=\"" + parsed_event['event_location'] + "\">Link to location or to a video URL</a>")
-                win.l_location_or_video_link.setOpenExternalLinks(True)
-                win.l_location_or_video_link.setToolTip(parsed_event['event_location'])
-                '''
-
-            else:
-                win.l_location_or_video_link.setText('Location: ' + parsed_event['event_location'])
-
-        if (parsed_event['video_link'] == "No Video"):
-            win.l_video_link.setHidden(True)
-        else:
+    if (parsed_event['event_location'] == "No location"):
+        win.l_location_or_video_link.setHidden(True)
+    else:
+        valid_url = validators.url(parsed_event['event_location'])
+        if (valid_url):
             identify_video_meeting(
-                win.l_video_link,
-                parsed_event['video_link'],
-                "Video link"
+                win.l_location_or_video_link,
+                parsed_event['event_location'],
+                "Link to location or to a video URL"
             )
 
-        # Hide the uneeded snooze buttons
-        if (parsed_event['start_date'] > now_datetime):
-            time_to_event_start = parsed_event['start_date'] - now_datetime
-            time_to_event_in_minutes = time_to_event_start.seconds / 60
         else:
-            time_to_event_in_minutes = -1
-        
-        #print(time_to_event_in_minutes)
-        for pb_button, snooze_time in win.snooze_buttons.items():
-            if (snooze_time <= 0 and abs(snooze_time) > time_to_event_in_minutes):
-                pb_button.setHidden(True)
+            win.l_location_or_video_link.setText('Location: ' + parsed_event['event_location'])
 
-        '''
-        win.l_video_link.setText("<a href=\"" + parsed_event['video_link'] + "\">Video link</a>")
-        win.l_video_link.setOpenExternalLinks(True)
-        win.l_video_link.setToolTip(parsed_event['video_link'])
-        '''
+    if (parsed_event['video_link'] == "No Video"):
+        win.l_video_link.setHidden(True)
+    else:
+        identify_video_meeting(
+            win.l_video_link,
+            parsed_event['video_link'],
+            "Video Link"
+        )
 
-        '''
-        if (parsed_event['event_meet_link'] == "No Meet"):
-            win.l_meet_link.setHidden(True)
+    # Hide the uneeded snooze buttons
+    now_datetime = get_now_datetime()
+    if (parsed_event['start_date'] > now_datetime):
+        time_to_event_start = parsed_event['start_date'] - now_datetime
+        time_to_event_in_minutes = time_to_event_start.seconds / 60
+    else:
+        time_to_event_in_minutes = -1
+    
+    #print(time_to_event_in_minutes)
+    for pb_button, snooze_time in win.snooze_buttons.items():
+        if (snooze_time <= 0 and abs(snooze_time) > time_to_event_in_minutes):
+            pb_button.setHidden(True)
+
+    win_exit_reason = EXIT_REASON_NONE
+
+    # Show the window and bring it to the front
+    win.show()
+    getattr(win, "raise")()
+    win.activateWindow()
+    app.exec()
+
+    # Look at the window exit reason
+    if (win_exit_reason == EXIT_REASON_NONE):
+        print("Cancel")
+    elif (win_exit_reason == EXIT_REASON_DISMISS):
+        #print("Dismiss")
+        dismissed_events[event_id] = parsed_event['end_date']
+    elif (win_exit_reason == EXIT_REASON_SNOOZE):
+        #print("Snooze")
+        if (snooze_time_in_minutes <= 0):
+            delta_diff = datetime.timedelta(minutes=abs(snooze_time_in_minutes))
+            parsed_event['event_wakeup_time'] = parsed_event['start_date'] - delta_diff
         else:
-            win.l_meet_link.setText("<a href=\"" + parsed_event['event_meet_link'] + "\">Meet link</a>")
-            win.l_meet_link.setOpenExternalLinks(True)
-            win.l_meet_link.setToolTip(parsed_event['event_meet_link'])
-        '''
+            delta_diff = datetime.timedelta(minutes=snooze_time_in_minutes)
+            parsed_event['event_wakeup_time'] = now_datetime + delta_diff
 
-        win_exit_reason = EXIT_REASON_NONE
-        win.show()
-        getattr(win, "raise")()
-        win.activateWindow()
-        app.exec()
+        #print("Snooze until", parsed_event['event_wakeup_time'])
+            
+        snoozed_events[event_id] = parsed_event
+    else:
+        print("No exit reason")
 
-        if (win_exit_reason == EXIT_REASON_NONE):
-            print("Cancel")
-        elif (win_exit_reason == EXIT_REASON_DISMISS):
-            #print("Dismiss")
-            dismissed_events[event_id] = parsed_event['end_date']
-        elif (win_exit_reason == EXIT_REASON_SNOOZE):
-            #print("Snooze")
-            if (snooze_time_in_minutes <= 0):
-                delta_diff = datetime.timedelta(minutes=abs(snooze_time_in_minutes))
-                parsed_event['event_wakeup_time'] = parsed_event['start_date'] - delta_diff
-            else:
-                delta_diff = datetime.timedelta(minutes=snooze_time_in_minutes)
-                parsed_event['event_wakeup_time'] = now_datetime + delta_diff
+def clear_dismissed_and_snoozed_events():
+    global dismissed_events
+    global snoozed_events
 
-            #print("Snooze until", parsed_event['event_wakeup_time'])
-                
-            snoozed_events[event_id] = parsed_event
-        else:
-            print("No exit reason")
+    now_datetime = get_now_datetime()
 
     # Clear dismissed events that have ended
     dismissed_events_to_delete = []
@@ -386,17 +260,128 @@ def gCalMain(token_path):
         #print("Deleteing event id", k, "from snoozed")
         del snoozed_events[k]
 
+def parse_event(event, parsed_event):
+    if (event['reminders'].get('useDefault') == True):
+        minutes_before = 15
+    else:
+        override_rule = event['reminders'].get('overrides')
+        if (override_rule):
+            override_set = override_rule[0]
+            minutes_before = override_set['minutes']
+        else:
+            #print("No need to remind")
+            return(False)
+
+    # Event needs to be reminded, check if it is the time to remind
+    start_day = event['start'].get('dateTime')
+    if not start_day:
+        # An all day event
+        parsed_event['all_day_event'] = True
+        start_day = event['start'].get('date')
+        end_day = event['end'].get('date')
+        parsed_event['start_date']=datetime.datetime.strptime(start_day, '%Y-%m-%d').astimezone()
+        parsed_event['end_date']=datetime.datetime.strptime(end_day, '%Y-%m-%d').astimezone()
+    else:
+        # Not an all day event
+        parsed_event['all_day_event'] = False
+        end_day = event['end'].get('dateTime')
+        parsed_event['start_date']=datetime.datetime.strptime(start_day, '%Y-%m-%dT%H:%M:%S%z')
+        parsed_event['end_date']=datetime.datetime.strptime(end_day, '%Y-%m-%dT%H:%M:%S%z')
+
+    # Compute the time to wake up
+    delta_diff = datetime.timedelta(minutes=minutes_before)
+    reminder_time = parsed_event['start_date'] - delta_diff
+    now_datetime = get_now_datetime()
+    if(now_datetime < reminder_time):
+        # Not the time to remind yet
+        return(False)
+
+    parsed_event['html_link'] = event['htmlLink']
+
+    parsed_event['event_location'] = event.get('location', "No location")
+
+    # Get the video conf data
+    parsed_event['video_link'] = "No Video"
+    conf_data = event.get('conferenceData')
+    if (conf_data):
+        entry_points = conf_data.get('entryPoints')
+        if (entry_points):
+            for entry_point in entry_points:
+                entry_point_type = entry_point.get('entryPointType')
+                if (entry_point_type and entry_point_type == 'video'):
+                    uri = entry_point.get('uri')
+                    if (uri):
+                        parsed_event['video_link'] = uri
+
+    # The event needs to be notified
+    return(True)
+
+def notify_on_needed_calendar_events(google_account):
+    global dismissed_events
+    global snoozed_events
+
+    # Get the next coming events from the google calendar
+    events = get_events_from_google_cal(google_account)
+
+    # Handled the snoozed events
+    if not events:
+        print('No upcoming events found for', google_account)
+
+    for event in events:
+        #print(event)
+        parsed_event = {}
+        now_datetime = get_now_datetime()
+        a_snoozed_event_to_wakeup = False
+
+        event_id = event['id']
+        #print(event_id)
+
+        parsed_event['event_name'] = event['summary']
+        parsed_event['google_account'] = google_account
+        #print(parsed_event['event_name'])
+
+        if (event_id in dismissed_events):
+            #print("Skipping dismissed event")
+            continue
+
+        if (event_id in snoozed_events):
+            # A snoozed event
+            snoozed_event = snoozed_events[event_id]
+
+            if (snoozed_event['event_wakeup_time'] > now_datetime):
+                # The time of the snoozed event has not arrived yet
+                #print("Skipping snoozed event that should not be woke up yet")
+                continue
+            else:
+                # Its time to wake up the snoozed even
+                #print("Time to wake up the snoozed event")
+                a_snoozed_event_to_wakeup = True
+                parsed_event = snoozed_event
+
+                del snoozed_events[event_id]
+
+        if (a_snoozed_event_to_wakeup == False):                
+            # Not a snoozed event - check if the event needs to be reminded, and if so, when
+            need_to_notify = parse_event(event, parsed_event)
+            if (need_to_notify == False):
+                continue
+
+        # Show the window with the data
+        show_window_and_parse_exit_status(event_id, parsed_event)
+
+    clear_dismissed_and_snoozed_events()
+
 if __name__ == "__main__":
+    # Init
     app = QApplication(sys.argv)
 
     dismissed_events = {}
     snoozed_events = {}
+
+    # Loop forever
     while True:
-        gCalMain('ofir_anjuna_io')
-        gCalMain('ofiraz_gmail_com')
+        notify_on_needed_calendar_events('ofir_anjuna_io')
+        notify_on_needed_calendar_events('ofiraz_gmail_com')
 
         print("Going to sleep for 30 seconds")
         time.sleep(30)
-
-
-    sys.exit()
