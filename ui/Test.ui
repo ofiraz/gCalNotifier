@@ -1,0 +1,292 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>w_event</class>
+ <widget class="QWidget" name="w_event">
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1145</width>
+    <height>368</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Event Name</string>
+  </property>
+  <widget class="QLabel" name="l_event_name">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>50</y>
+     <width>1051</width>
+     <height>61</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Event Name</string>
+   </property>
+   <property name="textFormat">
+    <enum>Qt::MarkdownText</enum>
+   </property>
+   <property name="wordWrap">
+    <bool>true</bool>
+   </property>
+   <property name="openExternalLinks">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_dismiss">
+   <property name="geometry">
+    <rect>
+     <x>1020</x>
+     <y>310</y>
+     <width>100</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Dismiss</string>
+   </property>
+  </widget>
+  <widget class="QWidget" name="layoutWidget">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>130</y>
+     <width>811</width>
+     <height>114</height>
+    </rect>
+   </property>
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QLabel" name="l_all_day">
+      <property name="text">
+       <string>All Day?</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="l_event_start">
+      <property name="text">
+       <string>Event Start</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="l_event_end">
+      <property name="text">
+       <string>Event End</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="l_event_link">
+      <property name="text">
+       <string>Link to event in GCal</string>
+      </property>
+      <property name="openExternalLinks">
+       <bool>true</bool>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QLabel" name="l_location_or_video_link">
+      <property name="text">
+       <string>Location or Zoom</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QPushButton" name="pb_m10m">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>280</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>-10m</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_m5m">
+   <property name="geometry">
+    <rect>
+     <x>150</x>
+     <y>280</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>-5m</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_m2m">
+   <property name="geometry">
+    <rect>
+     <x>260</x>
+     <y>280</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>-2m</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_m1m">
+   <property name="geometry">
+    <rect>
+     <x>370</x>
+     <y>280</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>-1m</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_0m">
+   <property name="geometry">
+    <rect>
+     <x>490</x>
+     <y>280</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>0m</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_30m">
+   <property name="geometry">
+    <rect>
+     <x>230</x>
+     <y>310</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>30m</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_5m">
+   <property name="geometry">
+    <rect>
+     <x>10</x>
+     <y>310</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>5m</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_15m">
+   <property name="geometry">
+    <rect>
+     <x>120</x>
+     <y>310</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>15m</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_1h">
+   <property name="geometry">
+    <rect>
+     <x>340</x>
+     <y>310</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>1h</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_8h">
+   <property name="geometry">
+    <rect>
+     <x>670</x>
+     <y>310</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>8h</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_4h">
+   <property name="geometry">
+    <rect>
+     <x>560</x>
+     <y>310</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>4h</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_2h">
+   <property name="geometry">
+    <rect>
+     <x>450</x>
+     <y>310</y>
+     <width>113</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>2h</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="l_account">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>30</y>
+     <width>191</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Account</string>
+   </property>
+  </widget>
+  <widget class="QLabel" name="l_video_link">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>250</y>
+     <width>801</width>
+     <height>16</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Video Link</string>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+ <slots>
+  <slot>clickedZoom()</slot>
+ </slots>
+</ui>
