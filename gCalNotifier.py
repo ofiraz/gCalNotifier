@@ -158,6 +158,7 @@ def get_events_from_google_cal(google_account):
     creds = None
     token_file = google_account + '/token.json'
     Credentials_file = google_account + '/credentials.json'
+
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
     # time.
@@ -262,9 +263,14 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
     # Look at the window exit reason
     if (win_exit_reason == EXIT_REASON_NONE):
         logger.debug("Cancel")
+
     elif (win_exit_reason == EXIT_REASON_DISMISS):
         logger.debug("Dismiss")
-        dismissed_events[event_id] = parsed_event['end_date']
+
+        now_datetime = get_now_datetime()
+        if (now_datetime < parsed_event['end_date']):
+            dismissed_events[event_id] = parsed_event['end_date']
+
     elif (win_exit_reason == EXIT_REASON_SNOOZE):
         logger.debug("Snooze")
         if (snooze_time_in_minutes <= 0):
@@ -277,39 +283,9 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
         logger.debug("Snooze until " + str(parsed_event['event_wakeup_time']))
             
         snoozed_events[event_id] = parsed_event
+        
     else:
         logger.error("No exit reason")
-
-def clear_dismissed_and_snoozed_events():
-    global dismissed_events
-    global snoozed_events
-    global logger
-
-    now_datetime = get_now_datetime()
-
-    # Clear dismissed events that have ended
-    dismissed_events_to_delete = []
-    for k, v in dismissed_events.items():
-        logger.debug("Dismissed event " + str(k) + " " + str(v) + " " + str(now_datetime))
-        if (now_datetime > v):
-            dismissed_events_to_delete.append(k)
-
-    while (len(dismissed_events_to_delete) > 0):
-        k = dismissed_events_to_delete.pop()
-        logger.debug("Deleteing event id " + str(k) + " from dismissed")
-        del dismissed_events[k]
-
-    # Clear snoozed events that have ended
-    snoozed_events_to_delete = []
-    for k, v in snoozed_events.items():
-        logger.debug("Snoozed event " + str(k) + " " + str(v['end_date']) + " " + str(now_datetime))
-        if (now_datetime > v['end_date']):
-            snoozed_events_to_delete.append(k)
-
-    while (len(snoozed_events_to_delete) > 0):
-        k = snoozed_events_to_delete.pop()
-        logger.debug("Deleteing event id " + str(k) + " from snoozed")
-        del snoozed_events[k]
 
 def parse_event(event, parsed_event):
     global logger
@@ -369,12 +345,32 @@ def parse_event(event, parsed_event):
     # The event needs to be notified
     return(True)
 
-def notify_on_needed_calendar_events(google_account):
+def set_items_to_present_from_snoozed(snoozed_events, events_to_present):
+    global logger
+
+    now_datetime = get_now_datetime()
+
+    # Identified the snoozed evnets that need to wake up
+    snoozed_events_to_delete = []
+    for event_id, snoozed_event in snoozed_events.items():
+        logger.debug("Snoozed event " + str(event_id) + " " + str(snoozed_event['event_wakeup_time']) + " " + str(now_datetime))
+        if (now_datetime >= snoozed_event['event_wakeup_time']):
+            # Event needs to be woke up
+            events_to_present[event_id] = snoozed_event
+            snoozed_events_to_delete.append(event_id)
+
+    # Clear the snoozed events that were woken up from the snoozed list
+    while (len(snoozed_events_to_delete) > 0):
+        k = snoozed_events_to_delete.pop()
+        logger.debug("Deleteing event id " + str(k) + " from snoozed")
+        del snoozed_events[k]
+
+def add_items_to_show_from_calendar(google_account, events_to_present):
     global dismissed_events
     global snoozed_events
     global logger
 
-    logger.debug("notify_on_needed_calendar_events for " + google_account)
+    logger.debug("add_items_to_show_from_calendar for " + google_account)
 
     # Get the next coming events from the google calendar
     events = get_events_from_google_cal(google_account)
@@ -382,9 +378,10 @@ def notify_on_needed_calendar_events(google_account):
     # Handled the snoozed events
     if not events:
         logger.debug('No upcoming events found')
+        return
 
     for event in events:
-        logger.debug(event)
+        logger.debug(str(event))
         parsed_event = {}
         now_datetime = get_now_datetime()
         a_snoozed_event_to_wakeup = False
@@ -401,31 +398,45 @@ def notify_on_needed_calendar_events(google_account):
             continue
 
         if (event_id in snoozed_events):
-            # A snoozed event
-            snoozed_event = snoozed_events[event_id]
+            logger.debug("Skipping snoozed event")
+            continue
 
-            if (snoozed_event['event_wakeup_time'] > now_datetime):
-                # The time of the snoozed event has not arrived yet
-                logger.debug("Skipping snoozed event that should not be woke up yet")
-                continue
-            else:
-                # Its time to wake up the snoozed even
-                logger.debug("Time to wake up the snoozed event")
-                a_snoozed_event_to_wakeup = True
-                parsed_event = snoozed_event
+        if (event_id in events_to_present):
+            logger.debug("Skipping event as it is already in the events to present")
+            continue
 
-                del snoozed_events[event_id]
+        # Event not in the any other list
+        need_to_notify = parse_event(event, parsed_event)
+        if (need_to_notify == True):
+            # Event to get presented
+            events_to_present[event_id] = parsed_event
 
-        if (a_snoozed_event_to_wakeup == False):                
-            # Not a snoozed event - check if the event needs to be reminded, and if so, when
-            need_to_notify = parse_event(event, parsed_event)
-            if (need_to_notify == False):
-                continue
+def present_relevant_events(events_to_present):
+    if (len(events_to_present) > 0):
+        for event_id, parsed_event in events_to_present.items():
+            # Show the window with the data
+            show_window_and_parse_exit_status(event_id, parsed_event)
 
-        # Show the window with the data
-        show_window_and_parse_exit_status(event_id, parsed_event)
+    # Empty the dictionary
+    events_to_present = {}
 
-    clear_dismissed_and_snoozed_events()
+def clear_dismissed_events_that_have_ended():
+    global dismissed_events
+    global logger
+
+    now_datetime = get_now_datetime()
+
+    # Clear dismissed events that have ended
+    dismissed_events_to_delete = []
+    for k, v in dismissed_events.items():
+        logger.debug("Dismissed event " + str(k) + " " + str(v) + " " + str(now_datetime))
+        if (now_datetime > v):
+            dismissed_events_to_delete.append(k)
+
+    while (len(dismissed_events_to_delete) > 0):
+        k = dismissed_events_to_delete.pop()
+        logger.debug("Deleteing event id " + str(k) + " from dismissed")
+        del dismissed_events[k]
 
 if __name__ == "__main__":
     # Init
@@ -439,8 +450,13 @@ if __name__ == "__main__":
 
     # Loop forever
     while True:
-        notify_on_needed_calendar_events('ofir_anjuna_io')
-        notify_on_needed_calendar_events('ofiraz_gmail_com')
+        events_to_present = {}
+
+        set_items_to_present_from_snoozed(snoozed_events, events_to_present)
+        add_items_to_show_from_calendar('ofir_anjuna_io', events_to_present)
+        add_items_to_show_from_calendar('ofiraz_gmail_com', events_to_present)
+        present_relevant_events(events_to_present)
+        clear_dismissed_events_that_have_ended()
 
         logger.debug("Going to sleep for 30 seconds")
         time.sleep(30)
