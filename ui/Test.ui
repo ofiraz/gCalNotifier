@@ -101,162 +101,6 @@
     </item>
    </layout>
   </widget>
-  <widget class="QPushButton" name="pb_m10m">
-   <property name="geometry">
-    <rect>
-     <x>40</x>
-     <y>280</y>
-     <width>113</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>-10m</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pb_m5m">
-   <property name="geometry">
-    <rect>
-     <x>150</x>
-     <y>280</y>
-     <width>113</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>-5m</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pb_m2m">
-   <property name="geometry">
-    <rect>
-     <x>260</x>
-     <y>280</y>
-     <width>113</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>-2m</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pb_m1m">
-   <property name="geometry">
-    <rect>
-     <x>370</x>
-     <y>280</y>
-     <width>113</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>-1m</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pb_0m">
-   <property name="geometry">
-    <rect>
-     <x>490</x>
-     <y>280</y>
-     <width>113</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>0m</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pb_30m">
-   <property name="geometry">
-    <rect>
-     <x>230</x>
-     <y>310</y>
-     <width>113</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>30m</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pb_5m">
-   <property name="geometry">
-    <rect>
-     <x>10</x>
-     <y>310</y>
-     <width>113</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>5m</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pb_15m">
-   <property name="geometry">
-    <rect>
-     <x>120</x>
-     <y>310</y>
-     <width>113</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>15m</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pb_1h">
-   <property name="geometry">
-    <rect>
-     <x>340</x>
-     <y>310</y>
-     <width>113</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>1h</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pb_8h">
-   <property name="geometry">
-    <rect>
-     <x>670</x>
-     <y>310</y>
-     <width>113</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>8h</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pb_4h">
-   <property name="geometry">
-    <rect>
-     <x>560</x>
-     <y>310</y>
-     <width>113</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>4h</string>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="pb_2h">
-   <property name="geometry">
-    <rect>
-     <x>450</x>
-     <y>310</y>
-     <width>113</width>
-     <height>32</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>2h</string>
-   </property>
-  </widget>
   <widget class="QLabel" name="l_account">
    <property name="geometry">
     <rect>
@@ -282,6 +126,121 @@
    <property name="text">
     <string>Video Link</string>
    </property>
+  </widget>
+  <widget class="QWidget" name="">
+   <property name="geometry">
+    <rect>
+     <x>170</x>
+     <y>280</y>
+     <width>346</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <widget class="QPushButton" name="pb_m10m">
+      <property name="text">
+       <string>-10m</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="pb_m5m">
+      <property name="text">
+       <string>-5m</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="pb_m2m">
+      <property name="text">
+       <string>-2m</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="pb_m1m">
+      <property name="text">
+       <string>-1m</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="pb_0m">
+      <property name="text">
+       <string>0m</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QWidget" name="">
+   <property name="geometry">
+    <rect>
+     <x>80</x>
+     <y>320</y>
+     <width>503</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <layout class="QHBoxLayout" name="horizontalLayout_2">
+    <item>
+     <widget class="QPushButton" name="pb_1m">
+      <property name="text">
+       <string>1m</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="pb_5m">
+      <property name="text">
+       <string>5m</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="pb_15m">
+      <property name="text">
+       <string>15m</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="pb_30m">
+      <property name="text">
+       <string>30m</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="pb_1h">
+      <property name="text">
+       <string>1h</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="pb_2h">
+      <property name="text">
+       <string>2h</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="pb_4h">
+      <property name="text">
+       <string>4h</string>
+      </property>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="pb_8h">
+      <property name="text">
+       <string>8h</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
   </widget>
  </widget>
  <resources/>

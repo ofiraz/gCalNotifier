@@ -43,6 +43,7 @@ class Window(QMainWindow, Ui_w_event):
             self.pb_m2m:-2,
             self.pb_m1m:-1,
             self.pb_0m:0,
+            self.pb_1m:1,
             self.pb_5m:5,
             self.pb_15m:15,
             self.pb_30m:30,
@@ -60,6 +61,7 @@ class Window(QMainWindow, Ui_w_event):
         self.pb_m2m.clicked.connect(lambda: self.snooze_general(self.pb_m2m))
         self.pb_m1m.clicked.connect(lambda: self.snooze_general(self.pb_m1m))
         self.pb_0m.clicked.connect(lambda: self.snooze_general(self.pb_0m))
+        self.pb_1m.clicked.connect(lambda: self.snooze_general(self.pb_1m))
         self.pb_5m.clicked.connect(lambda: self.snooze_general(self.pb_5m))
         self.pb_15m.clicked.connect(lambda: self.snooze_general(self.pb_15m))
         self.pb_30m.clicked.connect(lambda: self.snooze_general(self.pb_30m))
@@ -283,7 +285,7 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
         logger.debug("Snooze until " + str(parsed_event['event_wakeup_time']))
             
         snoozed_events[event_id] = parsed_event
-        
+
     else:
         logger.error("No exit reason")
 
