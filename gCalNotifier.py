@@ -76,28 +76,15 @@ class Window(QMainWindow, Ui_w_event):
         self.pb_8h.clicked.connect(lambda: self.snooze_general(self.pb_8h))
 
     def clickedDismiss(self):       
-        global logger
-
         thread_local_data.win_exit_reason = EXIT_REASON_DISMISS
-
-#        logger.debug(str(EXIT_REASON_DISMISS) + " win_exit_reason " + str(thread_local_data.win_exit_reason))
 
         self.close()
 
     def snooze_general(self, p_button):
-        global logger 
-
         thread_local_data.win_exit_reason = EXIT_REASON_SNOOZE
-#        logger.debug(str(EXIT_REASON_SNOOZE) + " win_exit_reason " + str(thread_local_data.win_exit_reason))
 
         if (p_button in self.snooze_buttons):
             thread_local_data.snooze_time_in_minutes = self.snooze_buttons[p_button]
-#            logger.debug(str(self.snooze_buttons[p_button]) + " snooze_time_in_minutes " + str(thread_local_data.snooze_time_in_minutes))
-
-#            logger.debug("Snooze time in minuetes " + str(thread_local_data.snooze_time_in_minutes))
-
-#        else:
-#            logger.error("Snooze button not found " + str(p_button))
     
         self.close()
 
@@ -286,14 +273,12 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
     proc.join()
 
     data_from_child = parent_conn.recv()
-
-
     thread_local_data.win_exit_reason = data_from_child[0]
     thread_local_data.snooze_time_in_minutes = data_from_child[1]
 
     # Look at the window exit reason
-    logger.info("win_exit_reason " + str(thread_local_data.win_exit_reason))
-    logger.info("snooze_time_in_minutes " + str(thread_local_data.snooze_time_in_minutes))
+    logger.debug("win_exit_reason " + str(thread_local_data.win_exit_reason))
+    logger.debug("snooze_time_in_minutes " + str(thread_local_data.snooze_time_in_minutes))
 
     now_datetime = get_now_datetime()
 
@@ -325,8 +310,8 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
         logger.error("No exit reason")
 
     # Remove the event from the presented events
-        with displayed_lock:
-            del displayed_events[event_id]
+    with displayed_lock:
+        del displayed_events[event_id]
 
 
 def parse_event(event, parsed_event):
@@ -475,27 +460,19 @@ def present_relevant_events(events_to_present):
     number_of_events_to_present = len(events_to_present)
     if (number_of_events_to_present > 0):
         for event_id, parsed_event in events_to_present.items():
-            #show_window_and_parse_exit_status(event_id, parsed_event)
-
             # Add the event to the presented events
             with displayed_lock:
                 displayed_events[event_id] = parsed_event
             
-            # Show the windows in a separate thread
+            # Show the windows in a separate thread and process
             win_thread = threading.Thread(
                 target = show_window_and_parse_exit_status,
                 args = (event_id, parsed_event, ))
 
             win_thread.start()
 
-            # Remove the event from the presented events
-            #with displayed_lock:
-            #    del displayed_events[event_id]
-
         # Empty the dictionary
         events_to_present = {}
-
-    return(number_of_events_to_present)
 
 def clear_dismissed_events_that_have_ended():
     global dismissed_events
@@ -519,7 +496,6 @@ def clear_dismissed_events_that_have_ended():
             del dismissed_events[k]
 
 def init_global_objects():
-    global app
     global dismissed_events
     global dismissed_lock
     global snoozed_events
@@ -551,10 +527,8 @@ if __name__ == "__main__":
         set_items_to_present_from_snoozed(events_to_present)
         add_items_to_show_from_calendar('ofir_anjuna_io', events_to_present)
         add_items_to_show_from_calendar('ofiraz_gmail_com', events_to_present)
-        num_of_events_presented = present_relevant_events(events_to_present)
+        present_relevant_events(events_to_present)
         clear_dismissed_events_that_have_ended()
 
-        if (num_of_events_presented == 0):
-            # No events were presented - let's sleep and see if something new comes
-            logger.debug("Going to sleep for 30 seconds")
-            time.sleep(30)
+        logger.debug("Going to sleep for 30 seconds")
+        time.sleep(30)
