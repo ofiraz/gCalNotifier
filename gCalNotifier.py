@@ -19,6 +19,11 @@ import validators
 import logging
 from logging.handlers import RotatingFileHandler
 
+import threading
+from multiprocessing import Process, Pipe
+
+thread_local_data = threading.local()
+
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
@@ -70,25 +75,29 @@ class Window(QMainWindow, Ui_w_event):
         self.pb_4h.clicked.connect(lambda: self.snooze_general(self.pb_4h))
         self.pb_8h.clicked.connect(lambda: self.snooze_general(self.pb_8h))
 
-    def clickedDismiss(self):
-        global win_exit_reason
-        
-        win_exit_reason = EXIT_REASON_DISMISS
+    def clickedDismiss(self):       
+        global logger
+
+        thread_local_data.win_exit_reason = EXIT_REASON_DISMISS
+
+#        logger.debug(str(EXIT_REASON_DISMISS) + " win_exit_reason " + str(thread_local_data.win_exit_reason))
 
         self.close()
 
     def snooze_general(self, p_button):
-        global win_exit_reason
-        global snooze_time_in_minutes
+        global logger 
 
-        win_exit_reason = EXIT_REASON_SNOOZE
+        thread_local_data.win_exit_reason = EXIT_REASON_SNOOZE
+#        logger.debug(str(EXIT_REASON_SNOOZE) + " win_exit_reason " + str(thread_local_data.win_exit_reason))
+
         if (p_button in self.snooze_buttons):
-            snooze_time_in_minutes = self.snooze_buttons[p_button]
+            thread_local_data.snooze_time_in_minutes = self.snooze_buttons[p_button]
+#            logger.debug(str(self.snooze_buttons[p_button]) + " snooze_time_in_minutes " + str(thread_local_data.snooze_time_in_minutes))
 
-            logger.debug("Snooze time in minuetes " + str(snooze_time_in_minutes))
+#            logger.debug("Snooze time in minuetes " + str(thread_local_data.snooze_time_in_minutes))
 
-        else:
-            logger.error("Snooze button not found " + str(p_button))
+#        else:
+#            logger.error("Snooze button not found " + str(p_button))
     
         self.close()
 
@@ -100,7 +109,7 @@ def init_logging(module_name):
     logger.setLevel(logging.DEBUG)
 
     # create formatter
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - (%(threadName)-10s) - %(levelname)s - %(message)s')
 
     # create console handler
     console_handler = logging.StreamHandler()
@@ -193,12 +202,8 @@ def get_events_from_google_cal(google_account):
 def get_now_datetime():
     return(datetime.datetime.now().astimezone())
 
-def show_window_and_parse_exit_status(event_id, parsed_event):
-    global win_exit_reason
-    global dismissed_events
-    global snoozed_events
-    global snooze_time_in_minutes
-    global logger
+def show_window(parsed_event, pipe_conn):
+    app = QApplication(sys.argv)
 
     win = Window()
 
@@ -214,7 +219,6 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
     win.l_event_start.setText('Starting on ' + str(parsed_event['start_date']))
     win.l_event_end.setText('Ending on ' + str(parsed_event['end_date']))
 
-    logger.debug("HTML Link " + parsed_event['html_link'])
     win.l_event_link.setText("<a href=\"" + parsed_event['html_link'] + "\">Link to event in GCal</a>")
     win.l_event_link.setToolTip(parsed_event['html_link'])
 
@@ -249,45 +253,81 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
     else:
         time_to_event_in_minutes = -1
     
-    logger.debug("Time to event in minutes " + str(time_to_event_in_minutes))
     for pb_button, snooze_time in win.snooze_buttons.items():
         if (snooze_time <= 0 and abs(snooze_time) > time_to_event_in_minutes):
             pb_button.setHidden(True)
 
-    win_exit_reason = EXIT_REASON_NONE
-
     # Show the window and bring it to the front
+    thread_local_data.win_exit_reason = EXIT_REASON_NONE
+    thread_local_data.snooze_time_in_minutes = 0
+
     win.show()
     getattr(win, "raise")()
     win.activateWindow()
     app.exec()
 
+    pipe_conn.send([thread_local_data.win_exit_reason, thread_local_data.snooze_time_in_minutes])
+
+def show_window_and_parse_exit_status(event_id, parsed_event):
+    global dismissed_events
+    global dismissed_lock
+    global snoozed_events
+    global snoozed_lock
+    global displayed_events
+    global displayed_lock
+    global logger
+
+    #show_window(parsed_event)
+    parent_conn, child_conn = Pipe()
+    proc = Process(
+        target = show_window,
+        args = (parsed_event, child_conn, ))
+    proc.start()
+    proc.join()
+
+    data_from_child = parent_conn.recv()
+
+
+    thread_local_data.win_exit_reason = data_from_child[0]
+    thread_local_data.snooze_time_in_minutes = data_from_child[1]
+
     # Look at the window exit reason
-    if (win_exit_reason == EXIT_REASON_NONE):
+    logger.info("win_exit_reason " + str(thread_local_data.win_exit_reason))
+    logger.info("snooze_time_in_minutes " + str(thread_local_data.snooze_time_in_minutes))
+
+    now_datetime = get_now_datetime()
+
+    if (thread_local_data.win_exit_reason == EXIT_REASON_NONE):
         logger.debug("Cancel")
 
-    elif (win_exit_reason == EXIT_REASON_DISMISS):
+    elif (thread_local_data.win_exit_reason == EXIT_REASON_DISMISS):
         logger.debug("Dismiss")
 
-        now_datetime = get_now_datetime()
         if (now_datetime < parsed_event['end_date']):
-            dismissed_events[event_id] = parsed_event['end_date']
+            with dismissed_lock:
+                dismissed_events[event_id] = parsed_event['end_date']
 
-    elif (win_exit_reason == EXIT_REASON_SNOOZE):
+    elif (thread_local_data.win_exit_reason == EXIT_REASON_SNOOZE):
         logger.debug("Snooze")
-        if (snooze_time_in_minutes <= 0):
-            delta_diff = datetime.timedelta(minutes=abs(snooze_time_in_minutes))
+        if (thread_local_data.snooze_time_in_minutes <= 0):
+            delta_diff = datetime.timedelta(minutes=abs(thread_local_data.snooze_time_in_minutes))
             parsed_event['event_wakeup_time'] = parsed_event['start_date'] - delta_diff
         else:
-            delta_diff = datetime.timedelta(minutes=snooze_time_in_minutes)
+            delta_diff = datetime.timedelta(minutes=thread_local_data.snooze_time_in_minutes)
             parsed_event['event_wakeup_time'] = now_datetime + delta_diff
 
         logger.debug("Snooze until " + str(parsed_event['event_wakeup_time']))
             
-        snoozed_events[event_id] = parsed_event
+        with snoozed_lock:
+            snoozed_events[event_id] = parsed_event
 
     else:
         logger.error("No exit reason")
+
+    # Remove the event from the presented events
+        with displayed_lock:
+            del displayed_events[event_id]
+
 
 def parse_event(event, parsed_event):
     global logger
@@ -347,29 +387,37 @@ def parse_event(event, parsed_event):
     # The event needs to be notified
     return(True)
 
-def set_items_to_present_from_snoozed(snoozed_events, events_to_present):
+def set_items_to_present_from_snoozed(events_to_present):
     global logger
+    global snoozed_events
+    global snoozed_lock
 
     now_datetime = get_now_datetime()
 
     # Identified the snoozed evnets that need to wake up
     snoozed_events_to_delete = []
-    for event_id, snoozed_event in snoozed_events.items():
-        logger.debug("Snoozed event " + str(event_id) + " " + str(snoozed_event['event_wakeup_time']) + " " + str(now_datetime))
-        if (now_datetime >= snoozed_event['event_wakeup_time']):
-            # Event needs to be woke up
-            events_to_present[event_id] = snoozed_event
-            snoozed_events_to_delete.append(event_id)
 
-    # Clear the snoozed events that were woken up from the snoozed list
-    while (len(snoozed_events_to_delete) > 0):
-        k = snoozed_events_to_delete.pop()
-        logger.debug("Deleteing event id " + str(k) + " from snoozed")
-        del snoozed_events[k]
+    with snoozed_lock:
+        for event_id, snoozed_event in snoozed_events.items():
+            logger.debug("Snoozed event " + str(event_id) + " " + str(snoozed_event['event_wakeup_time']) + " " + str(now_datetime))
+            if (now_datetime >= snoozed_event['event_wakeup_time']):
+                # Event needs to be woke up
+                events_to_present[event_id] = snoozed_event
+                snoozed_events_to_delete.append(event_id)
+
+        # Clear the snoozed events that were woken up from the snoozed list
+        while (len(snoozed_events_to_delete) > 0):
+            k = snoozed_events_to_delete.pop()
+            logger.debug("Deleteing event id " + str(k) + " from snoozed")
+            del snoozed_events[k]
 
 def add_items_to_show_from_calendar(google_account, events_to_present):
     global dismissed_events
+    global dismissed_lock
     global snoozed_events
+    global snoozed_lock
+    global displayed_events
+    global displayed_lock
     global logger
 
     logger.debug("add_items_to_show_from_calendar for " + google_account)
@@ -395,14 +443,21 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
         parsed_event['google_account'] = google_account
         logger.debug("Event Name " + parsed_event['event_name'])
 
-        if (event_id in dismissed_events):
-            logger.debug("Skipping dismissed event")
-            continue
+        with dismissed_lock:
+            if (event_id in dismissed_events):
+                logger.debug("Skipping dismissed event")
+                continue
 
-        if (event_id in snoozed_events):
-            logger.debug("Skipping snoozed event")
-            continue
-
+        with snoozed_lock:
+            if (event_id in snoozed_events):
+                logger.debug("Skipping snoozed event")
+                continue
+        
+        with displayed_lock:
+            if (event_id in displayed_events):
+                logger.debug("Skipping displayed event")
+                continue
+        
         if (event_id in events_to_present):
             logger.debug("Skipping event as it is already in the events to present")
             continue
@@ -414,51 +469,92 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
             events_to_present[event_id] = parsed_event
 
 def present_relevant_events(events_to_present):
-    if (len(events_to_present) > 0):
-        for event_id, parsed_event in events_to_present.items():
-            # Show the window with the data
-            show_window_and_parse_exit_status(event_id, parsed_event)
+    global displayed_events
+    global displayed_lock
 
-    # Empty the dictionary
-    events_to_present = {}
+    number_of_events_to_present = len(events_to_present)
+    if (number_of_events_to_present > 0):
+        for event_id, parsed_event in events_to_present.items():
+            #show_window_and_parse_exit_status(event_id, parsed_event)
+
+            # Add the event to the presented events
+            with displayed_lock:
+                displayed_events[event_id] = parsed_event
+            
+            # Show the windows in a separate thread
+            win_thread = threading.Thread(
+                target = show_window_and_parse_exit_status,
+                args = (event_id, parsed_event, ))
+
+            win_thread.start()
+
+            # Remove the event from the presented events
+            #with displayed_lock:
+            #    del displayed_events[event_id]
+
+        # Empty the dictionary
+        events_to_present = {}
+
+    return(number_of_events_to_present)
 
 def clear_dismissed_events_that_have_ended():
     global dismissed_events
+    global dismissed_lock
     global logger
 
     now_datetime = get_now_datetime()
 
     # Clear dismissed events that have ended
     dismissed_events_to_delete = []
-    for k, v in dismissed_events.items():
-        logger.debug("Dismissed event " + str(k) + " " + str(v) + " " + str(now_datetime))
-        if (now_datetime > v):
-            dismissed_events_to_delete.append(k)
 
-    while (len(dismissed_events_to_delete) > 0):
-        k = dismissed_events_to_delete.pop()
-        logger.debug("Deleteing event id " + str(k) + " from dismissed")
-        del dismissed_events[k]
+    with dismissed_lock:
+        for k, v in dismissed_events.items():
+            logger.debug("Dismissed event " + str(k) + " " + str(v) + " " + str(now_datetime))
+            if (now_datetime > v):
+                dismissed_events_to_delete.append(k)
 
-if __name__ == "__main__":
-    # Init
-    app = QApplication(sys.argv)
+        while (len(dismissed_events_to_delete) > 0):
+            k = dismissed_events_to_delete.pop()
+            logger.debug("Deleteing event id " + str(k) + " from dismissed")
+            del dismissed_events[k]
+
+def init_global_objects():
+    global app
+    global dismissed_events
+    global dismissed_lock
+    global snoozed_events
+    global snoozed_lock
+    global displayed_events
+    global displayed_lock
+    global logger
+
+#    app = QApplication(sys.argv)
 
     dismissed_events = {}
-    snoozed_events = {}
+    dismissed_lock = threading.Lock()
 
-    # Init the logger
+    snoozed_events = {}
+    snoozed_lock = threading.Lock()
+
+    displayed_events = {}
+    displayed_lock = threading.Lock()
+
     logger = init_logging("gCalNotifier")    
+
+if __name__ == "__main__":
+    init_global_objects()
 
     # Loop forever
     while True:
         events_to_present = {}
 
-        set_items_to_present_from_snoozed(snoozed_events, events_to_present)
+        set_items_to_present_from_snoozed(events_to_present)
         add_items_to_show_from_calendar('ofir_anjuna_io', events_to_present)
         add_items_to_show_from_calendar('ofiraz_gmail_com', events_to_present)
-        present_relevant_events(events_to_present)
+        num_of_events_presented = present_relevant_events(events_to_present)
         clear_dismissed_events_that_have_ended()
 
-        logger.debug("Going to sleep for 30 seconds")
-        time.sleep(30)
+        if (num_of_events_presented == 0):
+            # No events were presented - let's sleep and see if something new comes
+            logger.debug("Going to sleep for 30 seconds")
+            time.sleep(30)
