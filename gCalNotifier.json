@@ -1,8 +1,14 @@
 {
-    "google_accounts": 
+    "google accounts": 
     [
-        "ofir_anjuna_io", 
-        "ofiraz_gmail_com"
+        {
+            "account name" : "ofir@anjuna.io",
+            "credentials string" : "ofir_anjuna_io"
+        },
+        {
+            "account name" : "ofiraz@gmail.com",
+            "credentials string" : "ofiraz_gmail_com"
+        }
     ],
-    "log_level":20 
+    "log level":20 
 }

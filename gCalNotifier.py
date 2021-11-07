@@ -202,6 +202,8 @@ def show_window(parsed_event, pipe_conn):
 
     win = Window()
 
+    win.setWindowTitle(parsed_event['event_name'])
+
     win.l_account.setText(parsed_event['google_account'])
 
     win.l_event_name.setText(parsed_event['event_name'])
@@ -209,7 +211,7 @@ def show_window(parsed_event, pipe_conn):
     if parsed_event['all_day_event']:
         win.l_all_day.setText("An all day event")
     else:
-        win.l_all_day.setText("Not an all day event")
+        win.l_all_day.setHidden(True)
 
     win.l_event_start.setText('Starting on ' + str(parsed_event['start_date']))
     win.l_event_end.setText('Ending on ' + str(parsed_event['end_date']))
@@ -413,10 +415,12 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
     global displayed_lock
     global logger
 
-    logger.debug("add_items_to_show_from_calendar for " + google_account)
+    google_account_name = google_account.get("account name")
+    google_account_cred_str = google_account.get("credentials string")
+    logger.debug("add_items_to_show_from_calendar for " + google_account_name)
 
     # Get the next coming events from the google calendar
-    events = get_events_from_google_cal(google_account)
+    events = get_events_from_google_cal(google_account_cred_str)
 
     # Handled the snoozed events
     if not events:
@@ -433,7 +437,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
         logger.debug("Event ID " + str(event_id))
 
         parsed_event['event_name'] = event['summary']
-        parsed_event['google_account'] = google_account
+        parsed_event['google_account'] = google_account_name
         logger.debug("Event Name " + parsed_event['event_name'])
 
         with dismissed_lock:
@@ -524,7 +528,7 @@ def init_global_objects():
     displayed_events = {}
     displayed_lock = threading.Lock()
 
-    logger = init_logging("gCalNotifier", g_config["log_level"])    
+    logger = init_logging("gCalNotifier", g_config["log level"])    
 
 def load_config():
     global g_config
@@ -542,7 +546,7 @@ if __name__ == "__main__":
 
         set_items_to_present_from_snoozed(events_to_present)
 
-        for google_account in g_config["google_accounts"]:
+        for google_account in g_config["google accounts"]:
             add_items_to_show_from_calendar(google_account, events_to_present)
 
         present_relevant_events(events_to_present)
