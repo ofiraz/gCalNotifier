@@ -6,3 +6,6 @@ old/
 gCalNotifier.log
 gCalNotifier_ui.py
 system_tray_test.py
+bin/
+lib/
+pyvenv.cfg
