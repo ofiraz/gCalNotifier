@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow
 )
 
-from test_ui import Ui_w_event
+from gCalNotifier_ui import Ui_w_event
 
 import datetime
 import os.path
