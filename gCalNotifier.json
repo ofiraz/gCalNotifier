@@ -10,5 +10,6 @@
             "credentials string" : "ofiraz_gmail_com"
         }
     ],
-    "log level":20 
+    "log level":20,
+    "refresh frequency":10
 }

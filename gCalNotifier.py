@@ -519,6 +519,7 @@ def init_global_objects():
     global g_displayed_events
     global g_displayed_lock
     global g_logger
+    global g_log_level
 
     g_dismissed_events = {}
     g_dismissed_lock = threading.Lock()
@@ -529,13 +530,29 @@ def init_global_objects():
     g_displayed_events = {}
     g_displayed_lock = threading.Lock()
 
-    g_logger = init_logging("gCalNotifier", g_config["log level"])
+    g_logger = init_logging("gCalNotifier", g_log_level)
 
 def load_config():
     global g_config
+    global g_google_accounts
+    global g_log_level
+    global g_refresh_frequency
 
     with open("gCalNotifier.json") as f:
         g_config = json.load(f)
+
+    g_google_accounts = g_config.get("google accounts")
+    if (not g_google_accounts):
+        print("No \'google accounts\' defined in the config file")
+        sys.exit()
+    
+    g_log_level = g_config.get("log level")
+    if (not g_log_level):
+        g_log_level = logging.INFO
+
+    g_refresh_frequency = g_config.get("refresh frequency")
+    if (not g_refresh_frequency):
+        g_refresh_frequency = 30
 
 if __name__ == "__main__":
     load_config()
@@ -548,11 +565,11 @@ if __name__ == "__main__":
 
         set_items_to_present_from_snoozed(events_to_present)
 
-        for google_account in g_config["google accounts"]:
+        for google_account in g_google_accounts:
             add_items_to_show_from_calendar(google_account, events_to_present)
 
         present_relevant_events(events_to_present)
         clear_dismissed_events_that_have_ended()
 
-        g_logger.debug("Going to sleep for 30 seconds")
-        time.sleep(30)
+        g_logger.debug("Going to sleep for " + str(g_refresh_frequency) + " seconds")
+        time.sleep(g_refresh_frequency)
