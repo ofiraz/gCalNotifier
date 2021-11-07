@@ -22,8 +22,6 @@ from logging.handlers import RotatingFileHandler
 import threading
 from multiprocessing import Process, Pipe
 
-thread_local_data = threading.local()
-
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
@@ -75,16 +73,21 @@ class Window(QMainWindow, Ui_w_event):
         self.pb_4h.clicked.connect(lambda: self.snooze_general(self.pb_4h))
         self.pb_8h.clicked.connect(lambda: self.snooze_general(self.pb_8h))
 
-    def clickedDismiss(self):       
-        thread_local_data.win_exit_reason = EXIT_REASON_DISMISS
+    def clickedDismiss(self):
+        global g_win_exit_reason
+
+        g_win_exit_reason = EXIT_REASON_DISMISS
 
         self.close()
 
     def snooze_general(self, p_button):
-        thread_local_data.win_exit_reason = EXIT_REASON_SNOOZE
+        global g_win_exit_reason
+        global g_snooze_time_in_minutes
+
+        g_win_exit_reason = EXIT_REASON_SNOOZE
 
         if (p_button in self.snooze_buttons):
-            thread_local_data.snooze_time_in_minutes = self.snooze_buttons[p_button]
+            g_snooze_time_in_minutes = self.snooze_buttons[p_button]
     
         self.close()
 
@@ -190,6 +193,9 @@ def get_now_datetime():
     return(datetime.datetime.now().astimezone())
 
 def show_window(parsed_event, pipe_conn):
+    global g_win_exit_reason
+    global g_snooze_time_in_minutes
+
     app = QApplication(sys.argv)
 
     win = Window()
@@ -245,15 +251,15 @@ def show_window(parsed_event, pipe_conn):
             pb_button.setHidden(True)
 
     # Show the window and bring it to the front
-    thread_local_data.win_exit_reason = EXIT_REASON_NONE
-    thread_local_data.snooze_time_in_minutes = 0
+    g_win_exit_reason = EXIT_REASON_NONE
+    g_snooze_time_in_minutes = 0
 
     win.show()
     getattr(win, "raise")()
     win.activateWindow()
     app.exec()
 
-    pipe_conn.send([thread_local_data.win_exit_reason, thread_local_data.snooze_time_in_minutes])
+    pipe_conn.send([g_win_exit_reason, g_snooze_time_in_minutes])
 
 def show_window_and_parse_exit_status(event_id, parsed_event):
     global dismissed_events
@@ -273,32 +279,32 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
     proc.join()
 
     data_from_child = parent_conn.recv()
-    thread_local_data.win_exit_reason = data_from_child[0]
-    thread_local_data.snooze_time_in_minutes = data_from_child[1]
+    win_exit_reason = data_from_child[0]
+    snooze_time_in_minutes = data_from_child[1]
 
     # Look at the window exit reason
-    logger.debug("win_exit_reason " + str(thread_local_data.win_exit_reason))
-    logger.debug("snooze_time_in_minutes " + str(thread_local_data.snooze_time_in_minutes))
+    logger.debug("win_exit_reason " + str(win_exit_reason))
+    logger.debug("snooze_time_in_minutes " + str(snooze_time_in_minutes))
 
     now_datetime = get_now_datetime()
 
-    if (thread_local_data.win_exit_reason == EXIT_REASON_NONE):
+    if (win_exit_reason == EXIT_REASON_NONE):
         logger.debug("Cancel")
 
-    elif (thread_local_data.win_exit_reason == EXIT_REASON_DISMISS):
+    elif (win_exit_reason == EXIT_REASON_DISMISS):
         logger.debug("Dismiss")
 
         if (now_datetime < parsed_event['end_date']):
             with dismissed_lock:
                 dismissed_events[event_id] = parsed_event['end_date']
 
-    elif (thread_local_data.win_exit_reason == EXIT_REASON_SNOOZE):
+    elif (win_exit_reason == EXIT_REASON_SNOOZE):
         logger.debug("Snooze")
-        if (thread_local_data.snooze_time_in_minutes <= 0):
-            delta_diff = datetime.timedelta(minutes=abs(thread_local_data.snooze_time_in_minutes))
+        if (snooze_time_in_minutes <= 0):
+            delta_diff = datetime.timedelta(minutes=abs(snooze_time_in_minutes))
             parsed_event['event_wakeup_time'] = parsed_event['start_date'] - delta_diff
         else:
-            delta_diff = datetime.timedelta(minutes=thread_local_data.snooze_time_in_minutes)
+            delta_diff = datetime.timedelta(minutes=snooze_time_in_minutes)
             parsed_event['event_wakeup_time'] = now_datetime + delta_diff
 
         logger.debug("Snooze until " + str(parsed_event['event_wakeup_time']))
