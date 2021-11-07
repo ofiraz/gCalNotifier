@@ -97,11 +97,11 @@ class Window(QMainWindow, Ui_w_event):
         self.close()
 
 def init_logging(module_name, file_log_level):
-    global logger
+    global g_logger
 
     # create logger
-    logger = logging.getLogger(module_name)
-    logger.setLevel(logging.DEBUG)
+    g_logger = logging.getLogger(module_name)
+    g_logger.setLevel(logging.DEBUG)
 
     # create formatter
     formatter = logging.Formatter('%(asctime)s - %(name)s - (%(threadName)-10s) - %(levelname)s - %(message)s')
@@ -114,7 +114,7 @@ def init_logging(module_name, file_log_level):
     console_handler.setFormatter(formatter)
 
     # add ch to logger
-    logger.addHandler(console_handler)
+    g_logger.addHandler(console_handler)
 
     # Create file handler
     log_file = module_name + ".log"
@@ -130,17 +130,17 @@ def init_logging(module_name, file_log_level):
 
     file_handler.setFormatter(formatter)
 
-    logger.addHandler(file_handler)
+    g_logger.addHandler(file_handler)
 
-    logger.info("========")
-    logger.info("Starting")
-    logger.info("========")
+    g_logger.info("========")
+    g_logger.info("Starting")
+    g_logger.info("========")
 
-    return logger
+    return g_logger
 
 # Identify the video meeting softwate via its URL
 def identify_video_meeting(win_label, url, text_if_not_identified):
-    global logger
+    global g_logger
 
     if ("zoom.us" in url):
         label_text = "Zoom Link"
@@ -158,7 +158,7 @@ def identify_video_meeting(win_label, url, text_if_not_identified):
     win_label.setToolTip(url)
 
 def get_events_from_google_cal(google_account):
-    global logger
+    global g_logger
 
     # Connect to the Google Account
     creds = None
@@ -186,7 +186,7 @@ def get_events_from_google_cal(google_account):
 
     # Call the Calendar API
     now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
-    logger.debug('Getting the upcoming 10 events')
+    g_logger.debug('Getting the upcoming 10 events')
     events_result = service.events().list(calendarId='primary', timeMin=now,
                                         maxResults=10, singleEvents=True,
                                         orderBy='startTime').execute()
@@ -270,13 +270,13 @@ def show_window(parsed_event, pipe_conn):
     pipe_conn.send([g_win_exit_reason, g_snooze_time_in_minutes])
 
 def show_window_and_parse_exit_status(event_id, parsed_event):
-    global dismissed_events
-    global dismissed_lock
-    global snoozed_events
-    global snoozed_lock
-    global displayed_events
-    global displayed_lock
-    global logger
+    global g_dismissed_events
+    global g_dismissed_lock
+    global g_snoozed_events
+    global g_snoozed_lock
+    global g_displayed_events
+    global g_displayed_lock
+    global g_logger
 
     #show_window(parsed_event)
     parent_conn, child_conn = Pipe()
@@ -291,23 +291,23 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
     snooze_time_in_minutes = data_from_child[1]
 
     # Look at the window exit reason
-    logger.debug("win_exit_reason " + str(win_exit_reason))
-    logger.debug("snooze_time_in_minutes " + str(snooze_time_in_minutes))
+    g_logger.debug("win_exit_reason " + str(win_exit_reason))
+    g_logger.debug("snooze_time_in_minutes " + str(snooze_time_in_minutes))
 
     now_datetime = get_now_datetime()
 
     if (win_exit_reason == EXIT_REASON_NONE):
-        logger.debug("Cancel")
+        g_logger.debug("Cancel")
 
     elif (win_exit_reason == EXIT_REASON_DISMISS):
-        logger.debug("Dismiss")
+        g_logger.debug("Dismiss")
 
         if (now_datetime < parsed_event['end_date']):
-            with dismissed_lock:
-                dismissed_events[event_id] = parsed_event['end_date']
+            with g_dismissed_lock:
+                g_dismissed_events[event_id] = parsed_event['end_date']
 
     elif (win_exit_reason == EXIT_REASON_SNOOZE):
-        logger.debug("Snooze")
+        g_logger.debug("Snooze")
         if (snooze_time_in_minutes <= 0):
             delta_diff = datetime.timedelta(minutes=abs(snooze_time_in_minutes))
             parsed_event['event_wakeup_time'] = parsed_event['start_date'] - delta_diff
@@ -315,21 +315,20 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
             delta_diff = datetime.timedelta(minutes=snooze_time_in_minutes)
             parsed_event['event_wakeup_time'] = now_datetime + delta_diff
 
-        logger.debug("Snooze until " + str(parsed_event['event_wakeup_time']))
+        g_logger.debug("Snooze until " + str(parsed_event['event_wakeup_time']))
             
-        with snoozed_lock:
-            snoozed_events[event_id] = parsed_event
+        with g_snoozed_lock:
+            g_snoozed_events[event_id] = parsed_event
 
     else:
-        logger.error("No exit reason")
+        g_logger.error("No exit reason")
 
     # Remove the event from the presented events
-    with displayed_lock:
-        del displayed_events[event_id]
-
+    with g_displayed_lock:
+        del g_displayed_events[event_id]
 
 def parse_event(event, parsed_event):
-    global logger
+    global g_logger
 
     if (event['reminders'].get('useDefault') == True):
         minutes_before = 15
@@ -339,7 +338,7 @@ def parse_event(event, parsed_event):
             override_set = override_rule[0]
             minutes_before = override_set['minutes']
         else:
-            logger.debug("No need to remind")
+            g_logger.debug("No need to remind")
             return(False)
 
     # Event needs to be reminded, check if it is the time to remind
@@ -387,18 +386,18 @@ def parse_event(event, parsed_event):
     return(True)
 
 def set_items_to_present_from_snoozed(events_to_present):
-    global logger
-    global snoozed_events
-    global snoozed_lock
+    global g_logger
+    global g_snoozed_events
+    global g_snoozed_lock
 
     now_datetime = get_now_datetime()
 
     # Identified the snoozed evnets that need to wake up
     snoozed_events_to_delete = []
 
-    with snoozed_lock:
-        for event_id, snoozed_event in snoozed_events.items():
-            logger.debug("Snoozed event " + str(event_id) + " " + str(snoozed_event['event_wakeup_time']) + " " + str(now_datetime))
+    with g_snoozed_lock:
+        for event_id, snoozed_event in g_snoozed_events.items():
+            g_logger.debug("Snoozed event " + str(event_id) + " " + str(snoozed_event['event_wakeup_time']) + " " + str(now_datetime))
             if (now_datetime >= snoozed_event['event_wakeup_time']):
                 # Event needs to be woke up
                 events_to_present[event_id] = snoozed_event
@@ -407,60 +406,60 @@ def set_items_to_present_from_snoozed(events_to_present):
         # Clear the snoozed events that were woken up from the snoozed list
         while (len(snoozed_events_to_delete) > 0):
             k = snoozed_events_to_delete.pop()
-            logger.debug("Deleteing event id " + str(k) + " from snoozed")
-            del snoozed_events[k]
+            g_logger.debug("Deleteing event id " + str(k) + " from snoozed")
+            del g_snoozed_events[k]
 
 def add_items_to_show_from_calendar(google_account, events_to_present):
-    global dismissed_events
-    global dismissed_lock
-    global snoozed_events
-    global snoozed_lock
-    global displayed_events
-    global displayed_lock
-    global logger
+    global g_dismissed_events
+    global g_dismissed_lock
+    global g_snoozed_events
+    global g_snoozed_lock
+    global g_displayed_events
+    global g_displayed_lock
+    global g_logger
 
     google_account_name = google_account.get("account name")
     google_account_cred_str = google_account.get("credentials string")
-    logger.debug("add_items_to_show_from_calendar for " + google_account_name)
+    g_logger.debug("add_items_to_show_from_calendar for " + google_account_name)
 
     # Get the next coming events from the google calendar
     events = get_events_from_google_cal(google_account_cred_str)
 
     # Handled the snoozed events
     if not events:
-        logger.debug('No upcoming events found')
+        g_logger.debug('No upcoming events found')
         return
 
     for event in events:
-        logger.debug(str(event))
+        g_logger.debug(str(event))
         parsed_event = {}
         now_datetime = get_now_datetime()
         a_snoozed_event_to_wakeup = False
 
         event_id = event['id']
-        logger.debug("Event ID " + str(event_id))
+        g_logger.debug("Event ID " + str(event_id))
 
         parsed_event['event_name'] = event['summary']
         parsed_event['google_account'] = google_account_name
-        logger.debug("Event Name " + parsed_event['event_name'])
+        g_logger.debug("Event Name " + parsed_event['event_name'])
 
-        with dismissed_lock:
-            if (event_id in dismissed_events):
-                logger.debug("Skipping dismissed event")
+        with g_dismissed_lock:
+            if (event_id in g_dismissed_events):
+                g_logger.debug("Skipping dismissed event")
                 continue
 
-        with snoozed_lock:
-            if (event_id in snoozed_events):
-                logger.debug("Skipping snoozed event")
+        with g_snoozed_lock:
+            if (event_id in g_snoozed_events):
+                g_logger.debug("Skipping snoozed event")
                 continue
         
-        with displayed_lock:
-            if (event_id in displayed_events):
-                logger.debug("Skipping displayed event")
+        with g_displayed_lock:
+            if (event_id in g_displayed_events):
+                g_logger.debug("Skipping displayed event")
                 continue
         
         if (event_id in events_to_present):
-            logger.debug("Skipping event as it is already in the events to present")
+            g_logger.debug("Skipping event as it is already in the events to present")
             continue
 
         # Event not in the any other list
@@ -470,15 +469,15 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
             events_to_present[event_id] = parsed_event
 
 def present_relevant_events(events_to_present):
-    global displayed_events
-    global displayed_lock
+    global g_displayed_events
+    global g_displayed_lock
 
     number_of_events_to_present = len(events_to_present)
     if (number_of_events_to_present > 0):
         for event_id, parsed_event in events_to_present.items():
             # Add the event to the presented events
-            with displayed_lock:
-                displayed_events[event_id] = parsed_event
+            with g_displayed_lock:
+                g_displayed_events[event_id] = parsed_event
             
             # Show the windows in a separate thread and process
             win_thread = threading.Thread(
@@ -491,51 +490,50 @@ def present_relevant_events(events_to_present):
         events_to_present = {}
 
 def clear_dismissed_events_that_have_ended():
-    global dismissed_events
-    global dismissed_lock
-    global logger
+    global g_dismissed_events
+    global g_dismissed_lock
+    global g_logger
 
     now_datetime = get_now_datetime()
 
     # Clear dismissed events that have ended
     dismissed_events_to_delete = []
 
-    with dismissed_lock:
-        for k, v in dismissed_events.items():
-            logger.debug("Dismissed event " + str(k) + " " + str(v) + " " + str(now_datetime))
+    with g_dismissed_lock:
+        for k, v in g_dismissed_events.items():
+            g_logger.debug("Dismissed event " + str(k) + " " + str(v) + " " + str(now_datetime))
             if (now_datetime > v):
                 dismissed_events_to_delete.append(k)
 
         while (len(dismissed_events_to_delete) > 0):
             k = dismissed_events_to_delete.pop()
-            logger.debug("Deleteing event id " + str(k) + " from dismissed")
-            del dismissed_events[k]
+            g_logger.debug("Deleteing event id " + str(k) + " from dismissed")
+            del g_dismissed_events[k]
 
 def init_global_objects():
     global g_config
-    global dismissed_events
-    global dismissed_lock
-    global snoozed_events
-    global snoozed_lock
-    global displayed_events
-    global displayed_lock
-    global logger
+    global g_dismissed_events
+    global g_dismissed_lock
+    global g_snoozed_events
+    global g_snoozed_lock
+    global g_displayed_events
+    global g_displayed_lock
+    global g_logger
 
-#    app = QApplication(sys.argv)
+    g_dismissed_events = {}
+    g_dismissed_lock = threading.Lock()
 
-    dismissed_events = {}
-    dismissed_lock = threading.Lock()
+    g_snoozed_events = {}
+    g_snoozed_lock = threading.Lock()
 
-    snoozed_events = {}
-    snoozed_lock = threading.Lock()
+    g_displayed_events = {}
+    g_displayed_lock = threading.Lock()
 
-    displayed_events = {}
-    displayed_lock = threading.Lock()
-
-    logger = init_logging("gCalNotifier", g_config["log level"])    
+    g_logger = init_logging("gCalNotifier", g_config["log level"])
 
 def load_config():
     global g_config
+
     with open("gCalNotifier.json") as f:
         g_config = json.load(f)
 
@@ -556,5 +554,5 @@ if __name__ == "__main__":
         present_relevant_events(events_to_present)
         clear_dismissed_events_that_have_ended()
 
-        logger.debug("Going to sleep for 30 seconds")
+        g_logger.debug("Going to sleep for 30 seconds")
         time.sleep(30)
