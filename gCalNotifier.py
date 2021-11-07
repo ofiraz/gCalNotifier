@@ -22,6 +22,8 @@ from logging.handlers import RotatingFileHandler
 import threading
 from multiprocessing import Process, Pipe
 
+import json
+
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
@@ -91,7 +93,7 @@ class Window(QMainWindow, Ui_w_event):
     
         self.close()
 
-def init_logging(module_name):
+def init_logging(module_name, file_log_level):
     global logger
 
     # create logger
@@ -121,7 +123,7 @@ def init_logging(module_name):
         backupCount=5,
         encoding='utf-8')
 
-    file_handler.setLevel(logging.INFO)
+    file_handler.setLevel(file_log_level)
 
     file_handler.setFormatter(formatter)
 
@@ -502,6 +504,7 @@ def clear_dismissed_events_that_have_ended():
             del dismissed_events[k]
 
 def init_global_objects():
+    global g_config
     global dismissed_events
     global dismissed_lock
     global snoozed_events
@@ -521,9 +524,16 @@ def init_global_objects():
     displayed_events = {}
     displayed_lock = threading.Lock()
 
-    logger = init_logging("gCalNotifier")    
+    logger = init_logging("gCalNotifier", g_config["log_level"])    
+
+def load_config():
+    global g_config
+    with open("gCalNotifier.json") as f:
+        g_config = json.load(f)
 
 if __name__ == "__main__":
+    load_config()
+
     init_global_objects()
 
     # Loop forever
@@ -531,8 +541,10 @@ if __name__ == "__main__":
         events_to_present = {}
 
         set_items_to_present_from_snoozed(events_to_present)
-        add_items_to_show_from_calendar('ofir_anjuna_io', events_to_present)
-        add_items_to_show_from_calendar('ofiraz_gmail_com', events_to_present)
+
+        for google_account in g_config["google_accounts"]:
+            add_items_to_show_from_calendar(google_account, events_to_present)
+
         present_relevant_events(events_to_present)
         clear_dismissed_events_that_have_ended()
 
