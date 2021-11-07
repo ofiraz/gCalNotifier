@@ -6,6 +6,9 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow
 )
 
+from PyQt5 import QtGui
+from PyQt5 import QtCore
+
 from gCalNotifier_ui import Ui_w_event
 
 import datetime
@@ -258,6 +261,7 @@ def show_window(parsed_event, pipe_conn):
     g_win_exit_reason = EXIT_REASON_NONE
     g_snooze_time_in_minutes = 0
 
+    app.setWindowIcon(QtGui.QIcon('icons8-calendar-64.png'))
     win.show()
     getattr(win, "raise")()
     win.activateWindow()

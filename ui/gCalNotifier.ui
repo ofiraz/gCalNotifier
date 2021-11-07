@@ -19,9 +19,9 @@
   <widget class="QLabel" name="l_event_name">
    <property name="geometry">
     <rect>
-     <x>40</x>
+     <x>110</x>
      <y>10</y>
-     <width>661</width>
+     <width>581</width>
      <height>61</height>
     </rect>
    </property>
@@ -168,6 +168,31 @@
      </widget>
     </item>
    </layout>
+  </widget>
+  <widget class="QLabel" name="l_icon">
+   <property name="geometry">
+    <rect>
+     <x>20</x>
+     <y>10</y>
+     <width>81</width>
+     <height>71</height>
+    </rect>
+   </property>
+   <property name="toolTip">
+    <string>&lt;a target=&quot;_blank&quot; href=&quot;https://icons8.com/icon/A6tLwUMQ6zkN/calendar&quot;&gt;Calendar&lt;/a&gt; icon by &lt;a target=&quot;_blank&quot; href=&quot;https://icons8.com&quot;&gt;Icons8&lt;/a&gt;</string>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap>../icons8-calendar-64.png</pixmap>
+   </property>
+   <property name="scaledContents">
+    <bool>true</bool>
+   </property>
+   <property name="openExternalLinks">
+    <bool>true</bool>
+   </property>
   </widget>
   <widget class="QWidget" name="">
    <property name="geometry">
