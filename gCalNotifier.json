@@ -1,14 +1,8 @@
 {
     "google accounts": 
     [
-        {
-            "account name" : "ofir@anjuna.io",
-            "credentials string" : "ofir_anjuna_io"
-        },
-        {
-            "account name" : "ofiraz@gmail.com",
-            "credentials string" : "ofiraz_gmail_com"
-        }
+        "ofir@anjuna.io",
+        "ofiraz@gmail.com"
     ],
     "log level":20,
     "refresh frequency":10

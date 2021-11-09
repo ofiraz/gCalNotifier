@@ -9,3 +9,14 @@ system_tray_test.py
 bin/
 lib/
 pyvenv.cfg
+app_credentials.json
+ofir_anjuna_io_token.json
+ofir_anjuna_io_token.json.old
+ofir@anjuna.io_token.json
+ofiraz_gmail_com_token.json
+ofiraz_gmail_com_token.json.old
+ofiraz@gmail.com_token.json
+ofir_anjuna_io.old/credentials.json
+ofir_anjuna_io.old/token.json
+ofiraz_gmail_com.old/credentials.json
+ofiraz_gmail_com.old/token.json

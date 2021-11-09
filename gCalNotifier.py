@@ -162,8 +162,8 @@ def get_events_from_google_cal(google_account):
 
     # Connect to the Google Account
     creds = None
-    token_file = google_account + '/token.json'
-    Credentials_file = google_account + '/credentials.json'
+    Credentials_file = 'app_credentials.json'
+    token_file = google_account + '_token.json'
 
     # The file token.json stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -175,6 +175,7 @@ def get_events_from_google_cal(google_account):
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
+            g_logger.info("Creating a token for " + google_account)
             flow = InstalledAppFlow.from_client_secrets_file(
                 Credentials_file, SCOPES)
             creds = flow.run_local_server(port=0)
@@ -418,12 +419,10 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
     global g_displayed_lock
     global g_logger
 
-    google_account_name = google_account.get("account name")
-    google_account_cred_str = google_account.get("credentials string")
-    g_logger.debug("add_items_to_show_from_calendar for " + google_account_name)
+    g_logger.debug("add_items_to_show_from_calendar for " + google_account)
 
     # Get the next coming events from the google calendar
-    events = get_events_from_google_cal(google_account_cred_str)
+    events = get_events_from_google_cal(google_account)
 
     # Handled the snoozed events
     if not events:
@@ -440,7 +439,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
         g_logger.debug("Event ID " + str(event_id))
 
         parsed_event['event_name'] = event['summary']
-        parsed_event['google_account'] = google_account_name
+        parsed_event['google_account'] = google_account
         g_logger.debug("Event Name " + parsed_event['event_name'])
 
         with g_dismissed_lock:
