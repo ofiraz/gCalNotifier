@@ -50,4 +50,4 @@ If more than one account is configured, the standard output of the application d
 Follow the directions in the browser to provide the needed access.
 
 # Credits
-The [icon](https://icons8.com/icon/A6tLwUMQ6zkN/calendar) used in the application is used under permission from [Icons8](https://icons8.com)
+All icons in the application are used under permission from [Icons8](https://icons8.com)
