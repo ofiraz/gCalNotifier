@@ -150,6 +150,8 @@ def identify_video_meeting(win_label, url, text_if_not_identified):
         label_text = "Meet Link"
     elif ("bluejeans.com" in url):
         label_text = "BlueJeans"
+    elif ("chime.aws" in url):
+        label_text = "AWS Chime"
     else:
         label_text = text_if_not_identified
 
@@ -188,9 +190,20 @@ def get_events_from_google_cal(google_account):
     # Call the Calendar API
     now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
     g_logger.debug('Getting the upcoming 10 events')
-    events_result = service.events().list(calendarId='primary', timeMin=now,
-                                        maxResults=10, singleEvents=True,
-                                        orderBy='startTime').execute()
+
+    try: # In progress - handling intermittent exception from the Google service
+        events_result = service.events().list(calendarId='primary', timeMin=now,
+                                            maxResults=10, singleEvents=True,
+                                            orderBy='startTime').execute()
+    except Exception as e:
+        excType = e.__class__.__name__
+
+        g_logger.error("Error in service.events().list")
+        g_logger.error('Exception type ' + str(excType))
+        g_logger.error('Exception msg ' + str(e))
+
+        raise
+
     events = events_result.get('items', [])
 
     return(events)
@@ -330,6 +343,8 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
 
 def parse_event(event, parsed_event):
     global g_logger
+
+    g_logger.debug(json.dumps(event, indent = 1))
 
     if (event['reminders'].get('useDefault') == True):
         minutes_before = 15
