@@ -26,6 +26,7 @@ import threading
 from multiprocessing import Process, Pipe
 
 import json
+import traceback
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
@@ -161,48 +162,63 @@ def identify_video_meeting(win_label, url, text_if_not_identified):
 
 def get_events_from_google_cal(google_account):
     global g_logger
-
+    
     # Connect to the Google Account
     creds = None
     Credentials_file = 'app_credentials.json'
     token_file = google_account + '_token.json'
 
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists(token_file):
-        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            g_logger.info("Creating a token for " + google_account)
-            flow = InstalledAppFlow.from_client_secrets_file(
-                Credentials_file, SCOPES)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open(token_file, 'w') as token:
-            token.write(creds.to_json())
+    num_of_retries = 0
+    while num_of_retries < 2:
+        # The file token.json stores the user's access and refresh tokens, and is
+        # created automatically when the authorization flow completes for the first
+        # time.
+        if os.path.exists(token_file):
+            creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+        # If there are no (valid) credentials available, let the user log in.
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                g_logger.info("Creating a token for " + google_account)
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    Credentials_file, SCOPES)
+                creds = flow.run_local_server(port=0)
+            # Save the credentials for the next run
+            with open(token_file, 'w') as token:
+                token.write(creds.to_json())
 
-    service = build('calendar', 'v3', credentials=creds)
+        service = build('calendar', 'v3', credentials=creds)
 
-    # Call the Calendar API
-    now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
-    g_logger.debug('Getting the upcoming 10 events')
+        # Call the Calendar API
+        now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
+        g_logger.debug('Getting the upcoming 10 events')
 
-    try: # In progress - handling intermittent exception from the Google service
-        events_result = service.events().list(calendarId='primary', timeMin=now,
-                                            maxResults=10, singleEvents=True,
-                                            orderBy='startTime').execute()
-    except Exception as e:
-        excType = e.__class__.__name__
+        try: # In progress - handling intermittent exception from the Google service
+            events_result = service.events().list(calendarId='primary', timeMin=now,
+                                                maxResults=10, singleEvents=True,
+                                                orderBy='startTime').execute()
+        except Exception as e:
+            excType = e.__class__.__name__
 
-        g_logger.error("Error in service.events().list")
-        g_logger.error('Exception type ' + str(excType))
-        g_logger.error('Exception msg ' + str(e))
+            g_logger.error("Error in service.events().list")
+            g_logger.error('Exception type ' + str(excType))
+            g_logger.error('Exception msg ' + str(e))
 
-        raise
+            if (str(excType) == "ServerNotFoundError"):
+                # Cannot find the server - should be intermittent, we can wait for the next cycle and hope it will get resolved
+                events = []
+                return(events)
+
+            g_logger.error(traceback.format_exc())
+
+            num_of_retries = num_of_retries + 1
+
+            if (num_of_retries == 2):
+                raise
+            else:
+                # Sleep for 2 seconds and retry
+                sys.sleep(2)
 
     events = events_result.get('items', [])
 
