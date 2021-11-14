@@ -219,6 +219,9 @@ def get_events_from_google_cal(google_account):
             else:
                 # Sleep for 2 seconds and retry
                 sys.sleep(2)
+        
+        # Getting the events was successful
+        break
 
     events = events_result.get('items', [])
 
