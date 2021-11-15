@@ -41,7 +41,10 @@ def get_now_datetime():
 
 # The notification window
 class Window(QMainWindow, Ui_w_event):
-    snooze_buttons = []
+    c_snooze_buttons = {}
+    c_parsed_event = {}
+    c_hidden_all_snooze_before_buttons = False
+    c_updated_label_post_start = False
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -52,7 +55,7 @@ class Window(QMainWindow, Ui_w_event):
         self.connectSignalsSlots()
 
         # Initialize the snooze buttons
-        self.snooze_buttons = {
+        self.c_snooze_buttons = {
             self.pb_m10m:-10,
             self.pb_m5m:-5,
             self.pb_m2m:-2,
@@ -68,7 +71,72 @@ class Window(QMainWindow, Ui_w_event):
             self.pb_8h:480
         }
 
-        self.update_snooze_buttons()
+    # Identify the video meeting softwate via its URL
+    def identify_video_meeting(self, win_label, url, text_if_not_identified):
+        global g_logger
+
+        if ("zoom.us" in url):
+            label_text = "Zoom Link"
+        elif ("webex.com" in url):
+            label_text = "Webex Link"
+        elif ("meet.google.com" in url):
+            label_text = "Meet Link"
+        elif ("bluejeans.com" in url):
+            label_text = "BlueJeans"
+        elif ("chime.aws" in url):
+            label_text = "AWS Chime"
+        else:
+            label_text = text_if_not_identified
+
+        win_label.setText("<a href=\"" + url + "\">" + label_text + "</a>")
+        win_label.setOpenExternalLinks(True)
+        win_label.setToolTip(url)
+
+
+    def init_window_from_parsed_event(self, parsed_event):
+        self.c_parsed_event = parsed_event
+
+        self.setWindowTitle(parsed_event['event_name'])
+
+        self.l_account.setText(parsed_event['google_account'])
+
+        self.l_event_name.setText(parsed_event['event_name'])
+
+        if parsed_event['all_day_event']:
+            self.l_all_day.setText("An all day event")
+        else:
+            self.l_all_day.setHidden(True)
+
+        self.l_event_start.setText('Starting at ' + str(parsed_event['start_date']))
+        self.l_event_end.setText('Ending at ' + str(parsed_event['end_date']))
+
+        self.l_event_link.setText("<a href=\"" + parsed_event['html_link'] + "\">Link to event in GCal</a>")
+        self.l_event_link.setToolTip(parsed_event['html_link'])
+
+        if (parsed_event['event_location'] == "No location"):
+            self.l_location_or_video_link.setHidden(True)
+        else:
+            valid_url = validators.url(parsed_event['event_location'])
+            if (valid_url):
+                self.identify_video_meeting(
+                    self.l_location_or_video_link,
+                    parsed_event['event_location'],
+                    "Link to location or to a video URL"
+                )
+
+            else:
+                self.l_location_or_video_link.setText('Location: ' + parsed_event['event_location'])
+
+        if (parsed_event['video_link'] == "No Video"):
+            self.l_video_link.setHidden(True)
+        else:
+            self.identify_video_meeting(
+                self.l_video_link,
+                parsed_event['video_link'],
+                "Video Link"
+            )
+        
+        self.update_controls_based_on_event_time()
 
     # Set the event handlers
     def connectSignalsSlots(self):
@@ -86,7 +154,7 @@ class Window(QMainWindow, Ui_w_event):
         self.pb_2h.clicked.connect(lambda: self.snooze_general(self.pb_2h))
         self.pb_4h.clicked.connect(lambda: self.snooze_general(self.pb_4h))
         self.pb_8h.clicked.connect(lambda: self.snooze_general(self.pb_8h))
-        self.timer.timeout.connect(self.update_snooze_buttons)
+        self.timer.timeout.connect(self.update_controls_based_on_event_time)
 
     def clickedDismiss(self):
         global g_win_exit_reason
@@ -101,36 +169,57 @@ class Window(QMainWindow, Ui_w_event):
 
         g_win_exit_reason = EXIT_REASON_SNOOZE
 
-        if (p_button in self.snooze_buttons):
-            g_snooze_time_in_minutes = self.snooze_buttons[p_button]
+        if (p_button in self.c_snooze_buttons):
+            g_snooze_time_in_minutes = self.c_snooze_buttons[p_button]
     
         self.close()
 
-    def update_snooze_buttons(self):
-        # Hide the uneeded snooze buttons
-
-        longest_snooze_time_to_show = 0
-
+    def update_controls_based_on_event_time(self):
         now_datetime = get_now_datetime()
-        if (g_event_start_date > now_datetime):
-            time_to_event_start = g_event_start_date - now_datetime
-            time_to_event_in_minutes = time_to_event_start.seconds / 60
-        else:
-            time_to_event_in_minutes = -1
-            self.timer.stop()
-        
-        for pb_button, snooze_time in self.snooze_buttons.items():
-            if (snooze_time <= 0 and abs(snooze_time) > time_to_event_in_minutes):
-                pb_button.setHidden(True)
-            else:
-                # Compute the closest time to wait until hiding any button
-                if (snooze_time < longest_snooze_time_to_show):
-                    longest_snooze_time_to_show = snooze_time
 
-        # Compute the time needed to snooze before checking again
-        if (time_to_event_in_minutes > 0):
+        if (self.c_parsed_event['start_date'] > now_datetime):
+            # Event start did not arrive yet - hide all before snooze buttons that are not relevant anymore
+            time_to_event_start = self.c_parsed_event['start_date'] - now_datetime
+            time_to_event_in_minutes = time_to_event_start.seconds / 60
+
+            longest_snooze_time_to_show = 0
+
+            for pb_button, snooze_time in self.c_snooze_buttons.items():
+                if (snooze_time <= 0 and abs(snooze_time) > time_to_event_in_minutes):
+                    pb_button.setHidden(True)
+                else:
+                    # Compute the closest time to wait until hiding any button
+                    if (snooze_time < longest_snooze_time_to_show):
+                        longest_snooze_time_to_show = snooze_time
+
+            # Compute the time needed to snooze before checking again
             time_to_wait_in_seconds = time_to_event_start.seconds + (longest_snooze_time_to_show * 60)
             self.timer.start((time_to_wait_in_seconds + 1) * 1000)
+        else:
+            # Event start has passed
+
+            # Hide all before snooze buttons if were not hidden yet
+            if (self.c_hidden_all_snooze_before_buttons == False):
+                for pb_button, snooze_time in self.c_snooze_buttons.items():
+                    if (snooze_time <= 0):
+                        pb_button.setHidden(True)
+
+                self.c_hidden_all_snooze_before_buttons = True
+
+            # Change the start label if not changed yet
+            if (self.c_updated_label_post_start == False):
+                self.l_event_start.setText('Event started at ' + str(self.c_parsed_event['start_date']))
+                self.c_updated_label_post_start = True
+
+            if (self.c_parsed_event['end_date'] > now_datetime):
+                # The event end did not arrive yet - set timer for that time
+                time_to_event_end = self.c_parsed_event['end_date'] - now_datetime
+                time_to_wait_in_seconds = time_to_event_end.seconds
+                self.timer.start((time_to_wait_in_seconds + 1) * 1000)
+            else:
+                # Event has ended - just change the label and no need to trigger the event anymore
+                self.l_event_end.setText('Event ended at ' + str(self.c_parsed_event['end_date']))
+                self.timer.stop()
 
 def init_logging(module_name, file_log_level):
     global g_logger
@@ -173,27 +262,6 @@ def init_logging(module_name, file_log_level):
     g_logger.info("========")
 
     return g_logger
-
-# Identify the video meeting softwate via its URL
-def identify_video_meeting(win_label, url, text_if_not_identified):
-    global g_logger
-
-    if ("zoom.us" in url):
-        label_text = "Zoom Link"
-    elif ("webex.com" in url):
-        label_text = "Webex Link"
-    elif ("meet.google.com" in url):
-        label_text = "Meet Link"
-    elif ("bluejeans.com" in url):
-        label_text = "BlueJeans"
-    elif ("chime.aws" in url):
-        label_text = "AWS Chime"
-    else:
-        label_text = text_if_not_identified
-
-    win_label.setText("<a href=\"" + url + "\">" + label_text + "</a>")
-    win_label.setOpenExternalLinks(True)
-    win_label.setToolTip(url)
 
 def get_events_from_google_cal(google_account):
     global g_logger
@@ -265,53 +333,12 @@ def get_events_from_google_cal(google_account):
 def show_window(parsed_event, pipe_conn):
     global g_win_exit_reason
     global g_snooze_time_in_minutes
-    global g_event_start_date
-
-    g_event_start_date = parsed_event['start_date']
 
     app = QApplication(sys.argv)
 
     win = Window()
 
-    win.setWindowTitle(parsed_event['event_name'])
-
-    win.l_account.setText(parsed_event['google_account'])
-
-    win.l_event_name.setText(parsed_event['event_name'])
-
-    if parsed_event['all_day_event']:
-        win.l_all_day.setText("An all day event")
-    else:
-        win.l_all_day.setHidden(True)
-
-    win.l_event_start.setText('Starting on ' + str(parsed_event['start_date']))
-    win.l_event_end.setText('Ending on ' + str(parsed_event['end_date']))
-
-    win.l_event_link.setText("<a href=\"" + parsed_event['html_link'] + "\">Link to event in GCal</a>")
-    win.l_event_link.setToolTip(parsed_event['html_link'])
-
-    if (parsed_event['event_location'] == "No location"):
-        win.l_location_or_video_link.setHidden(True)
-    else:
-        valid_url = validators.url(parsed_event['event_location'])
-        if (valid_url):
-            identify_video_meeting(
-                win.l_location_or_video_link,
-                parsed_event['event_location'],
-                "Link to location or to a video URL"
-            )
-
-        else:
-            win.l_location_or_video_link.setText('Location: ' + parsed_event['event_location'])
-
-    if (parsed_event['video_link'] == "No Video"):
-        win.l_video_link.setHidden(True)
-    else:
-        identify_video_meeting(
-            win.l_video_link,
-            parsed_event['video_link'],
-            "Video Link"
-        )
+    win.init_window_from_parsed_event(parsed_event)
 
     # Show the window and bring it to the front
     g_win_exit_reason = EXIT_REASON_NONE
