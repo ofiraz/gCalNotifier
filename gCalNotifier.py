@@ -36,6 +36,9 @@ EXIT_REASON_NONE = 0
 EXIT_REASON_DISMISS = 1
 EXIT_REASON_SNOOZE = 2
 
+def get_now_datetime():
+    return(datetime.datetime.now().astimezone())
+
 # The notification window
 class Window(QMainWindow, Ui_w_event):
     snooze_buttons = []
@@ -43,6 +46,9 @@ class Window(QMainWindow, Ui_w_event):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setupUi(self)
+
+        self.timer = QtCore.QTimer()
+
         self.connectSignalsSlots()
 
         # Initialize the snooze buttons
@@ -62,6 +68,8 @@ class Window(QMainWindow, Ui_w_event):
             self.pb_8h:480
         }
 
+        self.update_snooze_buttons()
+
     # Set the event handlers
     def connectSignalsSlots(self):
         self.pb_dismiss.clicked.connect(self.clickedDismiss)
@@ -78,6 +86,7 @@ class Window(QMainWindow, Ui_w_event):
         self.pb_2h.clicked.connect(lambda: self.snooze_general(self.pb_2h))
         self.pb_4h.clicked.connect(lambda: self.snooze_general(self.pb_4h))
         self.pb_8h.clicked.connect(lambda: self.snooze_general(self.pb_8h))
+        self.timer.timeout.connect(self.update_snooze_buttons)
 
     def clickedDismiss(self):
         global g_win_exit_reason
@@ -96,6 +105,32 @@ class Window(QMainWindow, Ui_w_event):
             g_snooze_time_in_minutes = self.snooze_buttons[p_button]
     
         self.close()
+
+    def update_snooze_buttons(self):
+        # Hide the uneeded snooze buttons
+
+        longest_snooze_time_to_show = 0
+
+        now_datetime = get_now_datetime()
+        if (g_event_start_date > now_datetime):
+            time_to_event_start = g_event_start_date - now_datetime
+            time_to_event_in_minutes = time_to_event_start.seconds / 60
+        else:
+            time_to_event_in_minutes = -1
+            self.timer.stop()
+        
+        for pb_button, snooze_time in self.snooze_buttons.items():
+            if (snooze_time <= 0 and abs(snooze_time) > time_to_event_in_minutes):
+                pb_button.setHidden(True)
+            else:
+                # Compute the closest time to wait until hiding any button
+                if (snooze_time < longest_snooze_time_to_show):
+                    longest_snooze_time_to_show = snooze_time
+
+        # Compute the time needed to snooze before checking again
+        if (time_to_event_in_minutes > 0):
+            time_to_wait_in_seconds = time_to_event_start.seconds + (longest_snooze_time_to_show * 60)
+            self.timer.start((time_to_wait_in_seconds + 1) * 1000)
 
 def init_logging(module_name, file_log_level):
     global g_logger
@@ -169,7 +204,7 @@ def get_events_from_google_cal(google_account):
     token_file = google_account + '_token.json'
 
     num_of_retries = 0
-    while num_of_retries < 2:
+    while num_of_retries <= 2:
         # The file token.json stores the user's access and refresh tokens, and is
         # created automatically when the authorization flow completes for the first
         # time.
@@ -214,25 +249,25 @@ def get_events_from_google_cal(google_account):
 
             num_of_retries = num_of_retries + 1
 
-            if (num_of_retries == 2):
+            if (num_of_retries > 2):
                 raise
             else:
                 # Sleep for 2 seconds and retry
                 sys.sleep(2)
-        
-        # Getting the events was successful
-        break
+        else:
+            # Getting the events was successful
+            break
 
     events = events_result.get('items', [])
 
     return(events)
 
-def get_now_datetime():
-    return(datetime.datetime.now().astimezone())
-
 def show_window(parsed_event, pipe_conn):
     global g_win_exit_reason
     global g_snooze_time_in_minutes
+    global g_event_start_date
+
+    g_event_start_date = parsed_event['start_date']
 
     app = QApplication(sys.argv)
 
@@ -278,18 +313,6 @@ def show_window(parsed_event, pipe_conn):
             "Video Link"
         )
 
-    # Hide the uneeded snooze buttons
-    now_datetime = get_now_datetime()
-    if (parsed_event['start_date'] > now_datetime):
-        time_to_event_start = parsed_event['start_date'] - now_datetime
-        time_to_event_in_minutes = time_to_event_start.seconds / 60
-    else:
-        time_to_event_in_minutes = -1
-    
-    for pb_button, snooze_time in win.snooze_buttons.items():
-        if (snooze_time <= 0 and abs(snooze_time) > time_to_event_in_minutes):
-            pb_button.setHidden(True)
-
     # Show the window and bring it to the front
     g_win_exit_reason = EXIT_REASON_NONE
     g_snooze_time_in_minutes = 0
@@ -311,7 +334,6 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
     global g_displayed_lock
     global g_logger
 
-    #show_window(parsed_event)
     parent_conn, child_conn = Pipe()
     proc = Process(
         target = show_window,
