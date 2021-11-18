@@ -302,14 +302,15 @@ def get_events_from_google_cal(google_account):
                                                 maxResults=10, singleEvents=True,
                                                 orderBy='startTime').execute()
         except Exception as e:
-            excType = e.__class__.__name__
+            excType = str(e.__class__.__name__)
 
-            g_logger.error("Error in service.events().list")
-            g_logger.error('Exception type ' + str(excType))
+
+            g_logger.error("Error in service.events().list for " + google_account)
+            g_logger.error('Exception type ' + excType)
             g_logger.error('Exception msg ' + str(e))
 
-            if (str(excType) == "ServerNotFoundError"):
-                # Cannot find the server - should be intermittent, we can wait for the next cycle and hope it will get resolved
+            if ((excType == "ServerNotFoundError") or (excType == "timeout")):
+                # Exceptions that chould be intermittent, we can wait for the next cycle and hope it will get resolved
                 events = []
                 return(events)
 
@@ -321,7 +322,7 @@ def get_events_from_google_cal(google_account):
                 raise
             else:
                 # Sleep for 2 seconds and retry
-                sys.sleep(2)
+                time.sleep(2)
         else:
             # Getting the events was successful
             break
