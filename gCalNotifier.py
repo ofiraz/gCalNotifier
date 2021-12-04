@@ -271,61 +271,33 @@ def get_events_from_google_cal(google_account):
     Credentials_file = 'app_credentials.json'
     token_file = google_account + '_token.json'
 
-    num_of_retries = 0
-    while num_of_retries <= 2:
-        # The file token.json stores the user's access and refresh tokens, and is
-        # created automatically when the authorization flow completes for the first
-        # time.
-        if os.path.exists(token_file):
-            creds = Credentials.from_authorized_user_file(token_file, SCOPES)
-        # If there are no (valid) credentials available, let the user log in.
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                g_logger.info("Creating a token for " + google_account)
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    Credentials_file, SCOPES)
-                creds = flow.run_local_server(port=0)
-            # Save the credentials for the next run
-            with open(token_file, 'w') as token:
-                token.write(creds.to_json())
-
-        service = build('calendar', 'v3', credentials=creds)
-
-        # Call the Calendar API
-        now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
-        g_logger.debug('Getting the upcoming 10 events')
-
-        try: # In progress - handling intermittent exception from the Google service
-            events_result = service.events().list(calendarId='primary', timeMin=now,
-                                                maxResults=10, singleEvents=True,
-                                                orderBy='startTime').execute()
-        except Exception as e:
-            excType = str(e.__class__.__name__)
-
-
-            g_logger.error("Error in service.events().list for " + google_account)
-            g_logger.error('Exception type ' + excType)
-            g_logger.error('Exception msg ' + str(e))
-
-            if ((excType == "ServerNotFoundError") or (excType == "timeout")):
-                # Exceptions that chould be intermittent, we can wait for the next cycle and hope it will get resolved
-                events = []
-                return(events)
-
-            g_logger.error(traceback.format_exc())
-
-            num_of_retries = num_of_retries + 1
-
-            if (num_of_retries > 2):
-                raise
-            else:
-                # Sleep for 2 seconds and retry
-                time.sleep(2)
+    # The file token.json stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists(token_file):
+        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
         else:
-            # Getting the events was successful
-            break
+            g_logger.info("Creating a token for " + google_account)
+            flow = InstalledAppFlow.from_client_secrets_file(
+                Credentials_file, SCOPES)
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open(token_file, 'w') as token:
+            token.write(creds.to_json())
+
+    service = build('calendar', 'v3', credentials=creds)
+
+    # Call the Calendar API
+    now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
+    g_logger.debug('Getting the upcoming 10 events')
+
+    events_result = service.events().list(calendarId='primary', timeMin=now,
+                                        maxResults=10, singleEvents=True,
+                                        orderBy='startTime').execute()
 
     events = events_result.get('items', [])
 
@@ -506,7 +478,41 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
     g_logger.debug("add_items_to_show_from_calendar for " + google_account)
 
     # Get the next coming events from the google calendar
-    events = get_events_from_google_cal(google_account)
+    num_of_retries = 0
+    while num_of_retries <= 2:
+        try: # In progress - handling intermittent exception from the Google service
+            events = get_events_from_google_cal(google_account)
+        except Exception as e:
+            excType = str(e.__class__.__name__)
+
+            if ((excType == "ServerNotFoundError") 
+            or (excType == "timeout") 
+            or (excType == "TimeoutError") 
+            or (excType == "ConnectionResetError")
+            or (excType == "TransportError")
+            ):
+                # Exceptions that chould be intermittent due to networking issues.
+                # We can wait for the next cycle and hope it will get resolved
+                g_logger.error("Networking issue (" + excType + ") in get_events_from_google_cal for " + google_account + ". Retrying...")
+                events = []
+                break
+
+            g_logger.error("Error in get_events_from_google_cal for " + google_account)
+            g_logger.error('Exception type ' + excType)
+            g_logger.error('Exception msg ' + str(e))
+
+            g_logger.error(traceback.format_exc())
+
+            num_of_retries = num_of_retries + 1
+
+            if (num_of_retries > 2):
+                raise
+            else:
+                # Sleep for 2 seconds and retry
+                time.sleep(2)
+        else:
+            # Getting the events was successful
+            break
 
     # Handled the snoozed events
     if not events:
