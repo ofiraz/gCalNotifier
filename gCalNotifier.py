@@ -493,7 +493,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
             ):
                 # Exceptions that chould be intermittent due to networking issues.
                 # We can wait for the next cycle and hope it will get resolved
-                g_logger.error("Networking issue (" + excType + ") in get_events_from_google_cal for " + google_account + ". Retrying...")
+                g_logger.debug("Networking issue (" + excType + ") in get_events_from_google_cal for " + google_account + ". Retrying...")
                 events = []
                 break
 
