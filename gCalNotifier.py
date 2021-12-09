@@ -221,6 +221,11 @@ class Window(QMainWindow, Ui_w_event):
                 self.l_event_end.setText('Event ended at ' + str(self.c_parsed_event['end_date']))
                 self.timer.stop()
 
+        # Bring the window to the front
+        self.raise_()
+        self.activateWindow()
+
+
 def init_logging(module_name, file_log_level):
     global g_logger
 
