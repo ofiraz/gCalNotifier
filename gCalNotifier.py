@@ -489,22 +489,24 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
             events = get_events_from_google_cal(google_account)
         except Exception as e:
             excType = str(e.__class__.__name__)
+            excMesg = str(e)
 
             if ((excType == "ServerNotFoundError") 
             or (excType == "timeout") 
             or (excType == "TimeoutError") 
             or (excType == "ConnectionResetError")
             or (excType == "TransportError")
+            or (excType == "OSError" and excMesg == "[Errno 51] Network is unreachable")
             ):
                 # Exceptions that chould be intermittent due to networking issues.
                 # We can wait for the next cycle and hope it will get resolved
-                g_logger.debug("Networking issue (" + excType + ") in get_events_from_google_cal for " + google_account + ". Retrying...")
+                g_logger.debug("Networking issue (" + excType + ", " + excMesg + ") in get_events_from_google_cal for " + google_account + ". Retrying...")
                 events = []
                 break
 
             g_logger.error("Error in get_events_from_google_cal for " + google_account)
             g_logger.error('Exception type ' + excType)
-            g_logger.error('Exception msg ' + str(e))
+            g_logger.error('Exception msg ' + excMesg)
 
             g_logger.error(traceback.format_exc())
 
