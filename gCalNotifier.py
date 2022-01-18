@@ -3,7 +3,7 @@ import sys
 import time
 
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow
+    QApplication, QMainWindow, QDesktopWidget
 )
 
 from PyQt5 import QtGui
@@ -325,9 +325,17 @@ def show_window(parsed_event, pipe_conn):
     g_snooze_time_in_minutes = 0
 
     app.setWindowIcon(QtGui.QIcon('icons8-calendar-64.png'))
+    #win.windowHandle().setScreen(app.screens()[1])
     win.show()
+
+    # Show the window on the main monitor
+    monitor = QDesktopWidget().screenGeometry(0)
+    win.move(monitor.left(), monitor.top())
+
+    # Bring the windows to the front
     getattr(win, "raise")()
     win.activateWindow()
+    
     app.exec()
 
     pipe_conn.send([g_win_exit_reason, g_snooze_time_in_minutes])
