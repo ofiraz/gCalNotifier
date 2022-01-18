@@ -28,6 +28,8 @@ from multiprocessing import Process, Pipe
 import json
 import traceback
 
+import re
+
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
@@ -443,6 +445,17 @@ def parse_event(event, parsed_event):
                     uri = entry_point.get('uri')
                     if (uri):
                         parsed_event['video_link'] = uri
+
+    if (parsed_event['video_link'] == "No Video"):
+        # Didn't find a video link in the expected location, let's see if there is a video link in the 
+        # description.
+        meeting_description = event.get('description')
+        if (meeting_description):
+            zoom_url_in_description = re.search("https://.*\.zoom\.us/.*", meeting_description)
+            #zoom_url_in_description = re.search("zoom", meeting_description)
+            if zoom_url_in_description:
+                start_end_span = zoom_url_in_description.span()
+                parsed_event['video_link'] = meeting_description[start_end_span[0]:start_end_span[1]]
 
     # The event needs to be notified
     return(True)
