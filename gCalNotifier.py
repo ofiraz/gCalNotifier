@@ -335,7 +335,7 @@ def show_window(parsed_event, pipe_conn):
     # Bring the windows to the front
     getattr(win, "raise")()
     win.activateWindow()
-    
+
     app.exec()
 
     pipe_conn.send([g_win_exit_reason, g_snooze_time_in_minutes])
@@ -459,11 +459,14 @@ def parse_event(event, parsed_event):
         # description.
         meeting_description = event.get('description')
         if (meeting_description):
-            zoom_url_in_description = re.search("https://.*\.zoom\.us/.*", meeting_description)
-            #zoom_url_in_description = re.search("zoom", meeting_description)
+            zoom_url_in_description = re.search("(https://[a-zA-Z0-9]*\.zoom\.us/[a-zA-Z0-9?=/]*)", meeting_description) 
+            #print(zoom_url_in_description.group())
             if zoom_url_in_description:
-                start_end_span = zoom_url_in_description.span()
-                parsed_event['video_link'] = meeting_description[start_end_span[0]:start_end_span[1]]
+                parsed_event['video_link'] = zoom_url_in_description.group()
+
+                if (parsed_event['video_link'] == parsed_event['event_location']):
+                    # The event location already contains the Zoom link, no need to show it twice
+                    parsed_event['video_link'] = "No Video"
 
     # The event needs to be notified
     return(True)
