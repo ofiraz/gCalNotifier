@@ -3,7 +3,7 @@ import sys
 import time
 
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QDesktopWidget
+    QApplication, QMainWindow, QDesktopWidget, QTextBrowser
 )
 
 from PyQt5 import QtGui
@@ -137,6 +137,9 @@ class Window(QMainWindow, Ui_w_event):
                 parsed_event['video_link'],
                 "Video Link"
             )
+
+        if (parsed_event['description'] != "No description"):
+            self.t_description.setHtml(parsed_event['description'])
         
         self.update_controls_based_on_event_time()
 
@@ -441,6 +444,12 @@ def parse_event(event, parsed_event):
 
     parsed_event['event_location'] = event.get('location', "No location")
 
+    meeting_description = event.get('description')
+    if (meeting_description):
+        parsed_event['description'] = meeting_description
+    else:
+        parsed_event['description'] = "No description"
+
     # Get the video conf data
     parsed_event['video_link'] = "No Video"
     conf_data = event.get('conferenceData')
@@ -457,7 +466,6 @@ def parse_event(event, parsed_event):
     if (parsed_event['video_link'] == "No Video"):
         # Didn't find a video link in the expected location, let's see if there is a video link in the 
         # description.
-        meeting_description = event.get('description')
         if (meeting_description):
             zoom_url_in_description = re.search("(https://[a-zA-Z0-9]*\.zoom\.us/[a-zA-Z0-9?=/]*)", meeting_description) 
             #print(zoom_url_in_description.group())
