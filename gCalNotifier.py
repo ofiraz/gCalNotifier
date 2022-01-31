@@ -179,7 +179,90 @@ class Window(QMainWindow, Ui_w_event):
     
         self.close()
 
+    def get_one_event_from_google_cal(self, google_account, event_id):    
+        # Connect to the Google Account
+        creds = None
+        Credentials_file = 'app_credentials.json'
+        token_file = google_account + '_token.json'
+
+        # The file token.json stores the user's access and refresh tokens, and is
+        # created automatically when the authorization flow completes for the first
+        # time.
+        if os.path.exists(token_file):
+            creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+        # If there are no (valid) credentials available, let the user log in.
+        if not creds or not creds.valid:
+            if creds and creds.expired and creds.refresh_token:
+                creds.refresh(Request())
+            else:
+                flow = InstalledAppFlow.from_client_secrets_file(
+                    Credentials_file, SCOPES)
+                creds = flow.run_local_server(port=0)
+            # Save the credentials for the next run
+            with open(token_file, 'w') as token:
+                token.write(creds.to_json())
+
+        service = build('calendar', 'v3', credentials=creds)
+
+        # Call the Calendar API
+        raw_event = service.events().get(
+            calendarId='primary',
+            eventId=str(event_id)).execute()
+
+        return(raw_event)
+
+    def get_one_event_from_google_cal_with_try(self, google_account, event_id):
+        num_of_retries = 0
+    
+        while num_of_retries <= 2:
+            try: # In progress - handling intermittent exception from the Google service
+                raw_event = self.get_one_event_from_google_cal(google_account, event_id)
+            except Exception as e:
+                excType = str(e.__class__.__name__)
+                excMesg = str(e)
+
+                if ((excType == "ServerNotFoundError") 
+                or (excType == "timeout") 
+                or (excType == "TimeoutError") 
+                or (excType == "ConnectionResetError")
+                or (excType == "TransportError")
+                or (excType == "OSError" and excMesg == "[Errno 51] Network is unreachable")
+                ):
+                    # Exceptions that chould be intermittent due to networking issues.
+                    # We can wait for the next cycle and hope it will get resolved
+                    break
+
+                print("Error in get_events_from_google_cal for " + google_account)
+                print('Exception type ' + excType)
+                print('Exception msg ' + excMesg)
+
+                print(traceback.format_exc())
+
+                num_of_retries = num_of_retries + 1
+
+                if (num_of_retries > 2):
+                    raise
+                else:
+                    # Sleep for 2 seconds and retry
+                    time.sleep(2)
+            else:
+                # Getting the event was successful
+                return(raw_event)
+                break
+
     def update_controls_based_on_event_time(self):
+        global g_win_exit_reason
+
+        # Let's first check that the event has not changed
+        raw_event = self.get_one_event_from_google_cal_with_try(
+            self.c_parsed_event['google_account'],
+            self.c_parsed_event['raw_event']['id'])
+        if(raw_event != self.c_parsed_event['raw_event']):
+            # The event has changed, closing the window to refresh the event
+            g_win_exit_reason = EXIT_REASON_NONE
+            self.close()
+            return()
+
         now_datetime = get_now_datetime()
 
         if (self.c_parsed_event['start_date'] > now_datetime):
@@ -199,7 +282,6 @@ class Window(QMainWindow, Ui_w_event):
 
             # Compute the time needed to snooze before checking again
             time_to_wait_in_seconds = time_to_event_start.seconds + (longest_snooze_time_to_show * 60)
-            self.timer.start((time_to_wait_in_seconds + 1) * 1000)
         else:
             # Event start has passed
 
@@ -220,11 +302,12 @@ class Window(QMainWindow, Ui_w_event):
                 # The event end did not arrive yet - set timer for that time
                 time_to_event_end = self.c_parsed_event['end_date'] - now_datetime
                 time_to_wait_in_seconds = time_to_event_end.seconds
-                self.timer.start((time_to_wait_in_seconds + 1) * 1000)
             else:
                 # Event has ended - just change the label and no need to trigger the event anymore
                 self.l_event_end.setText('Event ended at ' + str(self.c_parsed_event['end_date']))
-                self.timer.stop()
+
+        # Set timer to wake up in half a minute
+        self.timer.start(30 * 1000)
 
         # Bring the window to the front
         self.raise_()
@@ -377,7 +460,7 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
 
         if (now_datetime < parsed_event['end_date']):
             with g_dismissed_lock:
-                g_dismissed_events[event_id] = parsed_event['end_date']
+                g_dismissed_events[event_id] = parsed_event
 
     elif (win_exit_reason == EXIT_REASON_SNOOZE):
         g_logger.debug("Snooze")
@@ -567,20 +650,26 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
         event_id = event['id']
         g_logger.debug("Event ID " + str(event_id))
 
-        parsed_event['event_name'] = event['summary']
-        parsed_event['google_account'] = google_account
-        g_logger.debug("Event Name " + parsed_event['event_name'])
-
         with g_dismissed_lock:
             if (event_id in g_dismissed_events):
-                g_logger.debug("Skipping dismissed event")
-                continue
+                if (g_dismissed_events[event_id]['raw_event'] == event):
+                    g_logger.debug("Skipping dismissed event")
+                    continue
+
+                # Something in the event has changed - we want to remove it from the skipped events and parse it from scratch
+                g_logger.debug("Dismissed event has changed after it was dismissed")
+                del g_dismissed_events[event_id]
 
         with g_snoozed_lock:
             if (event_id in g_snoozed_events):
-                g_logger.debug("Skipping snoozed event")
-                continue
-        
+                if (g_snoozed_events[event_id]['raw_event'] == event):
+                    g_logger.debug("Skipping snoozed event")
+                    continue
+
+                # Something in the event has changed - we want to remove it from the snoozed events and parse it from scratch
+                g_logger.debug("Snoozed event has changed after it was dismissed")
+                del g_snoozed_events[event_id]
+
         with g_displayed_lock:
             if (event_id in g_displayed_events):
                 g_logger.debug("Skipping displayed event")
@@ -591,6 +680,11 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
             continue
 
         # Event not in the any other list
+        parsed_event['raw_event'] = event
+        parsed_event['event_name'] = event['summary']
+        parsed_event['google_account'] = google_account
+        g_logger.debug("Event Name " + parsed_event['event_name'])
+
         need_to_notify = parse_event(event, parsed_event)
         if (need_to_notify == True):
             # Event to get presented
@@ -628,9 +722,9 @@ def clear_dismissed_events_that_have_ended():
     dismissed_events_to_delete = []
 
     with g_dismissed_lock:
-        for k, v in g_dismissed_events.items():
-            g_logger.debug("Dismissed event " + str(k) + " " + str(v) + " " + str(now_datetime))
-            if (now_datetime > v):
+        for k, parsed_event in g_dismissed_events.items():
+            g_logger.debug("Dismissed event " + str(k) + " " + str(parsed_event['end_date']) + " " + str(now_datetime))
+            if (now_datetime > parsed_event['end_date']):
                 dismissed_events_to_delete.append(k)
 
         while (len(dismissed_events_to_delete) > 0):
