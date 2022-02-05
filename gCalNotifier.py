@@ -257,7 +257,7 @@ class Window(QMainWindow, Ui_w_event):
         raw_event = self.get_one_event_from_google_cal_with_try(
             self.c_parsed_event['google_account'],
             self.c_parsed_event['raw_event']['id'])
-        if(raw_event != self.c_parsed_event['raw_event']):
+        if((raw_event is None) or (raw_event['updated'] != self.c_parsed_event['raw_event']['updated'])):
             # The event has changed, closing the window to refresh the event
             g_win_exit_reason = EXIT_REASON_NONE
             self.close()
@@ -652,7 +652,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
 
         with g_dismissed_lock:
             if (event_id in g_dismissed_events):
-                if (g_dismissed_events[event_id]['raw_event'] == event):
+                if (g_dismissed_events[event_id]['raw_event']['updated'] == event['updated']):
                     g_logger.debug("Skipping dismissed event")
                     continue
 
@@ -662,7 +662,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
 
         with g_snoozed_lock:
             if (event_id in g_snoozed_events):
-                if (g_snoozed_events[event_id]['raw_event'] == event):
+                if (g_snoozed_events[event_id]['raw_event']['updated'] == event['updated']):
                     g_logger.debug("Skipping snoozed event")
                     continue
 
