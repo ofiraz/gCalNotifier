@@ -141,7 +141,7 @@ class Window(QMainWindow, Ui_w_event):
         if (parsed_event['description'] != "No description"):
             self.t_description.setHtml(parsed_event['description'])
         
-        self.update_controls_based_on_event_time()
+        self.update_controls_based_on_event_time(True)
 
     # Set the event handlers
     def connectSignalsSlots(self):
@@ -159,7 +159,7 @@ class Window(QMainWindow, Ui_w_event):
         self.pb_2h.clicked.connect(lambda: self.snooze_general(self.pb_2h))
         self.pb_4h.clicked.connect(lambda: self.snooze_general(self.pb_4h))
         self.pb_8h.clicked.connect(lambda: self.snooze_general(self.pb_8h))
-        self.timer.timeout.connect(self.update_controls_based_on_event_time)
+        self.timer.timeout.connect(lambda: self.update_controls_based_on_event_time(False)) 
 
     def clickedDismiss(self):
         global g_win_exit_reason
@@ -250,8 +250,10 @@ class Window(QMainWindow, Ui_w_event):
                 return(raw_event)
                 break
 
-    def update_controls_based_on_event_time(self):
+    def update_controls_based_on_event_time(self, p_changes_should_be_reflected):
         global g_win_exit_reason
+
+        l_changes_should_be_reflected = p_changes_should_be_reflected
 
         # Let's first check that the event has not changed
         raw_event = self.get_one_event_from_google_cal_with_try(
@@ -274,7 +276,9 @@ class Window(QMainWindow, Ui_w_event):
 
             for pb_button, snooze_time in self.c_snooze_buttons.items():
                 if (snooze_time <= 0 and abs(snooze_time) > time_to_event_in_minutes):
-                    pb_button.setHidden(True)
+                    if (pb_button.isHidden() == False):
+                        pb_button.setHidden(True)
+                        l_changes_should_be_reflected = True
                 else:
                     # Compute the closest time to wait until hiding any button
                     if (snooze_time < longest_snooze_time_to_show):
@@ -289,7 +293,9 @@ class Window(QMainWindow, Ui_w_event):
             if (self.c_hidden_all_snooze_before_buttons == False):
                 for pb_button, snooze_time in self.c_snooze_buttons.items():
                     if (snooze_time <= 0):
-                        pb_button.setHidden(True)
+                        if (pb_button.isHidden() == False):
+                            pb_button.setHidden(True)
+                            l_changes_should_be_reflected = True
 
                 self.c_hidden_all_snooze_before_buttons = True
 
@@ -309,9 +315,10 @@ class Window(QMainWindow, Ui_w_event):
         # Set timer to wake up in half a minute
         self.timer.start(30 * 1000)
 
-        # Bring the window to the front
-        self.raise_()
-        self.activateWindow()
+        if (l_changes_should_be_reflected):
+            # There are changes that should be reflected - bring the window to the front
+            self.raise_()
+            self.activateWindow()
 
 
 def init_logging(module_name, file_log_level):
