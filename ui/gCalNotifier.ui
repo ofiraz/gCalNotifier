@@ -44,8 +44,8 @@
   <widget class="QPushButton" name="pb_dismiss">
    <property name="geometry">
     <rect>
-     <x>580</x>
-     <y>270</y>
+     <x>590</x>
+     <y>290</y>
      <width>100</width>
      <height>32</height>
     </rect>
@@ -57,7 +57,7 @@
   <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
-     <x>150</x>
+     <x>40</x>
      <y>250</y>
      <width>346</width>
      <height>32</height>
@@ -104,7 +104,7 @@
   <widget class="QWidget" name="layoutWidget">
    <property name="geometry">
     <rect>
-     <x>60</x>
+     <x>40</x>
      <y>290</y>
      <width>503</width>
      <height>32</height>
@@ -278,6 +278,19 @@
    </property>
    <property name="openExternalLinks">
     <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_open_video_and_snooze">
+   <property name="geometry">
+    <rect>
+     <x>470</x>
+     <y>250</y>
+     <width>221</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>Open Video and Snooze for 5m</string>
    </property>
   </widget>
  </widget>

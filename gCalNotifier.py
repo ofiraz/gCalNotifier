@@ -30,6 +30,8 @@ import traceback
 
 import re
 
+import webbrowser
+
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
@@ -47,6 +49,7 @@ class Window(QMainWindow, Ui_w_event):
     c_parsed_event = {}
     c_hidden_all_snooze_before_buttons = False
     c_updated_label_post_start = False
+    c_video_link = None
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -74,7 +77,7 @@ class Window(QMainWindow, Ui_w_event):
         }
 
     # Identify the video meeting softwate via its URL
-    def identify_video_meeting(self, win_label, url, text_if_not_identified):
+    def identify_video_meeting_in_url(self, win_label, url, text_if_not_identified):
         global g_logger
 
         if ("zoom.us" in url):
@@ -120,11 +123,12 @@ class Window(QMainWindow, Ui_w_event):
         else:
             valid_url = validators.url(parsed_event['event_location'])
             if (valid_url):
-                self.identify_video_meeting(
+                self.identify_video_meeting_in_url(
                     self.l_location_or_video_link,
                     parsed_event['event_location'],
-                    "Link to location or to a video URL"
-                )
+                    "Link to location or to a video URL")
+
+                self.c_video_link = parsed_event['event_location']
 
             else:
                 self.l_location_or_video_link.setText('Location: ' + parsed_event['event_location'])
@@ -132,11 +136,15 @@ class Window(QMainWindow, Ui_w_event):
         if (parsed_event['video_link'] == "No Video"):
             self.l_video_link.setHidden(True)
         else:
-            self.identify_video_meeting(
+            self.identify_video_meeting_in_url(
                 self.l_video_link,
                 parsed_event['video_link'],
-                "Video Link"
-            )
+                "Video Link")
+
+            self.c_video_link = parsed_event['video_link']
+
+        if (self.c_video_link is None):
+            self.pb_open_video_and_snooze.setHidden(True)
 
         if (parsed_event['description'] != "No description"):
             self.t_description.setHtml(parsed_event['description'])
@@ -160,6 +168,7 @@ class Window(QMainWindow, Ui_w_event):
         self.pb_4h.clicked.connect(lambda: self.snooze_general(self.pb_4h))
         self.pb_8h.clicked.connect(lambda: self.snooze_general(self.pb_8h))
         self.timer.timeout.connect(lambda: self.update_controls_based_on_event_time(False)) 
+        self.pb_open_video_and_snooze.clicked.connect(self.open_video_and_snooze)
 
     def clickedDismiss(self):
         global g_win_exit_reason
@@ -320,6 +329,17 @@ class Window(QMainWindow, Ui_w_event):
             self.raise_()
             self.activateWindow()
 
+    def open_video_and_snooze(self):
+        global g_win_exit_reason
+        global g_snooze_time_in_minutes
+
+        webbrowser.open(self.c_video_link)
+
+        g_win_exit_reason = EXIT_REASON_SNOOZE
+
+        g_snooze_time_in_minutes = 5
+    
+        self.close()
 
 def init_logging(module_name, file_log_level):
     global g_logger
