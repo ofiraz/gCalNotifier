@@ -688,7 +688,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
 
         # Event not in the any other list
         parsed_event['raw_event'] = event
-        parsed_event['event_name'] = event['summary']
+        parsed_event['event_name'] = event.get('summary', '(No title)')
         parsed_event['google_account'] = google_account
         g_logger.debug("Event Name " + parsed_event['event_name'])
 
