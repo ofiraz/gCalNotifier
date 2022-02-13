@@ -145,6 +145,7 @@ class Window(QMainWindow, Ui_w_event):
 
         if (self.c_video_link is None):
             self.pb_open_video_and_snooze.setHidden(True)
+            self.pb_open_video_and_dismiss.setHidden(True)
 
         if (parsed_event['description'] != "No description"):
             self.t_description.setHtml(parsed_event['description'])
@@ -169,6 +170,7 @@ class Window(QMainWindow, Ui_w_event):
         self.pb_8h.clicked.connect(lambda: self.snooze_general(self.pb_8h))
         self.timer.timeout.connect(lambda: self.update_controls_based_on_event_time(False)) 
         self.pb_open_video_and_snooze.clicked.connect(self.open_video_and_snooze)
+        self.pb_open_video_and_dismiss.clicked.connect(self.open_video_and_dismiss)
 
     def clickedDismiss(self):
         global g_win_exit_reason
@@ -338,6 +340,15 @@ class Window(QMainWindow, Ui_w_event):
         g_win_exit_reason = EXIT_REASON_SNOOZE
 
         g_snooze_time_in_minutes = 5
+    
+        self.close()
+
+    def open_video_and_dismiss(self):
+        global g_win_exit_reason
+
+        webbrowser.open(self.c_video_link)
+
+        g_win_exit_reason = EXIT_REASON_DISMISS
     
         self.close()
 

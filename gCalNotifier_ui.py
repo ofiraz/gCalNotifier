@@ -120,8 +120,11 @@ class Ui_w_event(object):
         self.t_description.setOpenExternalLinks(True)
         self.t_description.setObjectName("t_description")
         self.pb_open_video_and_snooze = QtWidgets.QPushButton(w_event)
-        self.pb_open_video_and_snooze.setGeometry(QtCore.QRect(470, 250, 221, 32))
+        self.pb_open_video_and_snooze.setGeometry(QtCore.QRect(470, 210, 221, 32))
         self.pb_open_video_and_snooze.setObjectName("pb_open_video_and_snooze")
+        self.pb_open_video_and_dismiss = QtWidgets.QPushButton(w_event)
+        self.pb_open_video_and_dismiss.setGeometry(QtCore.QRect(470, 180, 191, 32))
+        self.pb_open_video_and_dismiss.setObjectName("pb_open_video_and_dismiss")
 
         self.retranslateUi(w_event)
         QtCore.QMetaObject.connectSlotsByName(w_event)
@@ -153,3 +156,4 @@ class Ui_w_event(object):
         self.l_location_or_video_link.setText(_translate("w_event", "Location or Zoom"))
         self.l_video_link.setText(_translate("w_event", "Video Link"))
         self.pb_open_video_and_snooze.setText(_translate("w_event", "Open Video and Snooze for 5m"))
+        self.pb_open_video_and_dismiss.setText(_translate("w_event", "Open Video and Dismiss"))
