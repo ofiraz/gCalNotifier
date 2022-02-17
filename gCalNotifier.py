@@ -85,11 +85,13 @@ class Window(QMainWindow, Ui_w_event):
         elif ("webex.com" in url):
             label_text = "Webex Link"
         elif ("meet.google.com" in url):
-            label_text = "Meet Link"
+            label_text = "Google Meet Link"
         elif ("bluejeans.com" in url):
-            label_text = "BlueJeans"
+            label_text = "BlueJeans Link"
         elif ("chime.aws" in url):
-            label_text = "AWS Chime"
+            label_text = "AWS Chime Link"
+        elif ("teams.microsoft.com" in url):
+            label_text = "MS Teams Link"    
         else:
             label_text = text_if_not_identified
 
@@ -588,14 +590,26 @@ def parse_event(event, parsed_event):
         # Didn't find a video link in the expected location, let's see if there is a video link in the 
         # description.
         if (meeting_description):
-            zoom_url_in_description = re.search("(https://[a-zA-Z0-9]*\.zoom\.us/[a-zA-Z0-9?=/]*)", meeting_description) 
+            zoom_url_in_description = re.search(
+                "(https://[a-zA-Z0-9]*\.zoom\.us/[a-zA-Z0-9?=/]*)", 
+                meeting_description) 
             #print(zoom_url_in_description.group())
             if zoom_url_in_description:
                 parsed_event['video_link'] = zoom_url_in_description.group()
+            else:
+                # Check if there is a Microsoft Teams link in the description
+                teams_url_in_description = re.search(
+                    "Click here to join the meeting<(https://teams.microsoft.com/l/meetup-join/.*)>",
+                    meeting_description) 
 
-                if (parsed_event['video_link'] == parsed_event['event_location']):
-                    # The event location already contains the Zoom link, no need to show it twice
-                    parsed_event['video_link'] = "No Video"
+                #print(teams_url_in_description.group(1))
+
+                if teams_url_in_description:
+                    parsed_event['video_link'] = teams_url_in_description.group(1)
+
+            if (parsed_event['video_link'] == parsed_event['event_location']):
+                # The event location already contains the Zoom link, no need to show it twice
+                parsed_event['video_link'] = "No Video"
 
     # The event needs to be notified
     return(True)
