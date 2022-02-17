@@ -475,6 +475,11 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
     global g_displayed_lock
     global g_logger
 
+    event_key = str({
+        'google_account' : parsed_event['google_account'],
+        'event_id' : event_id
+    })
+
     parent_conn, child_conn = Pipe()
     proc = Process(
         target = show_window,
@@ -500,7 +505,7 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
 
         if (now_datetime < parsed_event['end_date']):
             with g_dismissed_lock:
-                g_dismissed_events[event_id] = parsed_event
+                g_dismissed_events[event_key] = parsed_event
 
     elif (win_exit_reason == EXIT_REASON_SNOOZE):
         g_logger.debug("Snooze")
@@ -700,17 +705,21 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
         a_snoozed_event_to_wakeup = False
 
         event_id = event['id']
+        event_key = str({
+            'google_account' : google_account,
+            'event_id' : event_id
+        })
         g_logger.debug("Event ID " + str(event_id))
 
         with g_dismissed_lock:
-            if (event_id in g_dismissed_events):
-                if (g_dismissed_events[event_id]['raw_event']['updated'] == event['updated']):
+            if (event_key in g_dismissed_events):
+                if (g_dismissed_events[event_key]['raw_event']['updated'] == event['updated']):
                     g_logger.debug("Skipping dismissed event")
                     continue
 
                 # Something in the event has changed - we want to remove it from the skipped events and parse it from scratch
                 g_logger.debug("Dismissed event has changed after it was dismissed")
-                del g_dismissed_events[event_id]
+                del g_dismissed_events[event_key]
 
         with g_snoozed_lock:
             if (event_id in g_snoozed_events):
@@ -740,6 +749,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
         need_to_notify = parse_event(event, parsed_event)
         if (need_to_notify == True):
             # Event to get presented
+            #print(event)
             events_to_present[event_id] = parsed_event
 
 def present_relevant_events(events_to_present):
