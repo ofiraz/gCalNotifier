@@ -528,6 +528,14 @@ def parse_event(event, parsed_event):
 
     g_logger.debug(json.dumps(event, indent = 1))
 
+    # Check if the event was not declined by the user
+    if(event.get('attendees')):
+        # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
+        for attendee in event['attendees']:
+            if(attendee.get('self') and attendee['self'] == True and attendee.get('responseStatus') and attendee['responseStatus'] == 'declined'):
+                # The user declined the meeting. No need to display it
+                return(False)
+
     if (event['reminders'].get('useDefault') == True):
         minutes_before = 15
     else:
