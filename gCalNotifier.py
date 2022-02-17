@@ -466,7 +466,7 @@ def show_window(parsed_event, pipe_conn):
 
     pipe_conn.send([g_win_exit_reason, g_snooze_time_in_minutes])
 
-def show_window_and_parse_exit_status(event_id, parsed_event):
+def show_window_and_parse_exit_status(event_key_str, parsed_event):
     global g_dismissed_events
     global g_dismissed_lock
     global g_snoozed_events
@@ -474,11 +474,6 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
     global g_displayed_events
     global g_displayed_lock
     global g_logger
-
-    event_key = str({
-        'google_account' : parsed_event['google_account'],
-        'event_id' : event_id
-    })
 
     parent_conn, child_conn = Pipe()
     proc = Process(
@@ -505,7 +500,7 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
 
         if (now_datetime < parsed_event['end_date']):
             with g_dismissed_lock:
-                g_dismissed_events[event_key] = parsed_event
+                g_dismissed_events[event_key_str] = parsed_event
 
     elif (win_exit_reason == EXIT_REASON_SNOOZE):
         g_logger.debug("Snooze")
@@ -519,14 +514,14 @@ def show_window_and_parse_exit_status(event_id, parsed_event):
         g_logger.debug("Snooze until " + str(parsed_event['event_wakeup_time']))
             
         with g_snoozed_lock:
-            g_snoozed_events[event_id] = parsed_event
+            g_snoozed_events[event_key_str] = parsed_event
 
     else:
         g_logger.error("No exit reason")
 
     # Remove the event from the presented events
     with g_displayed_lock:
-        del g_displayed_events[event_id]
+        del g_displayed_events[event_key_str]
 
 def parse_event(event, parsed_event):
     global g_logger
@@ -630,12 +625,12 @@ def set_items_to_present_from_snoozed(events_to_present):
     snoozed_events_to_delete = []
 
     with g_snoozed_lock:
-        for event_id, snoozed_event in g_snoozed_events.items():
-            g_logger.debug("Snoozed event " + str(event_id) + " " + str(snoozed_event['event_wakeup_time']) + " " + str(now_datetime))
+        for event_key_str, snoozed_event in g_snoozed_events.items():
+            g_logger.debug("Snoozed event " + event_key_str + " " + str(snoozed_event['event_wakeup_time']) + " " + str(now_datetime))
             if (now_datetime >= snoozed_event['event_wakeup_time']):
                 # Event needs to be woke up
-                events_to_present[event_id] = snoozed_event
-                snoozed_events_to_delete.append(event_id)
+                events_to_present[event_key_str] = snoozed_event
+                snoozed_events_to_delete.append(event_key_str)
 
         # Clear the snoozed events that were woken up from the snoozed list
         while (len(snoozed_events_to_delete) > 0):
@@ -705,34 +700,35 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
         a_snoozed_event_to_wakeup = False
 
         event_id = event['id']
-        event_key = str({
+        event_key = {
             'google_account' : google_account,
             'event_id' : event_id
-        })
+        }
+        event_key_str = json.dumps(event_key)
         g_logger.debug("Event ID " + str(event_id))
 
         with g_dismissed_lock:
-            if (event_key in g_dismissed_events):
-                if (g_dismissed_events[event_key]['raw_event']['updated'] == event['updated']):
+            if (event_key_str in g_dismissed_events):
+                if (g_dismissed_events[event_key_str]['raw_event']['updated'] == event['updated']):
                     g_logger.debug("Skipping dismissed event")
                     continue
 
                 # Something in the event has changed - we want to remove it from the skipped events and parse it from scratch
                 g_logger.debug("Dismissed event has changed after it was dismissed")
-                del g_dismissed_events[event_key]
+                del g_dismissed_events[event_key_str]
 
         with g_snoozed_lock:
-            if (event_id in g_snoozed_events):
-                if (g_snoozed_events[event_id]['raw_event']['updated'] == event['updated']):
+            if (event_key_str in g_snoozed_events):
+                if (g_snoozed_events[event_key_str]['raw_event']['updated'] == event['updated']):
                     g_logger.debug("Skipping snoozed event")
                     continue
 
                 # Something in the event has changed - we want to remove it from the snoozed events and parse it from scratch
                 g_logger.debug("Snoozed event has changed after it was dismissed")
-                del g_snoozed_events[event_id]
+                del g_snoozed_events[event_key_str]
 
         with g_displayed_lock:
-            if (event_id in g_displayed_events):
+            if (event_key_str in g_displayed_events):
                 g_logger.debug("Skipping displayed event")
                 continue
         
@@ -750,7 +746,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
         if (need_to_notify == True):
             # Event to get presented
             #print(event)
-            events_to_present[event_id] = parsed_event
+            events_to_present[event_key_str] = parsed_event
 
 def present_relevant_events(events_to_present):
     global g_displayed_events
@@ -758,15 +754,15 @@ def present_relevant_events(events_to_present):
 
     number_of_events_to_present = len(events_to_present)
     if (number_of_events_to_present > 0):
-        for event_id, parsed_event in events_to_present.items():
+        for event_key_str, parsed_event in events_to_present.items():
             # Add the event to the presented events
             with g_displayed_lock:
-                g_displayed_events[event_id] = parsed_event
+                g_displayed_events[event_key_str] = parsed_event
             
             # Show the windows in a separate thread and process
             win_thread = threading.Thread(
                 target = show_window_and_parse_exit_status,
-                args = (event_id, parsed_event, ))
+                args = (event_key_str, parsed_event, ))
 
             win_thread.start()
 
