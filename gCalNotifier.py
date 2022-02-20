@@ -842,6 +842,7 @@ def load_config():
     if (not g_refresh_frequency):
         g_refresh_frequency = 30
 
+# Main
 if __name__ == "__main__":
     load_config()
 
