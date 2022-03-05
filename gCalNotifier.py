@@ -49,6 +49,7 @@ class Window(QMainWindow, Ui_w_event):
     c_parsed_event = {}
     c_hidden_all_snooze_before_buttons = False
     c_updated_label_post_start = False
+    c_updated_label_post_end = False
     c_video_link = None
 
     def __init__(self, parent=None):
@@ -288,20 +289,11 @@ class Window(QMainWindow, Ui_w_event):
             time_to_event_start = self.c_parsed_event['start_date'] - now_datetime
             time_to_event_in_minutes = time_to_event_start.seconds / 60
 
-            longest_snooze_time_to_show = 0
-
             for pb_button, snooze_time in self.c_snooze_buttons.items():
                 if (snooze_time <= 0 and abs(snooze_time) > time_to_event_in_minutes):
                     if (pb_button.isHidden() == False):
                         pb_button.setHidden(True)
                         l_changes_should_be_reflected = True
-                else:
-                    # Compute the closest time to wait until hiding any button
-                    if (snooze_time < longest_snooze_time_to_show):
-                        longest_snooze_time_to_show = snooze_time
-
-            # Compute the time needed to snooze before checking again
-            time_to_wait_in_seconds = time_to_event_start.seconds + (longest_snooze_time_to_show * 60)
         else:
             # Event start has passed
 
@@ -320,21 +312,20 @@ class Window(QMainWindow, Ui_w_event):
                 self.l_event_start.setText('Event started at ' + str(self.c_parsed_event['start_date']))
                 self.c_updated_label_post_start = True
 
-            if (self.c_parsed_event['end_date'] > now_datetime):
-                # The event end did not arrive yet - set timer for that time
-                time_to_event_end = self.c_parsed_event['end_date'] - now_datetime
-                time_to_wait_in_seconds = time_to_event_end.seconds
-            else:
+            if (self.c_parsed_event['end_date'] <= now_datetime):
                 # Event has ended - just change the label and no need to trigger the event anymore
                 self.l_event_end.setText('Event ended at ' + str(self.c_parsed_event['end_date']))
-
-        # Set timer to wake up in half a minute
-        self.timer.start(30 * 1000)
+                self.c_updated_label_post_end = True
 
         if (l_changes_should_be_reflected):
             # There are changes that should be reflected - bring the window to the front
             self.raise_()
             self.activateWindow()
+
+        if (self.c_updated_label_post_end == False):
+        # Not all controls that could have changed have already changed
+            # Set timer to wake up in half a minute
+            self.timer.start(30 * 1000)
 
     def open_video_and_snooze(self):
         global g_win_exit_reason
