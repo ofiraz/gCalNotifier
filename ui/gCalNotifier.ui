@@ -10,7 +10,7 @@
     <x>0</x>
     <y>0</y>
     <width>715</width>
-    <height>564</height>
+    <height>649</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -185,7 +185,7 @@
     <string/>
    </property>
    <property name="pixmap">
-    <pixmap>../icons8-calendar-64.png</pixmap>
+    <pixmap>../../../../code/gCalNotifier/icons8-calendar-64.png</pixmap>
    </property>
    <property name="scaledContents">
     <bool>true</bool>
@@ -258,28 +258,6 @@
     </item>
    </layout>
   </widget>
-  <widget class="QTextBrowser" name="t_description">
-   <property name="geometry">
-    <rect>
-     <x>30</x>
-     <y>330</y>
-     <width>661</width>
-     <height>221</height>
-    </rect>
-   </property>
-   <property name="horizontalScrollBarPolicy">
-    <enum>Qt::ScrollBarAlwaysOff</enum>
-   </property>
-   <property name="autoFormatting">
-    <set>QTextEdit::AutoAll</set>
-   </property>
-   <property name="textInteractionFlags">
-    <set>Qt::TextBrowserInteraction</set>
-   </property>
-   <property name="openExternalLinks">
-    <bool>true</bool>
-   </property>
-  </widget>
   <widget class="QPushButton" name="pb_open_video_and_snooze">
    <property name="geometry">
     <rect>
@@ -305,6 +283,70 @@
    <property name="text">
     <string>Open Video and Dismiss</string>
    </property>
+  </widget>
+  <widget class="QTabWidget" name="tabWidget">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>330</y>
+     <width>651</width>
+     <height>311</height>
+    </rect>
+   </property>
+   <property name="tabPosition">
+    <enum>QTabWidget::North</enum>
+   </property>
+   <property name="tabShape">
+    <enum>QTabWidget::Rounded</enum>
+   </property>
+   <property name="elideMode">
+    <enum>Qt::ElideRight</enum>
+   </property>
+   <property name="usesScrollButtons">
+    <bool>false</bool>
+   </property>
+   <widget class="QWidget" name="tab">
+    <attribute name="title">
+     <string>Description</string>
+    </attribute>
+    <widget class="QTextBrowser" name="t_description">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>0</y>
+       <width>641</width>
+       <height>271</height>
+      </rect>
+     </property>
+     <property name="horizontalScrollBarPolicy">
+      <enum>Qt::ScrollBarAlwaysOff</enum>
+     </property>
+     <property name="autoFormatting">
+      <set>QTextEdit::AutoAll</set>
+     </property>
+     <property name="textInteractionFlags">
+      <set>Qt::TextBrowserInteraction</set>
+     </property>
+     <property name="openExternalLinks">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </widget>
+   <widget class="QWidget" name="tab_2">
+    <attribute name="title">
+     <string>Raw Event</string>
+    </attribute>
+    <widget class="QTextBrowser" name="t_raw_event">
+     <property name="geometry">
+      <rect>
+       <x>10</x>
+       <y>10</y>
+       <width>631</width>
+       <height>261</height>
+      </rect>
+     </property>
+    </widget>
+   </widget>
   </widget>
  </widget>
  <resources/>

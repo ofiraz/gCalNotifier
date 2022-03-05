@@ -151,6 +151,9 @@ class Window(QMainWindow, Ui_w_event):
 
         if (parsed_event['description'] != "No description"):
             self.t_description.setHtml(parsed_event['description'])
+
+        self.t_raw_event.setText(json.dumps(parsed_event['raw_event'], indent = 1))
+        self.tabWidget.setCurrentIndex(0)
         
         self.update_controls_based_on_event_time(True)
 
@@ -526,6 +529,7 @@ def show_window_and_parse_exit_status(event_key_str, parsed_event):
 def parse_event(event, parsed_event):
     global g_logger
 
+    #print(json.dumps(event, indent = 1))
     g_logger.debug(json.dumps(event, indent = 1))
 
     # Check if the event was not declined by the user
