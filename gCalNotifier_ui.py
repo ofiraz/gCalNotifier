@@ -120,6 +120,10 @@ class Ui_w_event(object):
         self.pb_open_video_and_dismiss.setObjectName("pb_open_video_and_dismiss")
         self.tabWidget = QtWidgets.QTabWidget(w_event)
         self.tabWidget.setGeometry(QtCore.QRect(40, 330, 651, 311))
+        self.tabWidget.setTabPosition(QtWidgets.QTabWidget.North)
+        self.tabWidget.setTabShape(QtWidgets.QTabWidget.Rounded)
+        self.tabWidget.setElideMode(QtCore.Qt.ElideRight)
+        self.tabWidget.setUsesScrollButtons(False)
         self.tabWidget.setObjectName("tabWidget")
         self.tab = QtWidgets.QWidget()
         self.tab.setObjectName("tab")
@@ -137,9 +141,12 @@ class Ui_w_event(object):
         self.t_raw_event.setGeometry(QtCore.QRect(10, 10, 631, 261))
         self.t_raw_event.setObjectName("t_raw_event")
         self.tabWidget.addTab(self.tab_2, "")
+        self.l_time_left = QtWidgets.QLabel(w_event)
+        self.l_time_left.setGeometry(QtCore.QRect(260, 130, 421, 20))
+        self.l_time_left.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.l_time_left.setObjectName("l_time_left")
 
         self.retranslateUi(w_event)
-        self.tabWidget.setCurrentIndex(1)
         QtCore.QMetaObject.connectSlotsByName(w_event)
 
     def retranslateUi(self, w_event):
@@ -172,3 +179,4 @@ class Ui_w_event(object):
         self.pb_open_video_and_dismiss.setText(_translate("w_event", "Open Video and Dismiss"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), _translate("w_event", "Description"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), _translate("w_event", "Raw Event"))
+        self.l_time_left.setText(_translate("w_event", "TextLabel"))

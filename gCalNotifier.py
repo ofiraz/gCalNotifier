@@ -289,6 +289,8 @@ class Window(QMainWindow, Ui_w_event):
             time_to_event_start = self.c_parsed_event['start_date'] - now_datetime
             time_to_event_in_minutes = time_to_event_start.seconds / 60
 
+            self.l_time_left.setText(str(int(time_to_event_in_minutes) + 1) + ' minutes left until the event starts')
+
             for pb_button, snooze_time in self.c_snooze_buttons.items():
                 if (snooze_time <= 0 and abs(snooze_time) > time_to_event_in_minutes):
                     if (pb_button.isHidden() == False):
@@ -296,6 +298,8 @@ class Window(QMainWindow, Ui_w_event):
                         l_changes_should_be_reflected = True
         else:
             # Event start has passed
+
+            self.l_time_left.setHidden(True)
 
             # Hide all before snooze buttons if were not hidden yet
             if (self.c_hidden_all_snooze_before_buttons == False):
