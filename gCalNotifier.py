@@ -32,6 +32,8 @@ import re
 
 import webbrowser
 
+from deepdiff import DeepDiff
+
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
@@ -42,6 +44,34 @@ EXIT_REASON_SNOOZE = 2
 
 def get_now_datetime():
     return(datetime.datetime.now().astimezone())
+
+def nice_json(json_object):
+    return(json.dumps(json_object, indent = 1))
+
+def event_changed(orig_event, new_event):
+    true_change = False
+
+    if (orig_event['updated'] != new_event['updated']):
+        #if((sorted(orig_event.items()) != sorted(new_event.items()))):
+        diff_result = DeepDiff(orig_event, new_event)
+
+        for key in diff_result['values_changed']:
+            if (
+                key == "root['etag']" 
+                or key == "root['updated']" 
+                or key == "root['attendees'][0]['responseStatus']"
+            ):
+                continue
+
+            # Found a change
+            print(key, ":", diff_result['values_changed'][key])
+
+            true_change = True
+
+        #print(nice_json(diff_result))
+
+    # No difference between the events
+    return(true_change)
 
 # The notification window
 class Window(QMainWindow, Ui_w_event):
@@ -153,7 +183,7 @@ class Window(QMainWindow, Ui_w_event):
         if (parsed_event['description'] != "No description"):
             self.t_description.setHtml(parsed_event['description'])
 
-        self.t_raw_event.setText(json.dumps(parsed_event['raw_event'], indent = 1))
+        self.t_raw_event.setText(nice_json(parsed_event['raw_event']))
         self.tabWidget.setCurrentIndex(0)
         
         self.update_controls_based_on_event_time(True)
@@ -276,7 +306,7 @@ class Window(QMainWindow, Ui_w_event):
         raw_event = self.get_one_event_from_google_cal_with_try(
             self.c_parsed_event['google_account'],
             self.c_parsed_event['raw_event']['id'])
-        if((raw_event is None) or (raw_event['updated'] != self.c_parsed_event['raw_event']['updated'])):
+        if((raw_event is None) or event_changed(raw_event,  self.c_parsed_event['raw_event'])):
             # The event has changed, closing the window to refresh the event
             g_win_exit_reason = EXIT_REASON_NONE
             self.close()
@@ -524,8 +554,8 @@ def show_window_and_parse_exit_status(event_key_str, parsed_event):
 def parse_event(event, parsed_event):
     global g_logger
 
-    #print(json.dumps(event, indent = 1))
-    g_logger.debug(json.dumps(event, indent = 1))
+    #print(nice_json(event))
+    g_logger.debug(nice_json(event))
 
     # Check if the event was not declined by the user
     if(event.get('attendees')):
@@ -716,7 +746,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
 
         with g_dismissed_lock:
             if (event_key_str in g_dismissed_events):
-                if (g_dismissed_events[event_key_str]['raw_event']['updated'] == event['updated']):
+                if not event_changed(g_dismissed_events[event_key_str]['raw_event'], event):
                     g_logger.debug("Skipping dismissed event")
                     continue
 
@@ -726,7 +756,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
 
         with g_snoozed_lock:
             if (event_key_str in g_snoozed_events):
-                if (g_snoozed_events[event_key_str]['raw_event']['updated'] == event['updated']):
+                if not event_changed(g_snoozed_events[event_key_str]['raw_event'], event):
                     g_logger.debug("Skipping snoozed event")
                     continue
 

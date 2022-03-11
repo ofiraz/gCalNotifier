@@ -13,9 +13,10 @@ source bin/activate
 * Install the following Python modules:
 
 ```
-pip3 install pyqt5`
-pip3 install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib`
-pip3 install validators`
+pip3 install pyqt5
+pip3 install --upgrade google-api-python-client google-auth-httplib2 google-auth-oauthlib
+pip3 install validators
+pip3 install deepdiff
 ```
 * Contact me to get the `app_credentials.json` file, and locate it in the directory from which you will run the application.
 
