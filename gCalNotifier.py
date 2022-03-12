@@ -48,19 +48,39 @@ def get_now_datetime():
 def nice_json(json_object):
     return(json.dumps(json_object, indent = 1))
 
+def has_self_declined(event):
+    # Check if the event was not declined by the current user
+    if(event.get('attendees')):
+        # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
+        for attendee in event['attendees']:
+            if(attendee.get('self') and attendee['self'] == True and attendee.get('responseStatus') and attendee['responseStatus'] == 'declined'):
+                # The user declined the meeting. No need to display it
+                return(True)
+
+    # The event was not declined by the current user
+    return(False)
+
 def event_changed(orig_event, new_event):
     true_change = False
 
     if (orig_event['updated'] != new_event['updated']):
-        #if((sorted(orig_event.items()) != sorted(new_event.items()))):
         diff_result = DeepDiff(orig_event, new_event)
 
         for key in diff_result['values_changed']:
             if (
                 key == "root['etag']" 
                 or key == "root['updated']" 
-                or key == "root['attendees'][0]['responseStatus']"
             ):
+                # Not relevsnt changes
+                continue
+
+            if re.search("root\['attendees'\]\[[09]+\]\['responseStatus'\]", key):
+                # A change in the attendees response
+                if has_self_declined(new_event):
+                    # The current user has declined the event
+                    print("The current user has declined")
+                    true_change = True
+
                 continue
 
             # Found a change
@@ -70,7 +90,6 @@ def event_changed(orig_event, new_event):
 
         #print(nice_json(diff_result))
 
-    # No difference between the events
     return(true_change)
 
 # The notification window
@@ -306,7 +325,7 @@ class Window(QMainWindow, Ui_w_event):
         raw_event = self.get_one_event_from_google_cal_with_try(
             self.c_parsed_event['google_account'],
             self.c_parsed_event['raw_event']['id'])
-        if((raw_event is None) or event_changed(raw_event,  self.c_parsed_event['raw_event'])):
+        if((raw_event is None) or event_changed(self.c_parsed_event['raw_event'], raw_event)):
             # The event has changed, closing the window to refresh the event
             g_win_exit_reason = EXIT_REASON_NONE
             self.close()
@@ -557,13 +576,9 @@ def parse_event(event, parsed_event):
     #print(nice_json(event))
     g_logger.debug(nice_json(event))
 
-    # Check if the event was not declined by the user
-    if(event.get('attendees')):
-        # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
-        for attendee in event['attendees']:
-            if(attendee.get('self') and attendee['self'] == True and attendee.get('responseStatus') and attendee['responseStatus'] == 'declined'):
-                # The user declined the meeting. No need to display it
-                return(False)
+    # Check if the event was not declined by the current user
+    if has_self_declined(event):
+        return(False)
 
     if (event['reminders'].get('useDefault') == True):
         minutes_before = 15
