@@ -74,9 +74,7 @@ def event_changed(orig_event, new_event):
                 # Not relevsnt changes
                 continue
 
-            print(key)
             if re.search("root\['attendees'\]\[[0-9]+\]\['responseStatus'\]", key):
-                print("in")
                 # A change in the attendees response
                 if has_self_declined(new_event):
                     # The current user has declined the event
