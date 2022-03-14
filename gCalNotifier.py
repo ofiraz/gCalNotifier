@@ -66,26 +66,34 @@ def event_changed(orig_event, new_event):
     if (orig_event['updated'] != new_event['updated']):
         diff_result = DeepDiff(orig_event, new_event)
 
-        for key in diff_result['values_changed']:
-            if (
-                key == "root['etag']" 
-                or key == "root['updated']" 
-            ):
-                # Not relevsnt changes
-                continue
+        for key in diff_result:
+            if (key == 'values_changed'):
+                for key1 in diff_result['values_changed']:
+                    if (
+                        key1 == "root['etag']" 
+                        or key1 == "root['updated']" 
+                    ):
+                        # Not relevant changes
+                        continue
 
-            if re.search("root\['attendees'\]\[[0-9]+\]\['responseStatus'\]", key):
-                # A change in the attendees response
-                if has_self_declined(new_event):
-                    # The current user has declined the event
-                    print("The current user has declined")
+                    if re.search("root\['attendees'\]\[[0-9]+\]\['responseStatus'\]", key1):
+                        # A change in the attendees response
+                        if has_self_declined(new_event):
+                            # The current user has declined the event
+                            print("The current user has declined")
+                            true_change = True
+
+                        continue
+
+                    # Found a change
+                    print(key1, ":", diff_result['values_changed'][key1])
+
                     true_change = True
-
+                
                 continue
+            # key == 'values_changed'
 
-            # Found a change
-            print(key, ":", diff_result['values_changed'][key])
-
+            print(key, ":", diff_result[key])
             true_change = True
 
         #print(nice_json(diff_result))
