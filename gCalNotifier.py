@@ -48,6 +48,18 @@ def get_now_datetime():
 def nice_json(json_object):
     return(json.dumps(json_object, indent = 1))
 
+def has_self_tentative(event):
+    # Check if the current user is tentative for the evnet
+    if(event.get('attendees')):
+        # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
+        for attendee in event['attendees']:
+            if(attendee.get('self') and attendee['self'] == True and attendee.get('responseStatus') and attendee['responseStatus'] == 'tentative'):
+                # The current user is tentative for the meeting.
+                return(True)
+
+    # The current user is not tentative for the meeting.
+    return(False)
+
 def has_self_declined(event):
     # Check if the event was not declined by the current user
     if(event.get('attendees')):
@@ -63,8 +75,13 @@ def has_self_declined(event):
 def event_changed(orig_event, new_event):
     true_change = False
 
-    if (orig_event['updated'] != new_event['updated']):
-        diff_result = DeepDiff(orig_event, new_event)
+#    print("Check for changes")
+
+    diff_result = DeepDiff(orig_event, new_event)
+    if (diff_result):
+
+        print("Check if relevant changes")
+        print(diff_result)
 
         for key in diff_result:
             if (key == 'values_changed'):
@@ -86,6 +103,7 @@ def event_changed(orig_event, new_event):
                         continue
 
                     # Found a change
+                    print("Found a relevant change")
                     print(key1, ":", diff_result['values_changed'][key1])
 
                     true_change = True
@@ -93,10 +111,9 @@ def event_changed(orig_event, new_event):
                 continue
             # key == 'values_changed'
 
+            print("Found a relevant change")
             print(key, ":", diff_result[key])
             true_change = True
-
-        #print(nice_json(diff_result))
 
     return(true_change)
 
@@ -632,6 +649,10 @@ def parse_event(event, parsed_event):
         parsed_event['description'] = meeting_description
     else:
         parsed_event['description'] = "No description"
+
+    if (has_self_tentative(event)):
+        # The current user is Tentative fot this event
+        parsed_event['event_name'] = "Tentative - " + parsed_event['event_name']
 
     # Get the video conf data
     parsed_event['video_link'] = "No Video"
