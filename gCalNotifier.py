@@ -102,12 +102,43 @@ def event_changed(orig_event, new_event):
 
                         continue
 
+                    if (key1 == "root['extendedProperties']['shared']['meetingParams']"):
+                        # Compare the internal parameters
+                        diff_extended_properties = DeepDiff(diff_result['values_changed'][key1]['new_value'], diff_result['values_changed'][key1]['old_value'])
+                        for key2 in diff_extended_properties:
+                            if (key2 == "invitees_hash"):
+                                # Not relevant change
+                                continue
+
+                            # Found a change
+                            print("Found a relevant change")
+                            print(key2, ":", diff_extended_properties[key2])
+
+                            true_change == True
+                        
+                        continue
+
                     # Found a change
                     print("Found a relevant change")
                     print(key1, ":", diff_result['values_changed'][key1])
 
                     true_change = True
                 
+                continue
+            # key == 'values_changed'
+
+            elif (key == 'iterable_item_added'):
+                for key1 in diff_result['iterable_item_added']:
+                    if re.search("root\['attendees'\]\[[0-9]+\]", key1):
+                        # An attendee added - can be ignored
+                        continue
+
+                    # Found a change
+                    print("Found a relevant change")
+                    print(key1, ":", diff_result['iterable_item_added'][key1])
+
+                    true_change = True
+
                 continue
             # key == 'values_changed'
 
