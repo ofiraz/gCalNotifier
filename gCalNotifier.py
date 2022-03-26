@@ -72,16 +72,31 @@ def has_self_declined(event):
     # The event was not declined by the current user
     return(False)
 
-def has_event_changed(orig_event, new_event):
-    true_change = False
+NO_POPUP_REMINDER = -1
 
+def get_max_reminder_in_minutes(p_event):
+    max_minutes_before = NO_POPUP_REMINDER
+
+    if (p_event['reminders'].get('useDefault') == True):
+        max_minutes_before = 15
+    else:
+        override_rule = p_event['reminders'].get('overrides')
+        if (override_rule):
+            for override_entry in override_rule:
+                if (override_entry['method'] == "popup"):
+                    if int(override_entry['minutes']) > max_minutes_before:
+                        max_minutes_before = int(override_entry['minutes'])
+
+    return(max_minutes_before)
+
+def has_event_changed(orig_event, new_event):
 #    print("Check for changes")
 
     diff_result = DeepDiff(orig_event, new_event)
     if (diff_result):
 
-        print("Check if relevant changes")
-        print(diff_result)
+        #print("Check if relevant changes")
+        #print(diff_result)
 
         for key in diff_result:
             if (key == 'values_changed'):
@@ -98,7 +113,7 @@ def has_event_changed(orig_event, new_event):
                         if has_self_declined(new_event):
                             # The current user has declined the event
                             print("The current user has declined")
-                            true_change = True
+                            return(True)
 
                         continue
 
@@ -113,40 +128,63 @@ def has_event_changed(orig_event, new_event):
                             # Found a change
                             print("Found a relevant change")
                             print(key2, ":", diff_extended_properties[key2])
-
-                            true_change == True
+                            return(True)
                         
+                        continue
+
+                    if re.search("root\['reminders'\]", key1):
+                        # A change in the reminders
+                        # Compare the max minutes to notify before in both original and new event
+                        orig_event_max_reminder_in_minutes = get_max_reminder_in_minutes(orig_event)
+                        new_event_max_reminder_in_minutes = get_max_reminder_in_minutes(new_event)
+                        
+                        if (orig_event_max_reminder_in_minutes != new_event_max_reminder_in_minutes):
+                            # The max reminder in minutes has changed
+                            print("The max reminder in minutes has changed")
+                            return(True)
+
                         continue
 
                     # Found a change
                     print("Found a relevant change")
                     print(key1, ":", diff_result['values_changed'][key1])
-
-                    true_change = True
+                    return(True)
                 
                 continue
             # key == 'values_changed'
 
-            elif (key == 'iterable_item_added'):
-                for key1 in diff_result['iterable_item_added']:
+            elif (key == 'iterable_item_added' or key == 'iterable_item_removed' or key == 'dictionary_item_added'):
+                for key1 in diff_result[key]:
                     if re.search("root\['attendees'\]\[[0-9]+\]", key1):
                         # An attendee added - can be ignored
                         continue
 
+                    if re.search("root\['reminders'\]", key1):
+                        # A change in the reminders
+                        # Compare the max minutes to notify before in both original and new event
+                        orig_event_max_reminder_in_minutes = get_max_reminder_in_minutes(orig_event)
+                        new_event_max_reminder_in_minutes = get_max_reminder_in_minutes(new_event)
+                        
+                        if (orig_event_max_reminder_in_minutes != new_event_max_reminder_in_minutes):
+                            # The max reminder in minutes has changed
+                            print("The max reminder in minutes has changed")
+                            return(True)
+
+                        continue
+
                     # Found a change
                     print("Found a relevant change")
-                    print(key1, ":", diff_result['iterable_item_added'][key1])
-
-                    true_change = True
+                    print(key1, ":", diff_result[key][key1])
+                    return(True)
 
                 continue
-            # key == 'values_changed'
+            # key == 'iterable_item_added' or or key == 'iterable_item_removed'
 
             print("Found a relevant change")
             print(key, ":", diff_result[key])
-            true_change = True
+            return(True)
 
-    return(true_change)
+    return(False)
 
 # The notification window
 class Window(QMainWindow, Ui_w_event):
@@ -372,20 +410,24 @@ class Window(QMainWindow, Ui_w_event):
                 return(raw_event)
                 break
 
-    def update_controls_based_on_event_time(self, p_changes_should_be_reflected):
+    def update_controls_based_on_event_time(self, p_is_first_display_of_window):
         global g_win_exit_reason
 
-        l_changes_should_be_reflected = p_changes_should_be_reflected
+        if (p_is_first_display_of_window):
+            l_changes_should_be_reflected = True
+        else:
+            l_changes_should_be_reflected = False
 
-        # Let's first check that the event has not changed
-        raw_event = self.get_one_event_from_google_cal_with_try(
-            self.c_parsed_event['google_account'],
-            self.c_parsed_event['raw_event']['id'])
-        if((raw_event is None) or has_event_changed(self.c_parsed_event['raw_event'], raw_event)):
-            # The event has changed, closing the window to refresh the event
-            g_win_exit_reason = EXIT_REASON_NONE
-            self.close()
-            return()
+            # Let's first check that the event has not changed
+            raw_event = self.get_one_event_from_google_cal_with_try(
+                self.c_parsed_event['google_account'],
+                self.c_parsed_event['raw_event']['id'])
+            if((raw_event is None) or has_event_changed(self.c_parsed_event['raw_event'], raw_event)):
+                # The event has changed, closing the window to refresh the event
+                #print("event changed - update_controls_based_on_event_time")
+                g_win_exit_reason = EXIT_REASON_NONE
+                self.close()
+                return()
 
         now_datetime = get_now_datetime()
 
@@ -636,16 +678,10 @@ def parse_event(event, parsed_event):
     if has_self_declined(event):
         return(False)
 
-    if (event['reminders'].get('useDefault') == True):
-        minutes_before = 15
-    else:
-        override_rule = event['reminders'].get('overrides')
-        if (override_rule):
-            override_set = override_rule[0]
-            minutes_before = override_set['minutes']
-        else:
-            g_logger.debug("No need to remind")
-            return(False)
+    minutes_before_to_notify = get_max_reminder_in_minutes(event)
+    if (minutes_before_to_notify == NO_POPUP_REMINDER):
+        # No notification reminders
+        return(False)
 
     # Event needs to be reminded, check if it is the time to remind
     start_day = event['start'].get('dateTime')
@@ -664,7 +700,7 @@ def parse_event(event, parsed_event):
         parsed_event['end_date']=datetime.datetime.strptime(end_day, '%Y-%m-%dT%H:%M:%S%z')
 
     # Compute the time to wake up
-    delta_diff = datetime.timedelta(minutes=minutes_before)
+    delta_diff = datetime.timedelta(minutes=minutes_before_to_notify)
     reminder_time = parsed_event['start_date'] - delta_diff
     now_datetime = get_now_datetime()
     if(now_datetime < reminder_time):
