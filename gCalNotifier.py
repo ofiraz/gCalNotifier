@@ -72,7 +72,7 @@ def has_self_declined(event):
     # The event was not declined by the current user
     return(False)
 
-def event_changed(orig_event, new_event):
+def has_event_changed(orig_event, new_event):
     true_change = False
 
 #    print("Check for changes")
@@ -381,7 +381,7 @@ class Window(QMainWindow, Ui_w_event):
         raw_event = self.get_one_event_from_google_cal_with_try(
             self.c_parsed_event['google_account'],
             self.c_parsed_event['raw_event']['id'])
-        if((raw_event is None) or event_changed(self.c_parsed_event['raw_event'], raw_event)):
+        if((raw_event is None) or has_event_changed(self.c_parsed_event['raw_event'], raw_event)):
             # The event has changed, closing the window to refresh the event
             g_win_exit_reason = EXIT_REASON_NONE
             self.close()
@@ -824,7 +824,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
 
         with g_dismissed_lock:
             if (event_key_str in g_dismissed_events):
-                if not event_changed(g_dismissed_events[event_key_str]['raw_event'], event):
+                if not has_event_changed(g_dismissed_events[event_key_str]['raw_event'], event):
                     g_logger.debug("Skipping dismissed event")
                     continue
 
@@ -834,7 +834,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
 
         with g_snoozed_lock:
             if (event_key_str in g_snoozed_events):
-                if not event_changed(g_snoozed_events[event_key_str]['raw_event'], event):
+                if not has_event_changed(g_snoozed_events[event_key_str]['raw_event'], event):
                     g_logger.debug("Skipping snoozed event")
                     continue
 
