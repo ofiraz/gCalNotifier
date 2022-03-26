@@ -770,12 +770,15 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
             excType = str(e.__class__.__name__)
             excMesg = str(e)
 
-            if ((excType == "ServerNotFoundError") 
-            or (excType == "timeout") 
-            or (excType == "TimeoutError") 
-            or (excType == "ConnectionResetError")
-            or (excType == "TransportError")
-            or (excType == "OSError" and excMesg == "[Errno 51] Network is unreachable")
+            if (
+                (excType == "ServerNotFoundError") 
+                or (excType == "timeout") 
+                or (excType == "TimeoutError") 
+                or (excType == "ConnectionResetError")
+                or (excType == "TransportError")
+                or (excType == "OSError" and 
+                    (excMesg == "[Errno 51] Network is unreachable" or 
+                    excMesg == "[Errno 65] No route to host"))
             ):
                 # Exceptions that chould be intermittent due to networking issues.
                 # We can wait for the next cycle and hope it will get resolved
