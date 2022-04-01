@@ -174,7 +174,7 @@ def has_event_changed(orig_event, new_event):
 
                     # Found a change
                     print("Found a relevant change")
-                    print(key1, ":", diff_result[key][key1])
+                    print(str(key1), ":", str(diff_result[key][key1]))
                     return(True)
 
                 continue
