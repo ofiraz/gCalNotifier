@@ -90,7 +90,7 @@ def get_max_reminder_in_minutes(p_event):
     return(max_minutes_before)
 
 def has_event_changed(orig_event, new_event):
-#    print("Check for changes")
+    #print("Check for changes")
 
     diff_result = DeepDiff(orig_event, new_event)
     if (diff_result):
@@ -174,7 +174,7 @@ def has_event_changed(orig_event, new_event):
 
                     # Found a change
                     print("Found a relevant change")
-                    print(str(key1), ":", str(diff_result[key][key1]))
+                    print(key1)
                     return(True)
 
                 continue
