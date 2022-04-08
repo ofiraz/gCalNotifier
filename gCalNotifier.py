@@ -104,6 +104,7 @@ def has_event_changed(orig_event, new_event):
                     if (
                         key1 == "root['etag']" 
                         or key1 == "root['updated']" 
+                        or key1 == "root['recurringEventId']"
                     ):
                         # Not relevant changes
                         continue
