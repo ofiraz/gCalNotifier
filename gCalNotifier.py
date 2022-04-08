@@ -739,7 +739,7 @@ def parse_event(event, parsed_event):
         # description.
         if (meeting_description):
             zoom_url_in_description = re.search(
-                "(https://[a-zA-Z0-9]*\.zoom\.us/[a-zA-Z0-9?=/]*)", 
+                "(https://[a-zA-Z0-9-]*\.zoom\.us/[a-zA-Z0-9?=/]*)", 
                 meeting_description) 
             #print(zoom_url_in_description.group())
             if zoom_url_in_description:
