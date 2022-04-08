@@ -291,6 +291,7 @@ class Window(QMainWindow, Ui_w_event):
             self.c_video_link = parsed_event['video_link']
 
         if (self.c_video_link is None):
+            self.pb_open_video.setHidden(True)
             self.pb_open_video_and_snooze.setHidden(True)
             self.pb_open_video_and_dismiss.setHidden(True)
 
@@ -319,6 +320,7 @@ class Window(QMainWindow, Ui_w_event):
         self.pb_4h.clicked.connect(lambda: self.snooze_general(self.pb_4h))
         self.pb_8h.clicked.connect(lambda: self.snooze_general(self.pb_8h))
         self.timer.timeout.connect(lambda: self.update_controls_based_on_event_time(False)) 
+        self.pb_open_video.clicked.connect(self.open_video)
         self.pb_open_video_and_snooze.clicked.connect(self.open_video_and_snooze)
         self.pb_open_video_and_dismiss.clicked.connect(self.open_video_and_dismiss)
 
@@ -479,11 +481,14 @@ class Window(QMainWindow, Ui_w_event):
             # Set timer to wake up in half a minute
             self.timer.start(30 * 1000)
 
+    def open_video(self):
+        webbrowser.open(self.c_video_link)
+
     def open_video_and_snooze(self):
         global g_win_exit_reason
         global g_snooze_time_in_minutes
 
-        webbrowser.open(self.c_video_link)
+        self.open_video()
 
         g_win_exit_reason = EXIT_REASON_SNOOZE
 
@@ -494,7 +499,7 @@ class Window(QMainWindow, Ui_w_event):
     def open_video_and_dismiss(self):
         global g_win_exit_reason
 
-        webbrowser.open(self.c_video_link)
+        self.open_video()
 
         g_win_exit_reason = EXIT_REASON_DISMISS
     
