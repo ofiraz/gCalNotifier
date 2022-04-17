@@ -251,7 +251,7 @@ class Window(QMainWindow, Ui_w_event):
 
         self.setWindowTitle(parsed_event['event_name'])
 
-        self.l_account.setText(parsed_event['google_account'])
+        self.l_account.setText(parsed_event['cal name'] + " calendar in " + parsed_event['google_account'])
 
         self.l_event_name.setText(parsed_event['event_name'])
 
