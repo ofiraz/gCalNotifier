@@ -1,8 +1,14 @@
 {
     "google accounts": 
     [
-        "ofir@anjuna.io",
-        "ofiraz@gmail.com"
+        {"account name" : "ofir@anjuna.io"},
+        {
+            "account name" : "ofiraz@gmail.com",
+            "additional calenadars":
+                [
+                    "Family"
+                ]
+        }
     ],
     "log level":20,
     "refresh frequency":10

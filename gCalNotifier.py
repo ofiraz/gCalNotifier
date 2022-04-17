@@ -983,7 +983,13 @@ def load_config():
     if (not g_google_accounts):
         print("No \'google accounts\' defined in the config file")
         sys.exit()
-    
+
+    for google_account in g_google_accounts:
+        account_name = google_account.get("account name")
+        if (not account_name):
+            print ("No \'account name\' defined for a google account entry")
+            sys.exit()
+ 
     g_log_level = g_config.get("log level")
     if (not g_log_level):
         g_log_level = logging.INFO
@@ -992,11 +998,82 @@ def load_config():
     if (not g_refresh_frequency):
         g_refresh_frequency = 30
 
+def get_calendar_list_for_account(google_account):
+    global g_logger
+
+    google_account_name = google_account["account name"]
+    additional_calendars = google_account.get("additional calenadars")
+
+    # Init the list
+    calendar_list_for_account = [
+        {
+            'calendar name' : "Primary",
+            'calendar id' : "primary"
+        }
+    ]
+    
+    # Connect to the Google Account
+    creds = None
+    Credentials_file = 'app_credentials.json'
+    token_file = google_account_name + '_token.json'
+
+    # The file token.json stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists(token_file):
+        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            g_logger.info("Creating a token for " + google_account_name)
+            flow = InstalledAppFlow.from_client_secrets_file(
+                Credentials_file, SCOPES)
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open(token_file, 'w') as token:
+            token.write(creds.to_json())
+
+    service = build('calendar', 'v3', credentials=creds)
+
+    print("Printing calendars for ", google_account_name)
+    page_token = None
+    while True:
+        calendar_list = service.calendarList().list(pageToken=page_token).execute()
+
+        for calendar_list_entry in calendar_list['items']:
+            prefix_text = "Don't include - "
+            if(additional_calendars and (calendar_list_entry['summary'] in additional_calendars)):
+                prefix_text = "*** Include - "
+                calendar_list_entry_to_add = {
+                    'calendar name' : calendar_list_entry['summary'],
+                    'calendar id' : calendar_list_entry['id']
+                }
+                calendar_list_for_account.append(calendar_list_entry_to_add)
+            print(prefix_text, calendar_list_entry['summary'], calendar_list_entry['id'])
+
+        page_token = calendar_list.get('nextPageToken')
+        if not page_token:
+            break
+
+    google_account["calendar list"] = calendar_list_for_account
+    print("The calendar list for ", google_account_name, ":")
+    print(calendar_list_for_account)
+
+def prep_google_accounts_and_calendars():
+    global g_google_accounts
+
+    for google_account in g_google_accounts:
+        get_calendar_list_for_account(google_account)
+
 # Main
 if __name__ == "__main__":
     load_config()
 
     init_global_objects()
+
+    prep_google_accounts_and_calendars()
 
     # Loop forever
     while True:
@@ -1005,7 +1082,7 @@ if __name__ == "__main__":
         set_items_to_present_from_snoozed(events_to_present)
 
         for google_account in g_google_accounts:
-            add_items_to_show_from_calendar(google_account, events_to_present)
+            add_items_to_show_from_calendar(google_account["account name"], events_to_present)
 
         present_relevant_events(events_to_present)
         clear_dismissed_events_that_have_ended()
