@@ -28,15 +28,22 @@ The format of the file is:
 {
     "google accounts": 
     [
-        "ofiraz@gmail.com",
-        "<account 2>",
+        {
+            "account name" : "ofiraz@gmail.com",
+            "additional calenadars":
+                [
+                    "Family"
+                ]
+        },
+        { "account name" : "<account 2>" },
         ...
-        "<account n>
+        {}
     ],
     "log level":<log level for the log file>, 
     "refresh frequency":<refresh frequency in seconds>
 }
 ```
+For an account you can include in the the `additional calenadars` the list of additional calanders besides the primary one. This field is optional.
 
 The `log level` parameter is optional. The value should be numeric according to [this table](https://docs.python.org/3/library/logging.html#logging-levels). The default value is 20 (`INFO`)
 
