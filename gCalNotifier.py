@@ -343,7 +343,7 @@ class Window(QMainWindow, Ui_w_event):
     
         self.close()
 
-    def get_one_event_from_google_cal(self, google_account, event_id):    
+    def get_one_event_from_google_cal(self, google_account, cal_id, event_id):    
         # Connect to the Google Account
         creds = None
         Credentials_file = 'app_credentials.json'
@@ -370,17 +370,17 @@ class Window(QMainWindow, Ui_w_event):
 
         # Call the Calendar API
         raw_event = service.events().get(
-            calendarId='primary',
+            calendarId=cal_id,
             eventId=str(event_id)).execute()
 
         return(raw_event)
 
-    def get_one_event_from_google_cal_with_try(self, google_account, event_id):
+    def get_one_event_from_google_cal_with_try(self, google_account, cal_id, event_id):
         num_of_retries = 0
     
         while num_of_retries <= 2:
             try: # In progress - handling intermittent exception from the Google service
-                raw_event = self.get_one_event_from_google_cal(google_account, event_id)
+                raw_event = self.get_one_event_from_google_cal(google_account, cal_id, event_id)
             except Exception as e:
                 excType = str(e.__class__.__name__)
                 excMesg = str(e)
@@ -425,6 +425,7 @@ class Window(QMainWindow, Ui_w_event):
             # Let's first check that the event has not changed
             raw_event = self.get_one_event_from_google_cal_with_try(
                 self.c_parsed_event['google_account'],
+                self.c_parsed_event['cal id'],
                 self.c_parsed_event['raw_event']['id'])
             if((raw_event is None) or has_event_changed(self.c_parsed_event['raw_event'], raw_event)):
                 # The event has changed, closing the window to refresh the event
@@ -548,7 +549,7 @@ def init_logging(module_name, file_log_level):
 
     return g_logger
 
-def get_events_from_google_cal(google_account):
+def get_events_from_google_cal(google_account, cal_name, cal_id):
     global g_logger
     
     # Connect to the Google Account
@@ -580,7 +581,7 @@ def get_events_from_google_cal(google_account):
     now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
     g_logger.debug('Getting the upcoming 10 events')
 
-    events_result = service.events().list(calendarId='primary', timeMin=now,
+    events_result = service.events().list(calendarId=cal_id, timeMin=now,
                                         maxResults=10, singleEvents=True,
                                         orderBy='startTime').execute()
 
@@ -793,7 +794,7 @@ def set_items_to_present_from_snoozed(events_to_present):
             g_logger.debug("Deleteing event id " + str(k) + " from snoozed")
             del g_snoozed_events[k]
 
-def add_items_to_show_from_calendar(google_account, events_to_present):
+def add_items_to_show_from_calendar(google_account, cal_name, cal_id, events_to_present):
     global g_dismissed_events
     global g_dismissed_lock
     global g_snoozed_events
@@ -808,7 +809,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
     num_of_retries = 0
     while num_of_retries <= 2:
         try: # In progress - handling intermittent exception from the Google service
-            events = get_events_from_google_cal(google_account)
+            events = get_events_from_google_cal(google_account, cal_name, cal_id)
         except Exception as e:
             excType = str(e.__class__.__name__)
             excMesg = str(e)
@@ -860,6 +861,7 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
         event_id = event['id']
         event_key = {
             'google_account' : google_account,
+            'cal_id' : cal_id,
             'event_id' : event_id
         }
         event_key_str = json.dumps(event_key)
@@ -898,6 +900,8 @@ def add_items_to_show_from_calendar(google_account, events_to_present):
         parsed_event['raw_event'] = event
         parsed_event['event_name'] = event.get('summary', '(No title)')
         parsed_event['google_account'] = google_account
+        parsed_event['cal name'] = cal_name
+        parsed_event['cal id'] = cal_id
         g_logger.debug("Event Name " + parsed_event['event_name'])
 
         need_to_notify = parse_event(event, parsed_event)
@@ -1082,7 +1086,13 @@ if __name__ == "__main__":
         set_items_to_present_from_snoozed(events_to_present)
 
         for google_account in g_google_accounts:
-            add_items_to_show_from_calendar(google_account["account name"], events_to_present)
+            for cal_for_account in google_account["calendar list"]:
+                #print(google_account["account name"], cal_for_account)
+                add_items_to_show_from_calendar(
+                    google_account["account name"], 
+                    cal_for_account['calendar name'], 
+                    cal_for_account['calendar id'],
+                    events_to_present)
 
         present_relevant_events(events_to_present)
         clear_dismissed_events_that_have_ended()
