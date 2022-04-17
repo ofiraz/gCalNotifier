@@ -105,6 +105,7 @@ def has_event_changed(orig_event, new_event):
                         key1 == "root['etag']" 
                         or key1 == "root['updated']" 
                         or key1 == "root['recurringEventId']"
+                        or key1 == "root['conferenceData']['signature']"
                     ):
                         # Not relevant changes
                         continue
