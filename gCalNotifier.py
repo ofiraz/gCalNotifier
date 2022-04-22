@@ -42,6 +42,54 @@ EXIT_REASON_NONE = 0
 EXIT_REASON_DISMISS = 1
 EXIT_REASON_SNOOZE = 2
 
+# Logger log levels
+LOG_LEVEL_CRITICAL = 50
+LOG_LEVEL_ERROR = 40
+LOG_LEVEL_WARNING = 30
+LOG_LEVEL_INFO = 20
+LOG_LEVEL_DEBUG = 10
+LOG_LEVEL_NOTSET = 0
+
+def init_logging(module_name, process_name, file_log_level, start_message_log_level):
+    # create logger
+    logger = logging.getLogger(module_name)
+    logger.setLevel(logging.DEBUG)
+
+    # create formatter
+    formatter = logging.Formatter('%(asctime)s - %(name)s - ' + process_name + ' - %(process)d - (%(threadName)-10s) - %(levelname)s - %(message)s')
+
+    # create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+
+    # add formatter to ch
+    console_handler.setFormatter(formatter)
+
+    # add ch to logger
+    logger.addHandler(console_handler)
+
+    # Create file handler
+    log_file = module_name + ".log"
+    max_log_file_size = 100 * 1024 * 1024
+    file_handler = RotatingFileHandler(
+        log_file,
+        mode='a',
+        maxBytes=max_log_file_size,
+        backupCount=5,
+        encoding='utf-8')
+
+    file_handler.setLevel(file_log_level)
+
+    file_handler.setFormatter(formatter)
+
+    logger.addHandler(file_handler)
+
+    logger.log(start_message_log_level, "========")
+    logger.log(start_message_log_level, "Starting")
+    logger.log(start_message_log_level, "========")
+
+    return logger
+
 def get_now_datetime():
     return(datetime.datetime.now().astimezone())
 
@@ -90,7 +138,9 @@ def get_max_reminder_in_minutes(p_event):
     return(max_minutes_before)
 
 def has_event_changed(orig_event, new_event):
-    #print("Check for changes")
+    global g_logger
+
+    g_logger.debug("Check for changes")
 
     diff_result = DeepDiff(orig_event, new_event)
     if (diff_result):
@@ -507,48 +557,6 @@ class Window(QMainWindow, Ui_w_event):
     
         self.close()
 
-def init_logging(module_name, file_log_level):
-    global g_logger
-
-    # create logger
-    g_logger = logging.getLogger(module_name)
-    g_logger.setLevel(logging.DEBUG)
-
-    # create formatter
-    formatter = logging.Formatter('%(asctime)s - %(name)s - (%(threadName)-10s) - %(levelname)s - %(message)s')
-
-    # create console handler
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.INFO)
-
-    # add formatter to ch
-    console_handler.setFormatter(formatter)
-
-    # add ch to logger
-    g_logger.addHandler(console_handler)
-
-    # Create file handler
-    log_file = module_name + ".log"
-    max_log_file_size = 100 * 1024 * 1024
-    file_handler = RotatingFileHandler(
-        log_file,
-        mode='a',
-        maxBytes=max_log_file_size,
-        backupCount=5,
-        encoding='utf-8')
-
-    file_handler.setLevel(file_log_level)
-
-    file_handler.setFormatter(formatter)
-
-    g_logger.addHandler(file_handler)
-
-    g_logger.info("========")
-    g_logger.info("Starting")
-    g_logger.info("========")
-
-    return g_logger
-
 def get_events_from_google_cal(google_account, cal_name, cal_id):
     global g_logger
     
@@ -589,9 +597,12 @@ def get_events_from_google_cal(google_account, cal_name, cal_id):
 
     return(events)
 
-def show_window(parsed_event, pipe_conn):
+def show_window(parsed_event, pipe_conn, log_level):
     global g_win_exit_reason
     global g_snooze_time_in_minutes
+    global g_logger
+
+    g_logger = init_logging("gCalNotifier", "Window", log_level, LOG_LEVEL_DEBUG)
 
     app = QApplication(sys.argv)
 
@@ -627,11 +638,12 @@ def show_window_and_parse_exit_status(event_key_str, parsed_event):
     global g_displayed_events
     global g_displayed_lock
     global g_logger
+    global g_log_level
 
     parent_conn, child_conn = Pipe()
     proc = Process(
         target = show_window,
-        args = (parsed_event, child_conn, ))
+        args = (parsed_event, child_conn, g_log_level))
     proc.start()
     proc.join()
 
@@ -972,7 +984,7 @@ def init_global_objects():
     g_displayed_events = {}
     g_displayed_lock = threading.Lock()
 
-    g_logger = init_logging("gCalNotifier", g_log_level)
+    g_logger = init_logging("gCalNotifier", "Main", g_log_level, LOG_LEVEL_INFO)
 
 def load_config():
     global g_config
