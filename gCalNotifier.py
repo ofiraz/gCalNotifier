@@ -205,8 +205,12 @@ def has_event_changed(orig_event, new_event):
                 continue
             # key == 'values_changed'
 
-            elif (key == 'iterable_item_added' or key == 'iterable_item_removed' or key == 'dictionary_item_added'):
+            elif (key == 'iterable_item_added' or key == 'iterable_item_removed' or key == 'dictionary_item_added' or key == 'dictionary_item_removed'):
                 for key1 in diff_result[key]:
+                    if (key1 == "root['conferenceData']['signature']"):
+                        # Not relevant changes
+                        continue
+                        
                     if re.search("root\['attendees'\]\[[0-9]+\]", key1):
                         # An attendee added - can be ignored
                         continue
@@ -759,7 +763,7 @@ def parse_event(event, parsed_event):
         # description.
         if (meeting_description):
             zoom_url_in_description = re.search(
-                "(https://[a-zA-Z0-9-]*\.zoom\.us/[a-zA-Z0-9?=/]*)", 
+                "(https://[a-zA-Z0-9-]*\.zoom\.us/[a-zA-Z0-9-\.&?=/]*)", 
                 meeting_description) 
             #print(zoom_url_in_description.group())
             if zoom_url_in_description:
