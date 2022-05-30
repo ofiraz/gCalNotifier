@@ -145,8 +145,8 @@ def has_event_changed(orig_event, new_event):
     diff_result = DeepDiff(orig_event, new_event)
     if (diff_result):
 
-        #print("Check if relevant changes")
-        #print(diff_result)
+        g_logger.debug("Check if relevant changes")
+        g_logger.debug(str(diff_result))
 
         for key in diff_result:
             if (key == 'values_changed'):
@@ -164,7 +164,7 @@ def has_event_changed(orig_event, new_event):
                         # A change in the attendees response
                         if has_self_declined(new_event):
                             # The current user has declined the event
-                            print("The current user has declined")
+                            g_logger.info("The current user has declined")
                             return(True)
 
                         continue
@@ -178,8 +178,8 @@ def has_event_changed(orig_event, new_event):
                                 continue
 
                             # Found a change
-                            print("Found a relevant change")
-                            print(key2, ":", diff_extended_properties[key2])
+                            g_logger.info("Found a relevant change")
+                            g_logger.info(key2 + ":" + str(diff_extended_properties[key2]))
                             return(True)
                         
                         continue
@@ -192,14 +192,14 @@ def has_event_changed(orig_event, new_event):
                         
                         if (orig_event_max_reminder_in_minutes != new_event_max_reminder_in_minutes):
                             # The max reminder in minutes has changed
-                            print("The max reminder in minutes has changed")
+                            g_logger.info("The max reminder in minutes has changed")
                             return(True)
 
                         continue
 
                     # Found a change
-                    print("Found a relevant change")
-                    print(key1, ":", diff_result['values_changed'][key1])
+                    g_logger.info("Found a relevant change")
+                    g_logger.info(key1 + ":" + str(diff_result['values_changed'][key1]))
                     return(True)
                 
                 continue
@@ -223,21 +223,21 @@ def has_event_changed(orig_event, new_event):
                         
                         if (orig_event_max_reminder_in_minutes != new_event_max_reminder_in_minutes):
                             # The max reminder in minutes has changed
-                            print("The max reminder in minutes has changed")
+                            g_logger.info("The max reminder in minutes has changed")
                             return(True)
 
                         continue
 
                     # Found a change
-                    print("Found a relevant change")
-                    print(key1)
+                    g_logger.info("Found a relevant change")
+                    g_logger.info(key1)
                     return(True)
 
                 continue
             # key == 'iterable_item_added' or or key == 'iterable_item_removed'
 
-            print("Found a relevant change")
-            print(key, ":", diff_result[key])
+            g_logger.info("Found a relevant change")
+            g_logger.info(key + ":" + str(diff_result[key]))
             return(True)
 
     return(False)
@@ -430,6 +430,8 @@ class Window(QMainWindow, Ui_w_event):
         return(raw_event)
 
     def get_one_event_from_google_cal_with_try(self, google_account, cal_id, event_id):
+        global g_logger
+
         num_of_retries = 0
     
         while num_of_retries <= 2:
@@ -450,11 +452,11 @@ class Window(QMainWindow, Ui_w_event):
                     # We can wait for the next cycle and hope it will get resolved
                     break
 
-                print("Error in get_events_from_google_cal for " + google_account)
-                print('Exception type ' + excType)
-                print('Exception msg ' + excMesg)
+                g_logger.info("Error in get_events_from_google_cal for " + google_account)
+                g_logger.info('Exception type ' + excType)
+                g_logger.info('Exception msg ' + excMesg)
 
-                print(traceback.format_exc())
+                g_logger.info(traceback.format_exc())
 
                 num_of_retries = num_of_retries + 1
 
@@ -470,6 +472,7 @@ class Window(QMainWindow, Ui_w_event):
 
     def update_controls_based_on_event_time(self, p_is_first_display_of_window):
         global g_win_exit_reason
+        global g_logger
 
         if (p_is_first_display_of_window):
             l_changes_should_be_reflected = True
@@ -483,7 +486,7 @@ class Window(QMainWindow, Ui_w_event):
                 self.c_parsed_event['raw_event']['id'])
             if((raw_event is None) or has_event_changed(self.c_parsed_event['raw_event'], raw_event)):
                 # The event has changed, closing the window to refresh the event
-                #print("event changed - update_controls_based_on_event_time")
+                g_logger.debug("event changed - update_controls_based_on_event_time")
                 g_win_exit_reason = EXIT_REASON_NONE
                 self.close()
                 return()
@@ -739,7 +742,6 @@ def look_for_video_link_in_meeting_description(p_meeting_description):
 def parse_event(event, parsed_event):
     global g_logger
 
-    #print(nice_json(event))
     g_logger.debug(nice_json(event))
 
     # Check if the event was not declined by the current user
@@ -953,7 +955,7 @@ def add_items_to_show_from_calendar(google_account, cal_name, cal_id, events_to_
         need_to_notify = parse_event(event, parsed_event)
         if (need_to_notify == True):
             # Event to get presented
-            #print(event)
+            g_logger.debug(str(event))
             events_to_present[event_key_str] = parsed_event
 
 def present_relevant_events(events_to_present):
@@ -1087,7 +1089,7 @@ def get_calendar_list_for_account(google_account):
 
     service = build('calendar', 'v3', credentials=creds)
 
-    print("Printing calendars for ", google_account_name)
+    g_logger.info("Printing calendars for " + google_account_name)
     page_token = None
     while True:
         calendar_list = service.calendarList().list(pageToken=page_token).execute()
@@ -1101,15 +1103,15 @@ def get_calendar_list_for_account(google_account):
                     'calendar id' : calendar_list_entry['id']
                 }
                 calendar_list_for_account.append(calendar_list_entry_to_add)
-            print(prefix_text, calendar_list_entry['summary'], calendar_list_entry['id'])
+            g_logger.info(prefix_text + " " + calendar_list_entry['summary'] + " " + calendar_list_entry['id'])
 
         page_token = calendar_list.get('nextPageToken')
         if not page_token:
             break
 
     google_account["calendar list"] = calendar_list_for_account
-    print("The calendar list for ", google_account_name, ":")
-    print(calendar_list_for_account)
+    g_logger.info("The calendar list for " + google_account_name + ":")
+    g_logger.info(str(calendar_list_for_account))
 
 def prep_google_accounts_and_calendars():
     global g_google_accounts
@@ -1133,7 +1135,7 @@ if __name__ == "__main__":
 
         for google_account in g_google_accounts:
             for cal_for_account in google_account["calendar list"]:
-                #print(google_account["account name"], cal_for_account)
+                g_logger.debug(google_account["account name"] + " " + str(cal_for_account))
                 add_items_to_show_from_calendar(
                     google_account["account name"], 
                     cal_for_account['calendar name'], 
