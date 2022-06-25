@@ -596,9 +596,14 @@ def get_events_from_google_cal(google_account, cal_name, cal_id):
     now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
     g_logger.debug('Getting the upcoming 10 events')
 
-    events_result = service.events().list(calendarId=cal_id, timeMin=now,
-                                        maxResults=10, singleEvents=True,
-                                        orderBy='startTime').execute()
+    events_result = service.events().list(
+        calendarId=cal_id, 
+        timeMin=now,
+        # timeMin='2022-06-24T11:30:00-07:00', 
+        # timeMax='2022-06-24T11:31:00-07:00',
+        maxResults=10, 
+        singleEvents=True,
+        orderBy='startTime').execute()
 
     events = events_result.get('items', [])
 
@@ -696,7 +701,7 @@ def show_window_and_parse_exit_status(event_key_str, parsed_event):
         del g_displayed_events[event_key_str]
 
 video_links_reg_exs = [
-    "(https://[a-zA-Z0-9-]*\.zoom\.us/[a-zA-Z0-9-\.&?=/]*)", # Zoom
+    "(https://[a-zA-Z0-9-]*\.zoom\.us/[a-zA-Z0-9-_\.&?=/]*)", # Zoom
     "Click here to join the meeting<(https://teams.microsoft.com/l/meetup-join/.*)>", # Meet   
     "[<>](https://[a-zA-Z0-9-]*\.webex\.com/[a-zA-Z0-9-]*/j\.php\?MTID=[a-zA-Z0-9-]*)[<>]" # Webex
 ]
