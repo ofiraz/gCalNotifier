@@ -744,6 +744,16 @@ def look_for_video_link_in_meeting_description(p_meeting_description):
     # No known video link found
     return("No Video")
 
+def get_number_of_attendees(event):
+    num_of_attendees = 0
+
+    if(event.get('attendees')):
+        # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
+        for attendee in event['attendees']:
+            num_of_attendees = num_of_attendees + 1
+
+    return(num_of_attendees)
+
 def parse_event(event, parsed_event):
     global g_logger
 
@@ -818,6 +828,9 @@ def parse_event(event, parsed_event):
             if (parsed_event['video_link'] == parsed_event['event_location']):
                 # The event location already contains the video link, no need to show it twice
                 parsed_event['video_link'] = "No Video"
+
+    num_of_attendees = get_number_of_attendees(event)
+    print(num_of_attendees)
 
     # The event needs to be notified
     return(True)
