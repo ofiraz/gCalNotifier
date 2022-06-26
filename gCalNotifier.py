@@ -353,6 +353,21 @@ class Window(QMainWindow, Ui_w_event):
         if (parsed_event['description'] != "No description"):
             self.t_description.setHtml(parsed_event['description'])
 
+        if (parsed_event['missing_video_link'] == True):
+            # We expect a video link as there are multiple attendees for this meeting
+            self.l_missing_video.setAutoFillBackground(True) # This is important!!
+            color  = QtGui.QColor(233, 10, 150)
+            alpha  = 140
+            values = "{r}, {g}, {b}, {a}".format(r = color.red(),
+                                                g = color.green(),
+                                                b = color.blue(),
+                                                a = alpha
+                                                )
+            self.l_missing_video.setStyleSheet("QLabel { background-color: rgba("+values+"); }")
+        else:
+            # No video link is missing - we can hide the special text
+            self.l_missing_video.setHidden(True)
+
         self.t_raw_event.setText(nice_json(parsed_event['raw_event']))
         self.tabWidget.setCurrentIndex(0)
         
@@ -830,7 +845,11 @@ def parse_event(event, parsed_event):
                 parsed_event['video_link'] = "No Video"
 
     num_of_attendees = get_number_of_attendees(event)
-    print(num_of_attendees)
+    if ((num_of_attendees > 1) and (parsed_event['video_link'] == "No Video")):
+        # Num of attendees > 1 and no video link
+        parsed_event['missing_video_link'] = True
+    else:
+        parsed_event['missing_video_link'] = False
 
     # The event needs to be notified
     return(True)
