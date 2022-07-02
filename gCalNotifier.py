@@ -346,7 +346,7 @@ class Window(QMainWindow, Ui_w_event):
             self.c_video_link = parsed_event['video_link']
 
         # Hide the missing video message - in the next section we will decide whether to show it
-        hide_missing_video = True
+        is_hide_missing_video = True
 
         if (self.c_video_link is None):
             self.pb_open_video.setHidden(True)
@@ -356,19 +356,27 @@ class Window(QMainWindow, Ui_w_event):
             if (parsed_event['num_of_attendees'] > 1):
             # Num of attendees > 1 and no video link
                 # We expect a video link as there are multiple attendees for this meeting
-                hide_missing_video = False
 
-                self.l_missing_video.setAutoFillBackground(True) # This is important!!
-                color  = QtGui.QColor(233, 10, 150)
-                alpha  = 140
-                values = "{r}, {g}, {b}, {a}".format(r = color.red(),
-                                                    g = color.green(),
-                                                    b = color.blue(),
-                                                    a = alpha
-                                                    )
-                self.l_missing_video.setStyleSheet("QLabel { background-color: rgba("+values+"); }")
+                # Let's check if we have our special sign
+                is_no_video_ok = re.search(
+                    'NO_VIDEO_OK',
+                    parsed_event['description'])
 
-        if (hide_missing_video):
+                if (not is_no_video_ok):
+                    # We need to show the missing video message
+                    is_hide_missing_video = False
+
+                    self.l_missing_video.setAutoFillBackground(True) # This is important!!
+                    color  = QtGui.QColor(233, 10, 150)
+                    alpha  = 140
+                    values = "{r}, {g}, {b}, {a}".format(r = color.red(),
+                                                        g = color.green(),
+                                                        b = color.blue(),
+                                                        a = alpha
+                                                        )
+                    self.l_missing_video.setStyleSheet("QLabel { background-color: rgba("+values+"); }")
+
+        if (is_hide_missing_video):
             self.l_missing_video.setHidden(True)
 
         if (parsed_event['description'] != "No description"):
