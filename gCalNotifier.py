@@ -914,6 +914,7 @@ def add_items_to_show_from_calendar(google_account, cal_name, cal_id, events_to_
                 or (excType == "ConnectionResetError")
                 or (excType == "TransportError")
                 or (excType == "HttpError")
+                or (excType == "SSLCertVerificationError")
                 or (excType == "OSError" and 
                     (excMesg == "[Errno 51] Network is unreachable" or 
                     excMesg == "[Errno 65] No route to host"))
