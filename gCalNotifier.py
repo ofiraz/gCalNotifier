@@ -975,23 +975,13 @@ def add_items_to_show_from_calendar(google_account, cal_name, cal_id, events_to_
 
         with g_dismissed_lock:
             if (event_key_str in g_dismissed_events):
-                if not has_event_changed(g_dismissed_events[event_key_str]['raw_event'], event):
-                    g_logger.debug("Skipping dismissed event")
-                    continue
-
-                # Something in the event has changed - we want to remove it from the skipped events and parse it from scratch
-                g_logger.debug("Dismissed event has changed after it was dismissed")
-                del g_dismissed_events[event_key_str]
+                g_logger.debug("Skipping dismissed event")
+                continue
 
         with g_snoozed_lock:
             if (event_key_str in g_snoozed_events):
-                if not has_event_changed(g_snoozed_events[event_key_str]['raw_event'], event):
-                    g_logger.debug("Skipping snoozed event")
-                    continue
-
-                # Something in the event has changed - we want to remove it from the snoozed events and parse it from scratch
-                g_logger.debug("Snoozed event has changed after it was dismissed")
-                del g_snoozed_events[event_key_str]
+                g_logger.debug("Skipping snoozed event")
+                continue
 
         with g_displayed_lock:
             if (event_key_str in g_displayed_events):
@@ -1050,7 +1040,18 @@ def clear_dismissed_events_that_have_ended():
     with g_dismissed_lock:
         for k, parsed_event in g_dismissed_events.items():
             g_logger.debug("Dismissed event " + str(k) + " " + str(parsed_event['end_date']) + " " + str(now_datetime))
-            if (now_datetime > parsed_event['end_date']):
+
+            # First check if the event still exists
+            raw_event = get_one_event_from_google_cal_with_try(
+                parsed_event['google_account'],
+                parsed_event['cal id'],
+                parsed_event['raw_event']['id'])
+            if((raw_event is None) or has_event_changed(parsed_event['raw_event'], raw_event)):
+                # The event has changed, we will let the system re-parse the event as new
+                g_logger.info("event changed - clear_dismissed_events_that_have_ended")
+                dismissed_events_to_delete.append(k)
+
+            elif (now_datetime > parsed_event['end_date']):
                 dismissed_events_to_delete.append(k)
 
         while (len(dismissed_events_to_delete) > 0):
