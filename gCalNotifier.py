@@ -56,7 +56,7 @@ def init_logging(module_name, process_name, file_log_level, start_message_log_le
     logger.setLevel(logging.DEBUG)
 
     # create formatter
-    formatter = logging.Formatter('%(asctime)s - %(name)s - ' + process_name + ' - %(process)d - (%(threadName)-10s) - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(lineno)d - ' + process_name + ' - %(process)d - (%(threadName)-10s) - %(levelname)s - %(message)s')
 
     # create console handler
     console_handler = logging.StreamHandler()
@@ -242,6 +242,79 @@ def has_event_changed(orig_event, new_event):
 
     return(False)
 
+def get_one_event_from_google_cal(google_account, cal_id, event_id):    
+    # Connect to the Google Account
+    creds = None
+    Credentials_file = 'app_credentials.json'
+    token_file = google_account + '_token.json'
+
+    # The file token.json stores the user's access and refresh tokens, and is
+    # created automatically when the authorization flow completes for the first
+    # time.
+    if os.path.exists(token_file):
+        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                Credentials_file, SCOPES)
+            creds = flow.run_local_server(port=0)
+        # Save the credentials for the next run
+        with open(token_file, 'w') as token:
+            token.write(creds.to_json())
+
+    service = build('calendar', 'v3', credentials=creds)
+
+    # Call the Calendar API
+    raw_event = service.events().get(
+        calendarId=cal_id,
+        eventId=str(event_id)).execute()
+
+    return(raw_event)
+
+def get_one_event_from_google_cal_with_try(google_account, cal_id, event_id):
+    global g_logger
+
+    num_of_retries = 0
+
+    while num_of_retries <= 2:
+        try: # In progress - handling intermittent exception from the Google service
+            raw_event = get_one_event_from_google_cal(google_account, cal_id, event_id)
+        except Exception as e:
+            excType = str(e.__class__.__name__)
+            excMesg = str(e)
+
+            if ((excType == "ServerNotFoundError") 
+            or (excType == "timeout") 
+            or (excType == "TimeoutError") 
+            or (excType == "ConnectionResetError")
+            or (excType == "TransportError")
+            or (excType == "OSError" and excMesg == "[Errno 51] Network is unreachable")
+            ):
+                # Exceptions that chould be intermittent due to networking issues.
+                # We can wait for the next cycle and hope it will get resolved
+                break
+
+            g_logger.info("Error in get_events_from_google_cal for " + google_account)
+            g_logger.info('Exception type ' + excType)
+            g_logger.info('Exception msg ' + excMesg)
+
+            g_logger.info(traceback.format_exc())
+
+            num_of_retries = num_of_retries + 1
+
+            if (num_of_retries > 2):
+                raise
+            else:
+                # Sleep for 2 seconds and retry
+                time.sleep(2)
+        else:
+            # Getting the event was successful
+            return(raw_event)
+            break
+
 # The notification window
 class Window(QMainWindow, Ui_w_event):
     c_snooze_buttons = {}
@@ -426,79 +499,6 @@ class Window(QMainWindow, Ui_w_event):
     
         self.close()
 
-    def get_one_event_from_google_cal(self, google_account, cal_id, event_id):    
-        # Connect to the Google Account
-        creds = None
-        Credentials_file = 'app_credentials.json'
-        token_file = google_account + '_token.json'
-
-        # The file token.json stores the user's access and refresh tokens, and is
-        # created automatically when the authorization flow completes for the first
-        # time.
-        if os.path.exists(token_file):
-            creds = Credentials.from_authorized_user_file(token_file, SCOPES)
-        # If there are no (valid) credentials available, let the user log in.
-        if not creds or not creds.valid:
-            if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    Credentials_file, SCOPES)
-                creds = flow.run_local_server(port=0)
-            # Save the credentials for the next run
-            with open(token_file, 'w') as token:
-                token.write(creds.to_json())
-
-        service = build('calendar', 'v3', credentials=creds)
-
-        # Call the Calendar API
-        raw_event = service.events().get(
-            calendarId=cal_id,
-            eventId=str(event_id)).execute()
-
-        return(raw_event)
-
-    def get_one_event_from_google_cal_with_try(self, google_account, cal_id, event_id):
-        global g_logger
-
-        num_of_retries = 0
-    
-        while num_of_retries <= 2:
-            try: # In progress - handling intermittent exception from the Google service
-                raw_event = self.get_one_event_from_google_cal(google_account, cal_id, event_id)
-            except Exception as e:
-                excType = str(e.__class__.__name__)
-                excMesg = str(e)
-
-                if ((excType == "ServerNotFoundError") 
-                or (excType == "timeout") 
-                or (excType == "TimeoutError") 
-                or (excType == "ConnectionResetError")
-                or (excType == "TransportError")
-                or (excType == "OSError" and excMesg == "[Errno 51] Network is unreachable")
-                ):
-                    # Exceptions that chould be intermittent due to networking issues.
-                    # We can wait for the next cycle and hope it will get resolved
-                    break
-
-                g_logger.info("Error in get_events_from_google_cal for " + google_account)
-                g_logger.info('Exception type ' + excType)
-                g_logger.info('Exception msg ' + excMesg)
-
-                g_logger.info(traceback.format_exc())
-
-                num_of_retries = num_of_retries + 1
-
-                if (num_of_retries > 2):
-                    raise
-                else:
-                    # Sleep for 2 seconds and retry
-                    time.sleep(2)
-            else:
-                # Getting the event was successful
-                return(raw_event)
-                break
-
     def update_controls_based_on_event_time(self, p_is_first_display_of_window):
         global g_win_exit_reason
         global g_logger
@@ -509,7 +509,7 @@ class Window(QMainWindow, Ui_w_event):
             l_changes_should_be_reflected = False
 
             # Let's first check that the event has not changed
-            raw_event = self.get_one_event_from_google_cal_with_try(
+            raw_event = get_one_event_from_google_cal_with_try(
                 self.c_parsed_event['google_account'],
                 self.c_parsed_event['cal id'],
                 self.c_parsed_event['raw_event']['id'])
@@ -876,7 +876,18 @@ def set_items_to_present_from_snoozed(events_to_present):
     with g_snoozed_lock:
         for event_key_str, snoozed_event in g_snoozed_events.items():
             g_logger.debug("Snoozed event " + event_key_str + " " + str(snoozed_event['event_wakeup_time']) + " " + str(now_datetime))
-            if (now_datetime >= snoozed_event['event_wakeup_time']):
+
+            # First check if the event still exists
+            raw_event = get_one_event_from_google_cal_with_try(
+                snoozed_event['google_account'],
+                snoozed_event['cal id'],
+                snoozed_event['raw_event']['id'])
+            if((raw_event is None) or has_event_changed(snoozed_event['raw_event'], raw_event)):
+                # The event has changed, we will let the system re-parse the event as new
+                g_logger.info("event changed - set_items_to_present_from_snoozed")
+                snoozed_events_to_delete.append(event_key_str)
+
+            elif (now_datetime >= snoozed_event['event_wakeup_time']):
                 # Event needs to be woke up
                 events_to_present[event_key_str] = snoozed_event
                 snoozed_events_to_delete.append(event_key_str)
