@@ -627,7 +627,7 @@ def get_events_from_google_cal(google_account, cal_name, cal_id):
 
     events_result = service.events().list(
         calendarId=cal_id, 
-        #timeMin=now,
+        timeMin=now,
         #timeMin='2022-09-30T11:00:00-07:00', 
         #timeMax='2022-09-30T11:31:00-07:00',
         maxResults=10, 
