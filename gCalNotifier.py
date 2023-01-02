@@ -137,7 +137,7 @@ def get_max_reminder_in_minutes(p_event):
 
     return(max_minutes_before)
 
-def has_event_changed(orig_event, new_event):
+def has_event_changed_internal(orig_event, new_event):
     global g_logger
 
     g_logger.debug("Check for changes")
@@ -239,6 +239,15 @@ def has_event_changed(orig_event, new_event):
             g_logger.info("Found a relevant change")
             g_logger.info(key + ":" + str(diff_result[key]))
             return(True)
+
+    return(False)
+
+def has_event_changed(orig_event, new_event):
+    global g_logger
+
+    if (has_event_changed_internal(orig_event, new_event)):
+        g_logger.info("*********** " + orig_event.get('summary', '(No title)') + " ***********")
+        return(True)
 
     return(False)
 
