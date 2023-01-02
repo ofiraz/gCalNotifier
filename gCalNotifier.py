@@ -1051,18 +1051,25 @@ def clear_dismissed_events_that_have_ended():
         for k, parsed_event in g_dismissed_events.items():
             g_logger.debug("Dismissed event " + str(k) + " " + str(parsed_event['end_date']) + " " + str(now_datetime))
 
-            # First check if the event still exists
-            raw_event = get_one_event_from_google_cal_with_try(
-                parsed_event['google_account'],
-                parsed_event['cal id'],
-                parsed_event['raw_event']['id'])
-            if((raw_event is None) or has_event_changed(parsed_event['raw_event'], raw_event)):
-                # The event has changed, we will let the system re-parse the event as new
-                g_logger.info("event changed - clear_dismissed_events_that_have_ended")
+            if (now_datetime > parsed_event['end_date']):
+                # The event has ended
                 dismissed_events_to_delete.append(k)
 
-            elif (now_datetime > parsed_event['end_date']):
-                dismissed_events_to_delete.append(k)
+            else:
+                # Get the raw event
+                raw_event = get_one_event_from_google_cal_with_try(
+                    parsed_event['google_account'],
+                    parsed_event['cal id'],
+                    parsed_event['raw_event']['id'])
+                
+                if (raw_event is None):
+                    # The event does not exist
+                    g_logger.info("event does not exist - clear_dismissed_events_that_have_ended")
+                    dismissed_events_to_delete.append(k)
+                elif has_event_changed(parsed_event['raw_event'], raw_event):
+                    # The event has changed, we will let the system re-parse the event as new
+                    g_logger.info("event changed - clear_dismissed_events_that_have_ended")
+                    dismissed_events_to_delete.append(k)
 
         while (len(dismissed_events_to_delete) > 0):
             k = dismissed_events_to_delete.pop()
