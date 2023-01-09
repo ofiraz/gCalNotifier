@@ -156,6 +156,7 @@ def has_event_changed_internal(orig_event, new_event):
                         or key1 == "root['updated']" 
                         or key1 == "root['recurringEventId']"
                         or key1 == "root['conferenceData']['signature']"
+                        or key1 == "root['iCalUID']"
                     ):
                         # Not relevant changes
                         continue
@@ -892,7 +893,13 @@ def set_items_to_present_from_snoozed(events_to_present):
                 snoozed_event['google_account'],
                 snoozed_event['cal id'],
                 snoozed_event['raw_event']['id'])
-            if((raw_event is None) or has_event_changed(snoozed_event['raw_event'], raw_event)):
+            
+            if(raw_event is None):
+                # The event does not exist anymore
+                g_logger.debug("event does not exist anymore - set_items_to_present_from_snoozed")
+                snoozed_events_to_delete.append(event_key_str)
+
+            elif(has_event_changed(snoozed_event['raw_event'], raw_event)):
                 # The event has changed, we will let the system re-parse the event as new
                 g_logger.info("event changed - set_items_to_present_from_snoozed")
                 snoozed_events_to_delete.append(event_key_str)
@@ -1053,6 +1060,9 @@ def clear_dismissed_events_that_have_ended():
 
             if (now_datetime > parsed_event['end_date']):
                 # The event has ended
+                g_logger.info("Event end date has passed - clear_dismissed_events_that_have_ended")
+                g_logger.info("Dismissed event end date" + str(parsed_event['end_date']))
+
                 dismissed_events_to_delete.append(k)
 
             else:
@@ -1065,6 +1075,8 @@ def clear_dismissed_events_that_have_ended():
                 if (raw_event is None):
                     # The event does not exist
                     g_logger.info("event does not exist - clear_dismissed_events_that_have_ended")
+                    g_logger.info("Dismissed event end date" + str(parsed_event['end_date']))
+                    
                     dismissed_events_to_delete.append(k)
                 elif has_event_changed(parsed_event['raw_event'], raw_event):
                     # The event has changed, we will let the system re-parse the event as new
