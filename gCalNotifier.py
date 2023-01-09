@@ -12,6 +12,8 @@ from PyQt5 import QtCore
 from gCalNotifier_ui import Ui_w_event
 
 import datetime
+import pytz
+from tzlocal import get_localzone
 import os.path
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -397,8 +399,11 @@ class Window(QMainWindow, Ui_w_event):
         else:
             self.l_all_day.setHidden(True)
 
-        self.l_event_start.setText('Starting at ' + str(parsed_event['start_date']))
-        self.l_event_end.setText('Ending at ' + str(parsed_event['end_date']))
+        parsed_event['start_time_in_loacal_tz'] = str(parsed_event['start_date'].astimezone(get_localzone()))
+        parsed_event['end_time_in_loacal_tz'] = str(parsed_event['end_date'].astimezone(get_localzone()))
+
+        self.l_event_start.setText('Starting at ' + parsed_event['start_time_in_loacal_tz'])
+        self.l_event_end.setText('Ending at ' + parsed_event['end_time_in_loacal_tz'])
 
         self.l_event_link.setText("<a href=\"" + parsed_event['html_link'] + "\">Link to event in GCal</a>")
         self.l_event_link.setToolTip(parsed_event['html_link'])
@@ -561,12 +566,12 @@ class Window(QMainWindow, Ui_w_event):
 
             # Change the start label if not changed yet
             if (self.c_updated_label_post_start == False):
-                self.l_event_start.setText('Event started at ' + str(self.c_parsed_event['start_date']))
+                self.l_event_start.setText('Event started at ' + self.c_parsed_event['start_time_in_loacal_tz'])
                 self.c_updated_label_post_start = True
 
             if (self.c_parsed_event['end_date'] <= now_datetime):
                 # Event has ended - just change the label and no need to trigger the event anymore
-                self.l_event_end.setText('Event ended at ' + str(self.c_parsed_event['end_date']))
+                self.l_event_end.setText('Event ended at ' + str(self.c_parsed_event['end_time_in_loacal_tz']))
                 self.c_updated_label_post_end = True
 
         if (l_changes_should_be_reflected):
