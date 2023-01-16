@@ -1028,6 +1028,13 @@ def add_items_to_show_from_calendar(google_account, cal_name, cal_id, events_to_
             g_logger.debug(str(event))
             events_to_present[event_key_str] = parsed_event
 
+            g_logger.info(
+                "Event to be presented - "
+                + " " + parsed_event['event_name'] 
+                + " " + parsed_event['google_account'] 
+                + " " + parsed_event['cal id']
+                + " " + parsed_event['raw_event']['id'])
+
 def present_relevant_events(events_to_present):
     global g_displayed_events
     global g_displayed_lock
@@ -1065,8 +1072,8 @@ def clear_dismissed_events_that_have_ended():
 
             if (now_datetime > parsed_event['end_date']):
                 # The event has ended
-                g_logger.info("Event end date has passed - clear_dismissed_events_that_have_ended")
-                g_logger.info("Dismissed event end date" + str(parsed_event['end_date']))
+                g_logger.debug("Event end date has passed - clear_dismissed_events_that_have_ended")
+                g_logger.debug("Dismissed event end date" + str(parsed_event['end_date']))
 
                 dismissed_events_to_delete.append(k)
 
@@ -1080,7 +1087,12 @@ def clear_dismissed_events_that_have_ended():
                 if (raw_event is None):
                     # The event does not exist
                     g_logger.info("event does not exist - clear_dismissed_events_that_have_ended")
-                    g_logger.info("Dismissed event end date" + str(parsed_event['end_date']))
+                    g_logger.info("event name - " + parsed_event['event_name'])
+                    g_logger.info(parsed_event['google_account'])
+                    g_logger.info(parsed_event['cal id'])
+                    g_logger.info(parsed_event['raw_event']['id'])
+
+                    g_logger.info("Dismissed event end date " + str(parsed_event['end_date']))
                     
                     dismissed_events_to_delete.append(k)
                 elif has_event_changed(parsed_event['raw_event'], raw_event):
