@@ -245,11 +245,29 @@ def has_event_changed_internal(orig_event, new_event):
 
     return(False)
 
-def has_event_changed(orig_event, new_event):
+def has_event_changed(orig_event):
     global g_logger
 
-    if (has_event_changed_internal(orig_event, new_event)):
-        g_logger.info("*********** " + orig_event.get('summary', '(No title)') + " ***********")
+    try:
+        # First check if the event still exists
+        raw_event = get_one_event_from_google_cal_with_try(
+            orig_event['google_account'],
+            orig_event['cal id'],
+            orig_event['raw_event']['id'])
+
+    except ConnectivityIssue:
+        # Having a connectivity issue - we will assume the event did not change in the g-cal
+        return False
+
+    if(raw_event is None):
+        # The event does not exist anymore
+        g_logger.info("event does not exist anymore - strange")
+        g_logger.info("*********** " + orig_event['event_name'] + " ***********")
+
+        return True
+
+    if (has_event_changed_internal(orig_event['raw_event'], raw_event)):
+        g_logger.info("*********** " + orig_event['event_name'] + " ***********")
         return(True)
 
     return(False)
@@ -286,12 +304,16 @@ def get_one_event_from_google_cal(google_account, cal_id, event_id):
 
     return(raw_event)
 
+class ConnectivityIssue(Exception):
+    pass
+
 def get_one_event_from_google_cal_with_try(google_account, cal_id, event_id):
     global g_logger
 
     num_of_retries = 0
+    none_networking_known_exception = False
 
-    while num_of_retries <= 2:
+    while True:
         try: # In progress - handling intermittent exception from the Google service
             raw_event = get_one_event_from_google_cal(google_account, cal_id, event_id)
         except Exception as e:
@@ -306,26 +328,37 @@ def get_one_event_from_google_cal_with_try(google_account, cal_id, event_id):
             or (excType == "OSError" and excMesg == "[Errno 51] Network is unreachable")
             ):
                 # Exceptions that chould be intermittent due to networking issues.
-                # We can wait for the next cycle and hope it will get resolved
-                break
 
-            g_logger.info("Error in get_events_from_google_cal for " + google_account)
-            g_logger.info('Exception type ' + excType)
-            g_logger.info('Exception msg ' + excMesg)
+                g_logger.info('Networking issue with Exception type ' + excType)
 
-            g_logger.info(traceback.format_exc())
+            else:
+                # Not a known exception
+
+                none_networking_known_exception = True
+
+                g_logger.info("Error in get_events_from_google_cal for " + google_account)
+                g_logger.info('Exception type ' + excType)
+                g_logger.info('Exception msg ' + excMesg)
+
+                g_logger.info(traceback.format_exc())
 
             num_of_retries = num_of_retries + 1
 
             if (num_of_retries > 2):
-                raise
+                if (none_networking_known_exception):
+                    # An unknown exception has happened
+                    raise
+                else:
+                    # Only known connectivity issues have happend
+                    g_logger.info('Only know connectivity issues have happend')
+                    raise ConnectivityIssue()
+
             else:
                 # Sleep for 2 seconds and retry
                 time.sleep(2)
         else:
             # Getting the event was successful
             return(raw_event)
-            break
 
 # The notification window
 class Window(QMainWindow, Ui_w_event):
@@ -524,11 +557,7 @@ class Window(QMainWindow, Ui_w_event):
             l_changes_should_be_reflected = False
 
             # Let's first check that the event has not changed
-            raw_event = get_one_event_from_google_cal_with_try(
-                self.c_parsed_event['google_account'],
-                self.c_parsed_event['cal id'],
-                self.c_parsed_event['raw_event']['id'])
-            if((raw_event is None) or has_event_changed(self.c_parsed_event['raw_event'], raw_event)):
+            if(has_event_changed(self.c_parsed_event)):
                 # The event has changed, closing the window to refresh the event
                 g_logger.debug("event changed - update_controls_based_on_event_time")
                 g_win_exit_reason = EXIT_REASON_NONE
@@ -893,18 +922,7 @@ def set_items_to_present_from_snoozed(events_to_present):
         for event_key_str, snoozed_event in g_snoozed_events.items():
             g_logger.debug("Snoozed event " + event_key_str + " " + str(snoozed_event['event_wakeup_time']) + " " + str(now_datetime))
 
-            # First check if the event still exists
-            raw_event = get_one_event_from_google_cal_with_try(
-                snoozed_event['google_account'],
-                snoozed_event['cal id'],
-                snoozed_event['raw_event']['id'])
-            
-            if(raw_event is None):
-                # The event does not exist anymore
-                g_logger.debug("event does not exist anymore - set_items_to_present_from_snoozed")
-                snoozed_events_to_delete.append(event_key_str)
-
-            elif(has_event_changed(snoozed_event['raw_event'], raw_event)):
+            if(has_event_changed(snoozed_event)):
                 # The event has changed, we will let the system re-parse the event as new
                 g_logger.info("event changed - set_items_to_present_from_snoozed")
                 snoozed_events_to_delete.append(event_key_str)
@@ -1028,7 +1046,7 @@ def add_items_to_show_from_calendar(google_account, cal_name, cal_id, events_to_
             g_logger.debug(str(event))
             events_to_present[event_key_str] = parsed_event
 
-            g_logger.info(
+            g_logger.debug(
                 "Event to be presented - "
                 + " " + parsed_event['event_name'] 
                 + " " + parsed_event['google_account'] 
@@ -1077,28 +1095,10 @@ def clear_dismissed_events_that_have_ended():
 
                 dismissed_events_to_delete.append(k)
 
-            else:
-                # Get the raw event
-                raw_event = get_one_event_from_google_cal_with_try(
-                    parsed_event['google_account'],
-                    parsed_event['cal id'],
-                    parsed_event['raw_event']['id'])
-                
-                if (raw_event is None):
-                    # The event does not exist
-                    g_logger.info("event does not exist - clear_dismissed_events_that_have_ended")
-                    g_logger.info("event name - " + parsed_event['event_name'])
-                    g_logger.info(parsed_event['google_account'])
-                    g_logger.info(parsed_event['cal id'])
-                    g_logger.info(parsed_event['raw_event']['id'])
-
-                    g_logger.info("Dismissed event end date " + str(parsed_event['end_date']))
-                    
-                    dismissed_events_to_delete.append(k)
-                elif has_event_changed(parsed_event['raw_event'], raw_event):
-                    # The event has changed, we will let the system re-parse the event as new
-                    g_logger.info("event changed - clear_dismissed_events_that_have_ended")
-                    dismissed_events_to_delete.append(k)
+            elif has_event_changed(parsed_event):
+                # The event has changed, we will let the system re-parse the event as new
+                g_logger.info("event changed - clear_dismissed_events_that_have_ended")
+                dismissed_events_to_delete.append(k)
 
         while (len(dismissed_events_to_delete) > 0):
             k = dismissed_events_to_delete.pop()
