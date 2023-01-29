@@ -250,7 +250,7 @@ def has_event_changed(orig_event):
 
     try:
         # First check if the event still exists
-        raw_event = get_one_event_from_google_cal_with_try(
+        raw_event = get_events_from_google_cal_with_try(
             orig_event['google_account'],
             orig_event['cal id'],
             orig_event['raw_event']['id'])
@@ -272,7 +272,9 @@ def has_event_changed(orig_event):
 
     return(False)
 
-def get_one_event_from_google_cal(google_account, cal_id, event_id):    
+def get_events_from_google_cal(google_account, cal_id, event_id = None):
+    global g_logger
+    
     # Connect to the Google Account
     creds = None
     Credentials_file = 'app_credentials.json'
@@ -288,6 +290,7 @@ def get_one_event_from_google_cal(google_account, cal_id, event_id):
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
+            g_logger.info("Creating a token for " + google_account)
             flow = InstalledAppFlow.from_client_secrets_file(
                 Credentials_file, SCOPES)
             creds = flow.run_local_server(port=0)
@@ -297,17 +300,36 @@ def get_one_event_from_google_cal(google_account, cal_id, event_id):
 
     service = build('calendar', 'v3', credentials=creds)
 
-    # Call the Calendar API
-    raw_event = service.events().get(
+    if (event_id is None):
+        # Get the next 10 events
+        now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
+        g_logger.debug('Getting the upcoming 10 events')
+
+        events_result = service.events().list(
+            calendarId=cal_id, 
+            timeMin=now,
+            #timeMin='2022-09-30T11:00:00-07:00', 
+            #timeMax='2022-09-30T11:31:00-07:00',
+            maxResults=10, 
+            singleEvents=True,
+            orderBy='startTime').execute()
+
+        events = events_result.get('items', [])
+
+        return(events)
+
+    else:
+        # Get a specitic event
+        raw_event = service.events().get(
         calendarId=cal_id,
         eventId=str(event_id)).execute()
 
-    return(raw_event)
+        return(raw_event)
 
 class ConnectivityIssue(Exception):
     pass
 
-def get_one_event_from_google_cal_with_try(google_account, cal_id, event_id):
+def get_events_from_google_cal_with_try(google_account, cal_id, event_id = None):
     global g_logger
 
     num_of_retries = 0
@@ -315,7 +337,7 @@ def get_one_event_from_google_cal_with_try(google_account, cal_id, event_id):
 
     while True:
         try: # In progress - handling intermittent exception from the Google service
-            raw_event = get_one_event_from_google_cal(google_account, cal_id, event_id)
+            raw_events = get_events_from_google_cal(google_account, cal_id, event_id)
         except Exception as e:
             excType = str(e.__class__.__name__)
             excMesg = str(e)
@@ -336,7 +358,7 @@ def get_one_event_from_google_cal_with_try(google_account, cal_id, event_id):
 
                 none_networking_known_exception = True
 
-                g_logger.info("Error in get_events_from_google_cal for " + google_account)
+                g_logger.info("Error in get_events_from_google_cal_with_try for " + google_account)
                 g_logger.info('Exception type ' + excType)
                 g_logger.info('Exception msg ' + excMesg)
 
@@ -358,7 +380,7 @@ def get_one_event_from_google_cal_with_try(google_account, cal_id, event_id):
                 time.sleep(2)
         else:
             # Getting the event was successful
-            return(raw_event)
+            return(raw_events)
 
 # The notification window
 class Window(QMainWindow, Ui_w_event):
@@ -637,51 +659,6 @@ class Window(QMainWindow, Ui_w_event):
     
         self.close()
 
-def get_events_from_google_cal(google_account, cal_name, cal_id):
-    global g_logger
-    
-    # Connect to the Google Account
-    creds = None
-    Credentials_file = 'app_credentials.json'
-    token_file = google_account + '_token.json'
-
-    # The file token.json stores the user's access and refresh tokens, and is
-    # created automatically when the authorization flow completes for the first
-    # time.
-    if os.path.exists(token_file):
-        creds = Credentials.from_authorized_user_file(token_file, SCOPES)
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            g_logger.info("Creating a token for " + google_account)
-            flow = InstalledAppFlow.from_client_secrets_file(
-                Credentials_file, SCOPES)
-            creds = flow.run_local_server(port=0)
-        # Save the credentials for the next run
-        with open(token_file, 'w') as token:
-            token.write(creds.to_json())
-
-    service = build('calendar', 'v3', credentials=creds)
-
-    # Call the Calendar API
-    now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
-    g_logger.debug('Getting the upcoming 10 events')
-
-    events_result = service.events().list(
-        calendarId=cal_id, 
-        timeMin=now,
-        #timeMin='2022-09-30T11:00:00-07:00', 
-        #timeMax='2022-09-30T11:31:00-07:00',
-        maxResults=10, 
-        singleEvents=True,
-        orderBy='startTime').execute()
-
-    events = events_result.get('items', [])
-
-    return(events)
-
 def show_window(parsed_event, pipe_conn, log_level):
     global g_win_exit_reason
     global g_snooze_time_in_minutes
@@ -950,48 +927,12 @@ def add_items_to_show_from_calendar(google_account, cal_name, cal_id, events_to_
     g_logger.debug("add_items_to_show_from_calendar for " + google_account)
 
     # Get the next coming events from the google calendar
-    num_of_retries = 0
-    while num_of_retries <= 2:
-        try: # In progress - handling intermittent exception from the Google service
-            events = get_events_from_google_cal(google_account, cal_name, cal_id)
-        except Exception as e:
-            excType = str(e.__class__.__name__)
-            excMesg = str(e)
+    try: # In progress - handling intermittent exception from the Google service
+        events = get_events_from_google_cal_with_try(google_account, cal_id)
 
-            if (
-                (excType == "ServerNotFoundError") 
-                or (excType == "timeout") 
-                or (excType == "TimeoutError") 
-                or (excType == "ConnectionResetError")
-                or (excType == "TransportError")
-                or (excType == "HttpError")
-                or (excType == "SSLCertVerificationError")
-                or (excType == "OSError" and 
-                    (excMesg == "[Errno 51] Network is unreachable" or 
-                    excMesg == "[Errno 65] No route to host"))
-            ):
-                # Exceptions that chould be intermittent due to networking issues.
-                # We can wait for the next cycle and hope it will get resolved
-                g_logger.debug("Networking issue (" + excType + ", " + excMesg + ") in get_events_from_google_cal for " + google_account + ". Retrying...")
-                events = []
-                break
-
-            g_logger.error("Error in get_events_from_google_cal for " + google_account)
-            g_logger.error('Exception type ' + excType)
-            g_logger.error('Exception msg ' + excMesg)
-
-            g_logger.error(traceback.format_exc())
-
-            num_of_retries = num_of_retries + 1
-
-            if (num_of_retries > 2):
-                raise
-            else:
-                # Sleep for 2 seconds and retry
-                time.sleep(2)
-        else:
-            # Getting the events was successful
-            break
+    except ConnectivityIssue:
+        # Having a connectivity issue - we will assume the event did not change in the g-cal
+        events = []
 
     # Handled the snoozed events
     if not events:
