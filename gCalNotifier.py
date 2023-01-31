@@ -351,7 +351,7 @@ def get_events_from_google_cal_with_try(google_account, cal_id, event_id = None)
             ):
                 # Exceptions that chould be intermittent due to networking issues.
 
-                g_logger.info('Networking issue with Exception type ' + excType)
+                g_logger.debug('Networking issue with Exception type ' + excType)
 
             else:
                 # Not a known exception
@@ -372,7 +372,7 @@ def get_events_from_google_cal_with_try(google_account, cal_id, event_id = None)
                     raise
                 else:
                     # Only known connectivity issues have happend
-                    g_logger.info('Only know connectivity issues have happend')
+                    g_logger.info('Only known connectivity issues have happend')
                     raise ConnectivityIssue()
 
             else:
