@@ -347,6 +347,7 @@ def get_events_from_google_cal_with_try(google_account, cal_id, event_id = None)
             or (excType == "TimeoutError") 
             or (excType == "ConnectionResetError")
             or (excType == "TransportError")
+            or (excType == "SSLCertVerificationError")
             or (excType == "OSError" and excMesg == "[Errno 51] Network is unreachable")
             ):
                 # Exceptions that chould be intermittent due to networking issues.
