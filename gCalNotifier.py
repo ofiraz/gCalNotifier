@@ -493,7 +493,13 @@ class Window(QMainWindow, Ui_w_event):
         # Hide the missing video message - in the next section we will decide whether to show it
         is_hide_missing_video = True
 
-        if (self.c_video_link is None):
+        need_to_record_meeting = parsed_event.get('need_to_record_meeting', False)
+        if (need_to_record_meeting):
+            is_hide_missing_video = False
+
+            self.l_missing_video.setText("Remember to record!!!")
+
+        elif (self.c_video_link is None):
             self.pb_open_video.setHidden(True)
             self.pb_open_video_and_snooze.setHidden(True)
             self.pb_open_video_and_dismiss.setHidden(True)
@@ -511,18 +517,19 @@ class Window(QMainWindow, Ui_w_event):
                     # We need to show the missing video message
                     is_hide_missing_video = False
 
-                    self.l_missing_video.setAutoFillBackground(True) # This is important!!
-                    color  = QtGui.QColor(233, 10, 150)
-                    alpha  = 140
-                    values = "{r}, {g}, {b}, {a}".format(r = color.red(),
-                                                        g = color.green(),
-                                                        b = color.blue(),
-                                                        a = alpha
-                                                        )
-                    self.l_missing_video.setStyleSheet("QLabel { background-color: rgba("+values+"); }")
-
         if (is_hide_missing_video):
             self.l_missing_video.setHidden(True)
+        else:
+            self.l_missing_video.setAutoFillBackground(True) # This is important!!
+            color  = QtGui.QColor(233, 10, 150)
+            alpha  = 140
+            values = "{r}, {g}, {b}, {a}".format(r = color.red(),
+                                                g = color.green(),
+                                                b = color.blue(),
+                                                a = alpha
+                                                )
+            self.l_missing_video.setStyleSheet("QLabel { background-color: rgba("+values+"); }")
+
 
         if (parsed_event['description'] != "No description"):
             self.t_description.setHtml(parsed_event['description'])
@@ -807,6 +814,21 @@ def get_number_of_attendees(event):
 
     return(num_of_attendees)
 
+def parse_event_description(meeting_description, parsed_event):
+    global g_logger
+
+    # Check if the event has gCalNotifier config
+    need_to_record_meeting = re.search(
+        "record:yes", 
+        meeting_description) 
+    if need_to_record_meeting:
+        parsed_event['need_to_record_meeting'] = True
+        g_logger.debug("Need to record meeting")
+        
+    else:
+        parsed_event['need_to_record_meeting'] = False
+        g_logger.debug("No need to record meeting")
+
 def parse_event(event, parsed_event):
     global g_logger
 
@@ -852,6 +874,8 @@ def parse_event(event, parsed_event):
     meeting_description = event.get('description')
     if (meeting_description):
         parsed_event['description'] = meeting_description
+        parse_event_description(meeting_description, parsed_event)
+
     else:
         parsed_event['description'] = "No description"
 
