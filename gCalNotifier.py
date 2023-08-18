@@ -308,8 +308,8 @@ def get_events_from_google_cal(google_account, cal_id, event_id = None):
         events_result = service.events().list(
             calendarId=cal_id, 
             timeMin=now,
-            # timeMin='2023-08-08T17:00:00-07:00', 
-            # timeMax='2023-08-08T18:00:00-07:00',
+            #timeMin='2023-08-17T14:00:00-07:00', 
+            #timeMax='2023-08-17T15:00:00-07:00',
             maxResults=10, 
             singleEvents=True,
             orderBy='startTime').execute()
@@ -760,7 +760,7 @@ def show_window_and_parse_exit_status(event_key_str, parsed_event):
         del g_displayed_events[event_key_str]
 
 video_links_reg_exs = [
-    "(https://[a-zA-Z0-9-]*\.zoom\.us/j/[a-zA-Z0-9-_\.&?=/]*)", # Zoom
+    "(https://[a-zA-Z0-9-]*[\.]*zoom\.us/j/[a-zA-Z0-9-_\.&?=/]*)", # Zoom
     "Click here to join the meeting<(https://teams.microsoft.com/l/meetup-join/.*)>", # Meet   
     "[<>](https://[a-zA-Z0-9-]*\.webex\.com/[a-zA-Z0-9-]*/j\.php\?MTID=[a-zA-Z0-9-]*)[<>]", # Webex
     "(https://chime.aws/[0-9]*)"
@@ -780,7 +780,7 @@ def look_for_video_link_in_meeting_description(p_meeting_description):
 
     # Look for a Zoom link
     zoom_url_in_description = re.search(
-        "(https://[a-zA-Z0-9-]*\.zoom\.us/[a-zA-Z0-9-\.&?=/]*)", 
+        "(https://[a-zA-Z0-9-]*[\.]*zoom\.us/[a-zA-Z0-9-\.&?=/]*)", 
         p_meeting_description) 
     if zoom_url_in_description:
         return(zoom_url_in_description.group())
