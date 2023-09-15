@@ -972,9 +972,9 @@ def add_items_to_show_from_calendar(google_account, cal_name, cal_id, events_to_
         a_snoozed_event_to_wakeup = False
 
         event_id = event['id']
-        event_key = {
-            'google_account' : google_account,
-            'cal_id' : cal_id,
+        event_key = {          
+            # 'google_account' : google_account,
+            # 'cal_id' : cal_id,
             'event_id' : event_id
         }
         event_key_str = json.dumps(event_key)
