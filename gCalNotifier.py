@@ -3,7 +3,7 @@ import sys
 import time
 
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QDesktopWidget, QTextBrowser
+    QApplication, QMainWindow, QDesktopWidget, QTextBrowser, QMdiArea, QAction, QMdiSubWindow, QTextEdit
 )
 
 from PyQt5 import QtGui
@@ -703,6 +703,50 @@ def show_window(parsed_event, pipe_conn, log_level):
 
     pipe_conn.send([g_win_exit_reason, g_snooze_time_in_minutes])
 
+def show_window_in_mdi(parsed_event):
+    global g_win_exit_reason
+    global g_snooze_time_in_minutes
+    global g_logger
+
+    sub = QMdiSubWindow()
+    win = Window()
+
+    win.init_window_from_parsed_event(parsed_event)
+
+    sub.setWidget(win)
+    #sub.setWidget(QTextEdit())
+    #sub.setWindowTitle(parsed_event['event_name'])
+    g_mdi_window.mdi.addSubWindow(sub)
+    sub.show()
+
+    return
+
+    app = QApplication(sys.argv)
+
+    win = Window()
+
+    win.init_window_from_parsed_event(parsed_event)
+
+    # Show the window and bring it to the front
+    g_win_exit_reason = EXIT_REASON_NONE
+    g_snooze_time_in_minutes = 0
+
+    app.setWindowIcon(QtGui.QIcon('icons8-calendar-64.png'))
+    #win.windowHandle().setScreen(app.screens()[1])
+    win.show()
+
+    # Show the window on the main monitor
+    monitor = QDesktopWidget().screenGeometry(0)
+    win.move(monitor.left(), monitor.top())
+
+    # Bring the windows to the front
+    getattr(win, "raise")()
+    win.activateWindow()
+
+    app.exec()
+
+    pipe_conn.send([g_win_exit_reason, g_snooze_time_in_minutes])
+
 def show_window_and_parse_exit_status(event_key_str, parsed_event):
     global g_dismissed_events
     global g_dismissed_lock
@@ -712,7 +756,13 @@ def show_window_and_parse_exit_status(event_key_str, parsed_event):
     global g_displayed_lock
     global g_logger
     global g_log_level
+    global g_mdi_window
+    global g_mdi_mode
 
+    if (g_mdi_mode):
+        show_window_in_mdi(parsed_event)
+        return
+    
     parent_conn, child_conn = Pipe()
     proc = Process(
         target = show_window,
@@ -1025,6 +1075,7 @@ def add_items_to_show_from_calendar(google_account, cal_name, cal_id, events_to_
 def present_relevant_events(events_to_present):
     global g_displayed_events
     global g_displayed_lock
+    global g_mdi_mode
 
     number_of_events_to_present = len(events_to_present)
     if (number_of_events_to_present > 0):
@@ -1033,12 +1084,15 @@ def present_relevant_events(events_to_present):
             with g_displayed_lock:
                 g_displayed_events[event_key_str] = parsed_event
             
-            # Show the windows in a separate thread and process
-            win_thread = threading.Thread(
-                target = show_window_and_parse_exit_status,
-                args = (event_key_str, parsed_event, ))
+            if (g_mdi_mode):
+                show_window_and_parse_exit_status(event_key_str, parsed_event)
+            else:
+                # Show the windows in a separate thread and process
+                win_thread = threading.Thread(
+                    target = show_window_and_parse_exit_status,
+                    args = (event_key_str, parsed_event, ))
 
-            win_thread.start()
+                win_thread.start()
 
         # Empty the dictionary
         events_to_present = {}
@@ -1084,6 +1138,10 @@ def init_global_objects():
     global g_displayed_lock
     global g_logger
     global g_log_level
+    global g_mdi_mode
+    global g_mdi_window
+
+    g_mdi_mode = False
 
     g_dismissed_events = {}
     g_dismissed_lock = threading.Lock()
@@ -1193,16 +1251,16 @@ def prep_google_accounts_and_calendars():
     for google_account in g_google_accounts:
         get_calendar_list_for_account(google_account)
 
-# Main
-if __name__ == "__main__":
-    load_config()
+class MDIWindow(QMainWindow):
+    count = 0
 
-    init_global_objects()
+    def look_for_events(self):
+        global g_logger
+        global g_refresh_frequency
+        global g_google_accounts
 
-    prep_google_accounts_and_calendars()
+        g_logger.info("Looking for events")
 
-    # Loop forever
-    while True:
         events_to_present = {}
 
         set_items_to_present_from_snoozed(events_to_present)
@@ -1219,5 +1277,79 @@ if __name__ == "__main__":
         present_relevant_events(events_to_present)
         clear_dismissed_events_that_have_ended()
 
-        g_logger.debug("Going to sleep for " + str(g_refresh_frequency) + " seconds")
-        time.sleep(g_refresh_frequency)
+        #g_logger.debug("Going to sleep for " + str(g_refresh_frequency) + " seconds")
+        #time.sleep(g_refresh_frequency)        
+        
+        self.timer.start(10 * 1000)
+
+    def __init__(self):
+        super().__init__()
+ 
+        self.mdi = QMdiArea()
+        self.setCentralWidget(self.mdi)
+        bar = self.menuBar()
+ 
+        file = bar.addMenu("File")
+        file.addAction("New")
+        file.addAction("cascade")
+        file.addAction("Tiled")
+        file.triggered[QAction].connect(self.WindowTrig)
+        self.setWindowTitle("gCalNotifier")
+
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.look_for_events) 
+        self.timer.start(10 * 1000)
+
+    def WindowTrig(self, p):
+        if p.text() == "New":
+            MDIWindow.count = MDIWindow.count + 1
+            sub = QMdiSubWindow()
+            sub.setWidget(QTextEdit())
+            sub.setWindowTitle("Sub Window" + str(MDIWindow.count))
+            self.mdi.addSubWindow(sub)
+            sub.show()
+ 
+        if p.text() == "cascade":
+            self.mdi.cascadeSubWindows()
+ 
+        if p.text() == "Tiled":
+            self.mdi.tileSubWindows()
+    
+
+
+# Main
+if __name__ == "__main__":
+    load_config()
+
+    init_global_objects()
+
+    prep_google_accounts_and_calendars()
+
+    g_mdi_mode = False
+    
+    if (g_mdi_mode):
+        app = QApplication(sys.argv)
+        g_mdi_window = MDIWindow()
+        g_mdi_window.show()
+        app.exec_()
+    else:
+        # Loop forever
+        while True:
+            events_to_present = {}
+
+            set_items_to_present_from_snoozed(events_to_present)
+
+            for google_account in g_google_accounts:
+                for cal_for_account in google_account["calendar list"]:
+                    g_logger.debug(google_account["account name"] + " " + str(cal_for_account))
+                    add_items_to_show_from_calendar(
+                        google_account["account name"], 
+                        cal_for_account['calendar name'], 
+                        cal_for_account['calendar id'],
+                        events_to_present)
+
+            present_relevant_events(events_to_present)
+            clear_dismissed_events_that_have_ended()
+
+            g_logger.debug("Going to sleep for " + str(g_refresh_frequency) + " seconds")
+            time.sleep(g_refresh_frequency)
