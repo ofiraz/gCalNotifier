@@ -451,6 +451,8 @@ class Window(QMainWindow, Ui_w_event):
 
         self.l_event_name.setText(parsed_event['event_name'])
 
+        g_logger.info("Nofied for " + parsed_event['google_account'] + ": " + parsed_event['event_name'])
+
         if parsed_event['all_day_event']:
             self.l_all_day.setText("An all day event")
         else:
