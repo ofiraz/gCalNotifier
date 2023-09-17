@@ -92,6 +92,38 @@ def init_logging(module_name, process_name, file_log_level, start_message_log_le
 
     return logger
 
+def init_global_objects():
+    global g_config
+    global g_events_to_present
+    global g_events_to_present_lock
+    global g_dismissed_events
+    global g_dismissed_lock
+    global g_snoozed_events
+    global g_snoozed_lock
+    global g_displayed_events
+    global g_displayed_lock
+    global g_logger
+    global g_log_level
+    global g_mdi_mode
+    global g_mdi_window
+
+    g_mdi_mode = False
+
+    g_events_to_present = {}
+    g_events_to_present_lock = threading.Lock()
+
+    g_dismissed_events = {}
+    g_dismissed_lock = threading.Lock()
+
+    g_snoozed_events = {}
+    g_snoozed_lock = threading.Lock()
+
+    g_displayed_events = {}
+    g_displayed_lock = threading.Lock()
+
+    g_logger = init_logging("gCalNotifier", "Main", g_log_level, LOG_LEVEL_INFO)
+
+
 def get_now_datetime():
     return(datetime.datetime.now().astimezone())
 
@@ -384,17 +416,160 @@ def get_events_from_google_cal_with_try(google_account, cal_id, event_id = None)
             # Getting the event was successful
             return(raw_events)
 
+def add_items_to_show_from_calendar(google_account, cal_name, cal_id):
+    global g_events_to_present
+    global g_events_to_present_lock
+    global g_dismissed_events
+    global g_dismissed_lock
+    global g_snoozed_events
+    global g_snoozed_lock
+    global g_displayed_events
+    global g_displayed_lock
+    global g_logger
+
+    g_logger.debug("add_items_to_show_from_calendar for " + google_account)
+
+    # Get the next coming events from the google calendar
+    try: # In progress - handling intermittent exception from the Google service
+        events = get_events_from_google_cal_with_try(google_account, cal_id)
+
+    except ConnectivityIssue:
+        # Having a connectivity issue - we will assume the event did not change in the g-cal
+        events = []
+
+    # Handled the snoozed events
+    if not events:
+        g_logger.debug('No upcoming events found')
+        return
+
+    for event in events:
+        g_logger.debug(str(event))
+        parsed_event = {}
+        now_datetime = get_now_datetime()
+        a_snoozed_event_to_wakeup = False
+
+        event_id = event['id']
+        event_key = {          
+            # 'google_account' : google_account,
+            # 'cal_id' : cal_id,
+            'event_id' : event_id
+        }
+        event_key_str = json.dumps(event_key)
+        g_logger.debug("Event ID " + str(event_id))
+
+        with g_dismissed_lock:
+            if (event_key_str in g_dismissed_events):
+                g_logger.debug("Skipping dismissed event")
+                continue
+
+        with g_snoozed_lock:
+            if (event_key_str in g_snoozed_events):
+                g_logger.debug("Skipping snoozed event")
+                continue
+
+        with g_displayed_lock:
+            if (event_key_str in g_displayed_events):
+                g_logger.debug("Skipping displayed event")
+                continue
+        
+        with g_events_to_present_lock:
+            if (event_id in g_events_to_present):
+                g_logger.debug("Skipping event as it is already in the events to present")
+                continue
+
+        # Event not in the any other list
+        parsed_event['raw_event'] = event
+        parsed_event['event_name'] = event.get('summary', '(No title)')
+        parsed_event['google_account'] = google_account
+        parsed_event['cal name'] = cal_name
+        parsed_event['cal id'] = cal_id
+        g_logger.debug("Event Name " + parsed_event['event_name'])
+
+        need_to_notify = parse_event(event, parsed_event)
+        if (need_to_notify == True):
+            # Event to get presented
+            g_logger.debug(str(event))
+
+            with g_events_to_present_lock:
+                g_events_to_present[event_key_str] = parsed_event
+
+            g_logger.debug(
+                "Event to be presented - "
+                + " " + parsed_event['event_name'] 
+                + " " + parsed_event['google_account'] 
+                + " " + parsed_event['cal id']
+                + " " + parsed_event['raw_event']['id'])
+
+def set_events_to_be_displayed():
+    global g_google_accounts
+    global g_logger
+
+    clear_dismissed_events_that_have_ended()
+    set_items_to_present_from_snoozed()
+
+    for google_account in g_google_accounts:
+        for cal_for_account in google_account["calendar list"]:
+            g_logger.debug(google_account["account name"] + " " + str(cal_for_account))
+            add_items_to_show_from_calendar(
+                google_account["account name"], 
+                cal_for_account['calendar name'], 
+                cal_for_account['calendar id'])
+
+def handle_window_exit(event_key_str, parsed_event, win_exit_reason, snooze_time_in_minutes):
+    global g_logger
+    global g_dismissed_lock
+    global g_dismissed_events
+    global g_snoozed_lock
+    global g_snoozed_events    
+
+    now_datetime = get_now_datetime()
+
+    if (win_exit_reason == EXIT_REASON_NONE):
+        g_logger.debug("Cancel")
+
+    elif (win_exit_reason == EXIT_REASON_DISMISS):
+        g_logger.debug("Dismiss")
+
+        if (now_datetime < parsed_event['end_date']):
+            with g_dismissed_lock:
+                g_dismissed_events[event_key_str] = parsed_event
+
+    elif (win_exit_reason == EXIT_REASON_SNOOZE):
+        g_logger.debug("Snooze")
+        if (snooze_time_in_minutes <= 0):
+            delta_diff = datetime.timedelta(minutes=abs(snooze_time_in_minutes))
+            parsed_event['event_wakeup_time'] = parsed_event['start_date'] - delta_diff
+        else:
+            delta_diff = datetime.timedelta(minutes=snooze_time_in_minutes)
+            parsed_event['event_wakeup_time'] = now_datetime + delta_diff
+
+        g_logger.debug("Snooze until " + str(parsed_event['event_wakeup_time']))
+            
+        with g_snoozed_lock:
+            g_snoozed_events[event_key_str] = parsed_event
+
+    else:
+        g_logger.error("No exit reason")
+
+    # Remove the event from the presented events
+    with g_displayed_lock:
+        del g_displayed_events[event_key_str]
+
 # The notification window
 class Window(QMainWindow, Ui_w_event):
     c_snooze_buttons = {}
     c_parsed_event = {}
+    c_event_key_str = ""
+    c_is_first_display_of_window = False
     c_hidden_all_snooze_before_buttons = False
     c_updated_label_post_start = False
     c_updated_label_post_end = False
     c_video_link = None
+    c_window_closed = False
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setupUi(self)
 
         self.timer = QtCore.QTimer()
@@ -442,8 +617,17 @@ class Window(QMainWindow, Ui_w_event):
         win_label.setToolTip(url)
 
 
-    def init_window_from_parsed_event(self, parsed_event):
+    def init_window_from_parsed_event(self, event_key_str, parsed_event):
+        global g_win_exit_reason 
+        global g_snooze_time_in_minutes 
+
+        g_win_exit_reason = EXIT_REASON_NONE
+        g_snooze_time_in_minutes = 0
+
+        self.c_event_key_str = event_key_str
         self.c_parsed_event = parsed_event
+        self.c_is_first_display_of_window = True
+        self.c_window_closed = False
 
         self.setWindowTitle(parsed_event['event_name'])
 
@@ -539,7 +723,7 @@ class Window(QMainWindow, Ui_w_event):
         self.t_raw_event.setText(nice_json(parsed_event['raw_event']))
         self.tabWidget.setCurrentIndex(0)
         
-        self.update_controls_based_on_event_time(True)
+        self.update_controls_based_on_event_time()
 
     # Set the event handlers
     def connectSignalsSlots(self):
@@ -557,17 +741,36 @@ class Window(QMainWindow, Ui_w_event):
         self.pb_2h.clicked.connect(lambda: self.snooze_general(self.pb_2h))
         self.pb_4h.clicked.connect(lambda: self.snooze_general(self.pb_4h))
         self.pb_8h.clicked.connect(lambda: self.snooze_general(self.pb_8h))
-        self.timer.timeout.connect(lambda: self.update_controls_based_on_event_time(False)) 
+        self.timer.timeout.connect(self.update_controls_based_on_event_time) 
         self.pb_open_video.clicked.connect(self.open_video)
         self.pb_open_video_and_snooze.clicked.connect(self.open_video_and_snooze)
         self.pb_open_video_and_dismiss.clicked.connect(self.open_video_and_dismiss)
 
+    def handle_window_exit_from_within_window(self):
+        global g_win_exit_reason
+        global g_snooze_time_in_minutes
+
+        if isinstance(self.parent(), QMdiSubWindow):
+            # MDI mode
+            handle_window_exit(
+                self.c_event_key_str,
+                self.c_parsed_event,
+                g_win_exit_reason,
+                g_snooze_time_in_minutes)
+            
+            self.parent().close()
+        else:
+            self.close()
+
     def clickedDismiss(self):
         global g_win_exit_reason
+        global g_snooze_time_in_minutes
 
         g_win_exit_reason = EXIT_REASON_DISMISS
+        g_snooze_time_in_minutes = 0
+        self.c_window_closed = True
 
-        self.close()
+        self.handle_window_exit_from_within_window()
 
     def snooze_general(self, p_button):
         global g_win_exit_reason
@@ -578,14 +781,23 @@ class Window(QMainWindow, Ui_w_event):
         if (p_button in self.c_snooze_buttons):
             g_snooze_time_in_minutes = self.c_snooze_buttons[p_button]
     
-        self.close()
+        self.handle_window_exit_from_within_window()
 
-    def update_controls_based_on_event_time(self, p_is_first_display_of_window):
+    def update_controls_based_on_event_time(self):
         global g_win_exit_reason
         global g_logger
 
-        if (p_is_first_display_of_window):
+        if (self.c_window_closed):
+            if isinstance(self.parent(), QMdiSubWindow):
+                self.parent().close()
+            else:
+                self.close()
+
+            return
+
+        if (self.c_is_first_display_of_window):
             l_changes_should_be_reflected = True
+            self.c_is_first_display_of_window = False
         else:
             l_changes_should_be_reflected = False
 
@@ -594,7 +806,9 @@ class Window(QMainWindow, Ui_w_event):
                 # The event has changed, closing the window to refresh the event
                 g_logger.debug("event changed - update_controls_based_on_event_time")
                 g_win_exit_reason = EXIT_REASON_NONE
-                self.close()
+
+                self.handle_window_exit_from_within_window()
+                
                 return()
 
         now_datetime = get_now_datetime()
@@ -659,7 +873,7 @@ class Window(QMainWindow, Ui_w_event):
 
         g_snooze_time_in_minutes = 5
     
-        self.close()
+        self.handle_window_exit_from_within_window()
 
     def open_video_and_dismiss(self):
         global g_win_exit_reason
@@ -667,10 +881,10 @@ class Window(QMainWindow, Ui_w_event):
         self.open_video()
 
         g_win_exit_reason = EXIT_REASON_DISMISS
-    
-        self.close()
 
-def show_window(parsed_event, pipe_conn, log_level):
+        self.handle_window_exit_from_within_window()
+
+def show_window(event_key_str, parsed_event, pipe_conn, log_level):
     global g_win_exit_reason
     global g_snooze_time_in_minutes
     global g_logger
@@ -681,7 +895,7 @@ def show_window(parsed_event, pipe_conn, log_level):
 
     win = Window()
 
-    win.init_window_from_parsed_event(parsed_event)
+    win.init_window_from_parsed_event(event_key_str, parsed_event)
 
     # Show the window and bring it to the front
     g_win_exit_reason = EXIT_REASON_NONE
@@ -703,16 +917,18 @@ def show_window(parsed_event, pipe_conn, log_level):
 
     pipe_conn.send([g_win_exit_reason, g_snooze_time_in_minutes])
 
-def show_window_in_mdi(parsed_event):
+def show_window_in_mdi(event_key_str, parsed_event):
     global g_win_exit_reason
     global g_snooze_time_in_minutes
     global g_logger
 
-    sub = QMdiSubWindow()
     win = Window()
 
-    win.init_window_from_parsed_event(parsed_event)
+    win.init_window_from_parsed_event(event_key_str, parsed_event)
+    win.setFixedWidth(730)
+    win.setFixedHeight(650)
 
+    sub = QMdiSubWindow()
     sub.setWidget(win)
     #sub.setWidget(QTextEdit())
     #sub.setWindowTitle(parsed_event['event_name'])
@@ -724,8 +940,6 @@ def show_window_in_mdi(parsed_event):
     app = QApplication(sys.argv)
 
     win = Window()
-
-    win.init_window_from_parsed_event(parsed_event)
 
     # Show the window and bring it to the front
     g_win_exit_reason = EXIT_REASON_NONE
@@ -748,6 +962,8 @@ def show_window_in_mdi(parsed_event):
     pipe_conn.send([g_win_exit_reason, g_snooze_time_in_minutes])
 
 def show_window_and_parse_exit_status(event_key_str, parsed_event):
+    global g_events_to_present
+    global g_events_to_present_lock
     global g_dismissed_events
     global g_dismissed_lock
     global g_snoozed_events
@@ -760,13 +976,13 @@ def show_window_and_parse_exit_status(event_key_str, parsed_event):
     global g_mdi_mode
 
     if (g_mdi_mode):
-        show_window_in_mdi(parsed_event)
+        show_window_in_mdi(event_key_str, parsed_event)
         return
     
     parent_conn, child_conn = Pipe()
     proc = Process(
         target = show_window,
-        args = (parsed_event, child_conn, g_log_level))
+        args = (event_key_str, parsed_event, child_conn, g_log_level))
     proc.start()
     proc.join()
 
@@ -778,38 +994,11 @@ def show_window_and_parse_exit_status(event_key_str, parsed_event):
     g_logger.debug("win_exit_reason " + str(win_exit_reason))
     g_logger.debug("snooze_time_in_minutes " + str(snooze_time_in_minutes))
 
-    now_datetime = get_now_datetime()
-
-    if (win_exit_reason == EXIT_REASON_NONE):
-        g_logger.debug("Cancel")
-
-    elif (win_exit_reason == EXIT_REASON_DISMISS):
-        g_logger.debug("Dismiss")
-
-        if (now_datetime < parsed_event['end_date']):
-            with g_dismissed_lock:
-                g_dismissed_events[event_key_str] = parsed_event
-
-    elif (win_exit_reason == EXIT_REASON_SNOOZE):
-        g_logger.debug("Snooze")
-        if (snooze_time_in_minutes <= 0):
-            delta_diff = datetime.timedelta(minutes=abs(snooze_time_in_minutes))
-            parsed_event['event_wakeup_time'] = parsed_event['start_date'] - delta_diff
-        else:
-            delta_diff = datetime.timedelta(minutes=snooze_time_in_minutes)
-            parsed_event['event_wakeup_time'] = now_datetime + delta_diff
-
-        g_logger.debug("Snooze until " + str(parsed_event['event_wakeup_time']))
-            
-        with g_snoozed_lock:
-            g_snoozed_events[event_key_str] = parsed_event
-
-    else:
-        g_logger.error("No exit reason")
-
-    # Remove the event from the presented events
-    with g_displayed_lock:
-        del g_displayed_events[event_key_str]
+    handle_window_exit(
+        event_key_str,
+        parsed_event,
+        win_exit_reason,
+        snooze_time_in_minutes)
 
 video_links_reg_exs = [
     "(https://[a-zA-Z0-9-]*[\.]*zoom\.us/j/[a-zA-Z0-9-_\.&?=/]*)", # Zoom
@@ -963,7 +1152,7 @@ def parse_event(event, parsed_event):
     # The event needs to be notified
     return(True)
 
-def set_items_to_present_from_snoozed(events_to_present):
+def set_items_to_present_from_snoozed():
     global g_logger
     global g_snoozed_events
     global g_snoozed_lock
@@ -984,7 +1173,8 @@ def set_items_to_present_from_snoozed(events_to_present):
 
             elif (now_datetime >= snoozed_event['event_wakeup_time']):
                 # Event needs to be woke up
-                events_to_present[event_key_str] = snoozed_event
+                with g_events_to_present_lock:
+                    g_events_to_present[event_key_str] = snoozed_event
                 snoozed_events_to_delete.append(event_key_str)
 
         # Clear the snoozed events that were woken up from the snoozed list
@@ -993,109 +1183,37 @@ def set_items_to_present_from_snoozed(events_to_present):
             g_logger.debug("Deleteing event id " + str(k) + " from snoozed")
             del g_snoozed_events[k]
 
-def add_items_to_show_from_calendar(google_account, cal_name, cal_id, events_to_present):
-    global g_dismissed_events
-    global g_dismissed_lock
-    global g_snoozed_events
-    global g_snoozed_lock
-    global g_displayed_events
-    global g_displayed_lock
-    global g_logger
-
-    g_logger.debug("add_items_to_show_from_calendar for " + google_account)
-
-    # Get the next coming events from the google calendar
-    try: # In progress - handling intermittent exception from the Google service
-        events = get_events_from_google_cal_with_try(google_account, cal_id)
-
-    except ConnectivityIssue:
-        # Having a connectivity issue - we will assume the event did not change in the g-cal
-        events = []
-
-    # Handled the snoozed events
-    if not events:
-        g_logger.debug('No upcoming events found')
-        return
-
-    for event in events:
-        g_logger.debug(str(event))
-        parsed_event = {}
-        now_datetime = get_now_datetime()
-        a_snoozed_event_to_wakeup = False
-
-        event_id = event['id']
-        event_key = {          
-            # 'google_account' : google_account,
-            # 'cal_id' : cal_id,
-            'event_id' : event_id
-        }
-        event_key_str = json.dumps(event_key)
-        g_logger.debug("Event ID " + str(event_id))
-
-        with g_dismissed_lock:
-            if (event_key_str in g_dismissed_events):
-                g_logger.debug("Skipping dismissed event")
-                continue
-
-        with g_snoozed_lock:
-            if (event_key_str in g_snoozed_events):
-                g_logger.debug("Skipping snoozed event")
-                continue
-
-        with g_displayed_lock:
-            if (event_key_str in g_displayed_events):
-                g_logger.debug("Skipping displayed event")
-                continue
-        
-        if (event_id in events_to_present):
-            g_logger.debug("Skipping event as it is already in the events to present")
-            continue
-
-        # Event not in the any other list
-        parsed_event['raw_event'] = event
-        parsed_event['event_name'] = event.get('summary', '(No title)')
-        parsed_event['google_account'] = google_account
-        parsed_event['cal name'] = cal_name
-        parsed_event['cal id'] = cal_id
-        g_logger.debug("Event Name " + parsed_event['event_name'])
-
-        need_to_notify = parse_event(event, parsed_event)
-        if (need_to_notify == True):
-            # Event to get presented
-            g_logger.debug(str(event))
-            events_to_present[event_key_str] = parsed_event
-
-            g_logger.debug(
-                "Event to be presented - "
-                + " " + parsed_event['event_name'] 
-                + " " + parsed_event['google_account'] 
-                + " " + parsed_event['cal id']
-                + " " + parsed_event['raw_event']['id'])
-
-def present_relevant_events(events_to_present):
+def present_relevant_events():
+    global g_events_to_present
+    global g_events_to_present_lock
     global g_displayed_events
     global g_displayed_lock
     global g_mdi_mode
 
-    number_of_events_to_present = len(events_to_present)
-    if (number_of_events_to_present > 0):
-        for event_key_str, parsed_event in events_to_present.items():
-            # Add the event to the presented events
-            with g_displayed_lock:
-                g_displayed_events[event_key_str] = parsed_event
-            
-            if (g_mdi_mode):
-                show_window_and_parse_exit_status(event_key_str, parsed_event)
+    
+    while True:  
+        with g_events_to_present_lock:
+            if (len(g_events_to_present) > 0):
+                event_key_str = next(iter(g_events_to_present))
+                parsed_event = g_events_to_present[event_key_str]
+                del g_events_to_present[event_key_str]
             else:
-                # Show the windows in a separate thread and process
-                win_thread = threading.Thread(
-                    target = show_window_and_parse_exit_status,
-                    args = (event_key_str, parsed_event, ))
+                # No more entries to present
+                return
+        
+        # Add the event to the presented events
+        with g_displayed_lock:
+            g_displayed_events[event_key_str] = parsed_event
+        
+        if (g_mdi_mode):
+            show_window_and_parse_exit_status(event_key_str, parsed_event)
+        else:
+            # Show the windows in a separate thread and process
+            win_thread = threading.Thread(
+                target = show_window_and_parse_exit_status,
+                args = (event_key_str, parsed_event, ))
 
-                win_thread.start()
-
-        # Empty the dictionary
-        events_to_present = {}
+            win_thread.start()
 
 def clear_dismissed_events_that_have_ended():
     global g_dismissed_events
@@ -1127,32 +1245,6 @@ def clear_dismissed_events_that_have_ended():
             k = dismissed_events_to_delete.pop()
             g_logger.debug("Deleteing event id " + str(k) + " from dismissed")
             del g_dismissed_events[k]
-
-def init_global_objects():
-    global g_config
-    global g_dismissed_events
-    global g_dismissed_lock
-    global g_snoozed_events
-    global g_snoozed_lock
-    global g_displayed_events
-    global g_displayed_lock
-    global g_logger
-    global g_log_level
-    global g_mdi_mode
-    global g_mdi_window
-
-    g_mdi_mode = False
-
-    g_dismissed_events = {}
-    g_dismissed_lock = threading.Lock()
-
-    g_snoozed_events = {}
-    g_snoozed_lock = threading.Lock()
-
-    g_displayed_events = {}
-    g_displayed_lock = threading.Lock()
-
-    g_logger = init_logging("gCalNotifier", "Main", g_log_level, LOG_LEVEL_INFO)
 
 def load_config():
     global g_config
@@ -1254,33 +1346,15 @@ def prep_google_accounts_and_calendars():
 class MDIWindow(QMainWindow):
     count = 0
 
-    def look_for_events(self):
+    def present_relevant_events_in_sub_windows(self):
         global g_logger
         global g_refresh_frequency
-        global g_google_accounts
 
-        g_logger.info("Looking for events")
+        g_logger.debug("Presenting relevant events")
 
-        events_to_present = {}
+        present_relevant_events()
 
-        set_items_to_present_from_snoozed(events_to_present)
-
-        for google_account in g_google_accounts:
-            for cal_for_account in google_account["calendar list"]:
-                g_logger.debug(google_account["account name"] + " " + str(cal_for_account))
-                add_items_to_show_from_calendar(
-                    google_account["account name"], 
-                    cal_for_account['calendar name'], 
-                    cal_for_account['calendar id'],
-                    events_to_present)
-
-        present_relevant_events(events_to_present)
-        clear_dismissed_events_that_have_ended()
-
-        #g_logger.debug("Going to sleep for " + str(g_refresh_frequency) + " seconds")
-        #time.sleep(g_refresh_frequency)        
-        
-        self.timer.start(10 * 1000)
+        self.timer.start(int(g_refresh_frequency/2) * 1000)
 
     def __init__(self):
         super().__init__()
@@ -1297,8 +1371,12 @@ class MDIWindow(QMainWindow):
         self.setWindowTitle("gCalNotifier")
 
         self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.look_for_events) 
-        self.timer.start(10 * 1000)
+        self.timer.timeout.connect(self.present_relevant_events_in_sub_windows) 
+
+    def showEvent(self, event):
+        # This method will be called when the main MDI window is shown
+        super().showEvent(event)  # Call the base class showEvent first
+        self.present_relevant_events_in_sub_windows()
 
     def WindowTrig(self, p):
         if p.text() == "New":
@@ -1314,9 +1392,23 @@ class MDIWindow(QMainWindow):
  
         if p.text() == "Tiled":
             self.mdi.tileSubWindows()
+
+def get_events_to_display_main_loop():
+    global g_log_level
+    global g_refresh_frequency
+
+    while True:
+        set_events_to_be_displayed()
+
+        g_logger.debug("Going to sleep for " + str(g_refresh_frequency) + " seconds")
+        time.sleep(g_refresh_frequency)
+
+def start_getting_events_to_display_main_loop_thread():
+    main_loop_thread = threading.Thread(
+        target = get_events_to_display_main_loop)
+
+    main_loop_thread.start()
     
-
-
 # Main
 if __name__ == "__main__":
     load_config()
@@ -1328,6 +1420,9 @@ if __name__ == "__main__":
     g_mdi_mode = False
     
     if (g_mdi_mode):
+        # Start a thread to look for events to display
+        start_getting_events_to_display_main_loop_thread()
+
         app = QApplication(sys.argv)
         g_mdi_window = MDIWindow()
         g_mdi_window.show()
@@ -1335,21 +1430,9 @@ if __name__ == "__main__":
     else:
         # Loop forever
         while True:
-            events_to_present = {}
+            set_events_to_be_displayed()
 
-            set_items_to_present_from_snoozed(events_to_present)
-
-            for google_account in g_google_accounts:
-                for cal_for_account in google_account["calendar list"]:
-                    g_logger.debug(google_account["account name"] + " " + str(cal_for_account))
-                    add_items_to_show_from_calendar(
-                        google_account["account name"], 
-                        cal_for_account['calendar name'], 
-                        cal_for_account['calendar id'],
-                        events_to_present)
-
-            present_relevant_events(events_to_present)
-            clear_dismissed_events_that_have_ended()
+            present_relevant_events()
 
             g_logger.debug("Going to sleep for " + str(g_refresh_frequency) + " seconds")
             time.sleep(g_refresh_frequency)
