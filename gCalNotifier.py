@@ -552,6 +552,16 @@ class Window(QMainWindow, Ui_w_event):
             self.pb_8h:480
         }
 
+    def showEvent(self, event):
+        # This method will be called when the main MDI window is shown
+        super().showEvent(event)  # Call the base class showEvent first
+
+        # Make sure not button is clicked by mistake due to keyboard shortcuts
+        self.pb_hidden_button.setFocus()
+        self.pb_hidden_button.resize(0,0)
+
+
+
     # Identify the video meeting softwate via its URL
     def identify_video_meeting_in_url(self, win_label, url, text_if_not_identified):
         global g_logger
@@ -681,7 +691,7 @@ class Window(QMainWindow, Ui_w_event):
 
         self.t_raw_event.setText(nice_json(parsed_event['raw_event']))
         self.tabWidget.setCurrentIndex(0)
-        
+       
         self.update_controls_based_on_event_time()
 
     # Set the event handlers
@@ -745,6 +755,8 @@ class Window(QMainWindow, Ui_w_event):
     def update_controls_based_on_event_time(self):
         global g_win_exit_reason
         global g_logger
+        global g_mdi_mode
+        global g_mdi_window
 
         if (self.c_window_closed):
             if isinstance(self.parent(), QMdiSubWindow):
@@ -813,6 +825,10 @@ class Window(QMainWindow, Ui_w_event):
             # There are changes that should be reflected - bring the window to the front
             self.raise_()
             self.activateWindow()
+
+            if (g_mdi_mode):
+                g_mdi_window.raise_()
+                g_mdi_window.activateWindow()
 
         if (self.c_updated_label_post_end == False):
         # Not all controls that could have changed have already changed
@@ -893,6 +909,9 @@ def show_window_in_mdi(event_key_str, parsed_event):
     #sub.setWindowTitle(parsed_event['event_name'])
     g_mdi_window.mdi.addSubWindow(sub)
     sub.show()
+
+    g_mdi_window.raise_()
+    g_mdi_window.activateWindow()
 
     return
 
@@ -1376,7 +1395,7 @@ if __name__ == "__main__":
 
     prep_google_accounts_and_calendars()
 
-    g_mdi_mode = False
+    g_mdi_mode = True
     
     if (g_mdi_mode):
         # Start a thread to look for events to display

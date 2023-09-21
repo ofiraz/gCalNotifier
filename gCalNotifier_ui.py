@@ -153,9 +153,12 @@ class Ui_w_event(object):
         font = QtGui.QFont()
         font.setPointSize(17)
         font.setBold(True)
-        font.setWeight(75)
         self.l_missing_video.setFont(font)
         self.l_missing_video.setObjectName("l_missing_video")
+        self.pb_hidden_button = QtWidgets.QPushButton(w_event)
+        self.pb_hidden_button.setGeometry(QtCore.QRect(40, 10, 100, 32))
+        self.pb_hidden_button.setDefault(True)
+        self.pb_hidden_button.setObjectName("pb_hidden_button")
 
         self.retranslateUi(w_event)
         QtCore.QMetaObject.connectSlotsByName(w_event)
@@ -193,3 +196,4 @@ class Ui_w_event(object):
         self.l_time_left.setText(_translate("w_event", "TextLabel"))
         self.pb_open_video.setText(_translate("w_event", "Open Video"))
         self.l_missing_video.setText(_translate("w_event", "There are multiple attendees but no video link"))
+        self.pb_hidden_button.setText(_translate("w_event", "HiddenButton"))

@@ -389,12 +389,27 @@
    <property name="font">
     <font>
      <pointsize>17</pointsize>
-     <weight>75</weight>
      <bold>true</bold>
     </font>
    </property>
    <property name="text">
     <string>There are multiple attendees but no video link</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pb_hidden_button">
+   <property name="geometry">
+    <rect>
+     <x>40</x>
+     <y>10</y>
+     <width>100</width>
+     <height>32</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string>HiddenButton</string>
+   </property>
+   <property name="default">
+    <bool>true</bool>
    </property>
   </widget>
  </widget>
