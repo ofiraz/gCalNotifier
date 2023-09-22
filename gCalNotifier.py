@@ -1393,7 +1393,8 @@ def get_events_to_display_main_loop():
 
 def start_getting_events_to_display_main_loop_thread():
     main_loop_thread = threading.Thread(
-        target = get_events_to_display_main_loop)
+        target = get_events_to_display_main_loop,
+        daemon=True)
 
     main_loop_thread.start()
     
