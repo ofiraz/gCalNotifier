@@ -470,48 +470,6 @@ def set_events_to_be_displayed():
                 cal_for_account['calendar name'], 
                 cal_for_account['calendar id'])
 
-def handle_window_exit(event_key_str, parsed_event, win_exit_reason, snooze_time_in_minutes):
-    global g_logger
-    global g_dismissed_lock
-    global g_dismissed_events
-    global g_snoozed_lock
-    global g_snoozed_events
-    global g_displayed_events
-    global g_displayed_lock  
-
-    now_datetime = get_now_datetime()
-
-    if (win_exit_reason == EXIT_REASON_NONE):
-        g_logger.debug("Cancel")
-
-    elif (win_exit_reason == EXIT_REASON_DISMISS):
-        g_logger.debug("Dismiss")
-
-        if (now_datetime < parsed_event['end_date']):
-            with g_dismissed_lock:
-                g_dismissed_events[event_key_str] = parsed_event
-
-    elif (win_exit_reason == EXIT_REASON_SNOOZE):
-        g_logger.debug("Snooze")
-        if (snooze_time_in_minutes <= 0):
-            delta_diff = datetime.timedelta(minutes=abs(snooze_time_in_minutes))
-            parsed_event['event_wakeup_time'] = parsed_event['start_date'] - delta_diff
-        else:
-            delta_diff = datetime.timedelta(minutes=snooze_time_in_minutes)
-            parsed_event['event_wakeup_time'] = now_datetime + delta_diff
-
-        g_logger.debug("Snooze until " + str(parsed_event['event_wakeup_time']))
-            
-        with g_snoozed_lock:
-            g_snoozed_events[event_key_str] = parsed_event
-
-    else:
-        g_logger.error("No exit reason")
-
-    # Remove the event from the presented events
-    with g_displayed_lock:
-        del g_displayed_events[event_key_str]
-
 # The notification window
 class Window(QMainWindow, Ui_w_event):
     c_snooze_buttons = {}
@@ -524,6 +482,7 @@ class Window(QMainWindow, Ui_w_event):
     c_video_link = None
     c_window_closed = False
     c_win_exit_reason = EXIT_REASON_NONE
+    c_snooze_time_in_minutes = 0
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -560,16 +519,15 @@ class Window(QMainWindow, Ui_w_event):
         self.pb_hidden_button.resize(0,0)
 
     def closeEvent(self, event):
-        global g_snooze_time_in_minutes
         global g_logger
 
         super().closeEvent(event)  # Call the base class closeEvent first
 
         if (self.c_win_exit_reason == EXIT_REASON_NONE):
-            g_snooze_time_in_minutes = 0
+            self.c_snooze_time_in_minutes = 0
             self.c_window_closed = True
 
-            self.handle_window_exit_from_within_window()
+            self.handle_window_exit()
         
     # Identify the video meeting softwate via its URL
     def identify_video_meeting_in_url(self, win_label, url, text_if_not_identified):
@@ -596,10 +554,8 @@ class Window(QMainWindow, Ui_w_event):
 
 
     def init_window_from_parsed_event(self, event_key_str, parsed_event):
-        global g_snooze_time_in_minutes 
-
         self.c_win_exit_reason = EXIT_REASON_NONE
-        g_snooze_time_in_minutes = 0
+        self.c_snooze_time_in_minutes = 0
 
         self.c_event_key_str = event_key_str
         self.c_parsed_event = parsed_event
@@ -723,39 +679,71 @@ class Window(QMainWindow, Ui_w_event):
         self.pb_open_video_and_snooze.clicked.connect(self.open_video_and_snooze)
         self.pb_open_video_and_dismiss.clicked.connect(self.open_video_and_dismiss)
 
-    def handle_window_exit_from_within_window(self):
-        global g_snooze_time_in_minutes
+    def handle_window_exit(self):
+        global g_logger
+        global g_dismissed_lock
+        global g_dismissed_events
+        global g_snoozed_lock
+        global g_snoozed_events
+        global g_displayed_events
+        global g_displayed_lock  
 
         if isinstance(self.parent(), QMdiSubWindow):
             # MDI mode
-            handle_window_exit(
-                self.c_event_key_str,
-                self.c_parsed_event,
-                self.c_win_exit_reason,
-                g_snooze_time_in_minutes)
-            
+
+            now_datetime = get_now_datetime()
+
+            if (self.c_win_exit_reason == EXIT_REASON_NONE):
+                g_logger.debug("Cancel")
+
+            elif (self.c_win_exit_reason == EXIT_REASON_DISMISS):
+                g_logger.debug("Dismiss")
+
+                if (now_datetime < self.c_parsed_event['end_date']):
+                    with g_dismissed_lock:
+                        g_dismissed_events[self.c_event_key_str] = self.c_parsed_event
+
+            elif (self.c_win_exit_reason == EXIT_REASON_SNOOZE):
+                g_logger.debug("Snooze")
+                if (self.c_snooze_time_in_minutes <= 0):
+                    delta_diff = datetime.timedelta(minutes=abs(self.c_snooze_time_in_minutes))
+                    self.c_parsed_event['event_wakeup_time'] = self.c_parsed_event['start_date'] - delta_diff
+                else:
+                    delta_diff = datetime.timedelta(minutes=self.c_snooze_time_in_minutes)
+                    self.c_parsed_event['event_wakeup_time'] = now_datetime + delta_diff
+
+                g_logger.debug("Snooze until " + str(self.c_parsed_event['event_wakeup_time']))
+                    
+                with g_snoozed_lock:
+                    g_snoozed_events[self.c_event_key_str] = self.c_parsed_event
+
+            else:
+                g_logger.error("No exit reason")
+
+            # Remove the event from the presented events
+            with g_displayed_lock:
+                del g_displayed_events[self.c_event_key_str]
+
             self.parent().close()
+
         else:
+            g_logger.info("Are we supposed to get here?")
             self.close()
 
     def clickedDismiss(self):
-        global g_snooze_time_in_minutes
-
         self.c_win_exit_reason = EXIT_REASON_DISMISS
-        g_snooze_time_in_minutes = 0
+        self.c_snooze_time_in_minutes = 0
         self.c_window_closed = True
 
-        self.handle_window_exit_from_within_window()
+        self.handle_window_exit()
 
     def snooze_general(self, p_button):
-        global g_snooze_time_in_minutes
-
         self.c_win_exit_reason = EXIT_REASON_SNOOZE
 
         if (p_button in self.c_snooze_buttons):
-            g_snooze_time_in_minutes = self.c_snooze_buttons[p_button]
+            self.c_snooze_time_in_minutes = self.c_snooze_buttons[p_button]
     
-        self.handle_window_exit_from_within_window()
+        self.handle_window_exit()
 
     def update_controls_based_on_event_time(self):
         global g_logger
@@ -781,7 +769,7 @@ class Window(QMainWindow, Ui_w_event):
                 g_logger.debug("event changed - update_controls_based_on_event_time")
                 self.c_win_exit_reason = EXIT_REASON_NONE
 
-                self.handle_window_exit_from_within_window()
+                self.handle_window_exit()
                 
                 return()
 
@@ -841,26 +829,22 @@ class Window(QMainWindow, Ui_w_event):
         webbrowser.open(self.c_video_link)
 
     def open_video_and_snooze(self):
-        global g_snooze_time_in_minutes
-
         self.open_video()
 
         self.c_win_exit_reason = EXIT_REASON_SNOOZE
 
-        g_snooze_time_in_minutes = 5
+        self.c_snooze_time_in_minutes = 5
     
-        self.handle_window_exit_from_within_window()
+        self.handle_window_exit()
 
     def open_video_and_dismiss(self):
         self.open_video()
 
         self.c_win_exit_reason = EXIT_REASON_DISMISS
 
-        self.handle_window_exit_from_within_window()
+        self.handle_window_exit()
 
 def show_window_in_mdi(event_key_str, parsed_event):
-    global g_win_exit_reason
-    global g_snooze_time_in_minutes
     global g_logger
 
     win = Window()
