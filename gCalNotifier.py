@@ -62,10 +62,7 @@ def init_global_objects():
     global g_displayed_lock
     global g_logger
     global g_log_level
-    global g_mdi_mode
     global g_mdi_window
-
-    g_mdi_mode = False
 
     g_events_to_present = {}
     g_events_to_present_lock = threading.Lock()
@@ -762,7 +759,6 @@ class Window(QMainWindow, Ui_w_event):
 
     def update_controls_based_on_event_time(self):
         global g_logger
-        global g_mdi_mode
         global g_mdi_window
 
         if (self.c_window_closed):
@@ -833,9 +829,8 @@ class Window(QMainWindow, Ui_w_event):
             self.raise_()
             self.activateWindow()
 
-            if (g_mdi_mode):
-                g_mdi_window.raise_()
-                g_mdi_window.activateWindow()
+            g_mdi_window.raise_()
+            g_mdi_window.activateWindow()
 
         if (self.c_updated_label_post_end == False):
         # Not all controls that could have changed have already changed
@@ -863,39 +858,6 @@ class Window(QMainWindow, Ui_w_event):
 
         self.handle_window_exit_from_within_window()
 
-def show_window(event_key_str, parsed_event, pipe_conn, log_level):
-    global g_win_exit_reason
-    global g_snooze_time_in_minutes
-    global g_logger
-
-    g_logger = init_logging("gCalNotifier", "Window", log_level, LOG_LEVEL_DEBUG)
-
-    app = QApplication(sys.argv)
-
-    win = Window()
-
-    win.init_window_from_parsed_event(event_key_str, parsed_event)
-
-    # Show the window and bring it to the front
-    g_win_exit_reason = EXIT_REASON_NONE
-    g_snooze_time_in_minutes = 0
-
-    app.setWindowIcon(QtGui.QIcon('icons8-calendar-64.png'))
-    #win.windowHandle().setScreen(app.screens()[1])
-    win.show()
-
-    # Show the window on the main monitor
-    monitor = QDesktopWidget().screenGeometry(0)
-    win.move(monitor.left(), monitor.top())
-
-    # Bring the windows to the front
-    getattr(win, "raise")()
-    win.activateWindow()
-
-    app.exec()
-
-    pipe_conn.send([g_win_exit_reason, g_snooze_time_in_minutes])
-
 def show_window_in_mdi(event_key_str, parsed_event):
     global g_win_exit_reason
     global g_snooze_time_in_minutes
@@ -916,71 +878,6 @@ def show_window_in_mdi(event_key_str, parsed_event):
 
     g_mdi_window.raise_()
     g_mdi_window.activateWindow()
-
-    return
-
-    app = QApplication(sys.argv)
-
-    win = Window()
-
-    # Show the window and bring it to the front
-    g_win_exit_reason = EXIT_REASON_NONE
-    g_snooze_time_in_minutes = 0
-
-    app.setWindowIcon(QtGui.QIcon('icons8-calendar-64.png'))
-    #win.windowHandle().setScreen(app.screens()[1])
-    win.show()
-
-    # Show the window on the main monitor
-    monitor = QDesktopWidget().screenGeometry(0)
-    win.move(monitor.left(), monitor.top())
-
-    # Bring the windows to the front
-    getattr(win, "raise")()
-    win.activateWindow()
-
-    app.exec()
-
-    pipe_conn.send([g_win_exit_reason, g_snooze_time_in_minutes])
-
-def show_window_and_parse_exit_status(event_key_str, parsed_event):
-    global g_events_to_present
-    global g_events_to_present_lock
-    global g_dismissed_events
-    global g_dismissed_lock
-    global g_snoozed_events
-    global g_snoozed_lock
-    global g_displayed_events
-    global g_displayed_lock
-    global g_logger
-    global g_log_level
-    global g_mdi_window
-    global g_mdi_mode
-
-    if (g_mdi_mode):
-        show_window_in_mdi(event_key_str, parsed_event)
-        return
-    
-    parent_conn, child_conn = Pipe()
-    proc = Process(
-        target = show_window,
-        args = (event_key_str, parsed_event, child_conn, g_log_level))
-    proc.start()
-    proc.join()
-
-    data_from_child = parent_conn.recv()
-    win_exit_reason = data_from_child[0]
-    snooze_time_in_minutes = data_from_child[1]
-
-    # Look at the window exit reason
-    g_logger.debug("win_exit_reason " + str(win_exit_reason))
-    g_logger.debug("snooze_time_in_minutes " + str(snooze_time_in_minutes))
-
-    handle_window_exit(
-        event_key_str,
-        parsed_event,
-        win_exit_reason,
-        snooze_time_in_minutes)
 
 video_links_reg_exs = [
     "(https://[a-zA-Z0-9-]*[\.]*zoom\.us/j/[a-zA-Z0-9-_\.&?=/]*)", # Zoom
@@ -1170,8 +1067,6 @@ def present_relevant_events():
     global g_events_to_present_lock
     global g_displayed_events
     global g_displayed_lock
-    global g_mdi_mode
-
     
     while True:  
         with g_events_to_present_lock:
@@ -1187,15 +1082,7 @@ def present_relevant_events():
         with g_displayed_lock:
             g_displayed_events[event_key_str] = parsed_event
         
-        if (g_mdi_mode):
-            show_window_and_parse_exit_status(event_key_str, parsed_event)
-        else:
-            # Show the windows in a separate thread and process
-            win_thread = threading.Thread(
-                target = show_window_and_parse_exit_status,
-                args = (event_key_str, parsed_event, ))
-
-            win_thread.start()
+        show_window_in_mdi(event_key_str, parsed_event)
 
 def clear_dismissed_events_that_have_ended():
     global g_dismissed_events
@@ -1399,35 +1286,23 @@ if __name__ == "__main__":
 
     prep_google_accounts_and_calendars()
 
-    g_mdi_mode = True
-    
-    if (g_mdi_mode):
-        # Start a thread to look for events to display
-        start_getting_events_to_display_main_loop_thread()
+    # Start a thread to look for events to display
+    start_getting_events_to_display_main_loop_thread()
 
-        app = QApplication(sys.argv)
+    app = QApplication(sys.argv)
 
-        app.setWindowIcon(QtGui.QIcon('icons8-calendar-64.png'))
+    app.setWindowIcon(QtGui.QIcon('icons8-calendar-64.png'))
 
-        g_mdi_window = MDIWindow()
+    g_mdi_window = MDIWindow()
 
-        # Set the MDI window size to be a little more than the event window size
-        g_mdi_window.setFixedWidth(730 + 100)
-        g_mdi_window.setFixedHeight(650 + 100)
+    # Set the MDI window size to be a little more than the event window size
+    g_mdi_window.setFixedWidth(730 + 100)
+    g_mdi_window.setFixedHeight(650 + 100)
 
-        g_mdi_window.show()
+    g_mdi_window.show()
 
-        # Show the window on the main monitor
-        monitor = QDesktopWidget().screenGeometry(0)
-        g_mdi_window.move(monitor.left(), monitor.top())
+    # Show the window on the main monitor
+    monitor = QDesktopWidget().screenGeometry(0)
+    g_mdi_window.move(monitor.left(), monitor.top())
 
-        app.exec_()
-    else:
-        # Loop forever
-        while True:
-            set_events_to_be_displayed()
-
-            present_relevant_events()
-
-            g_logger.debug("Going to sleep for " + str(g_refresh_frequency) + " seconds")
-            time.sleep(g_refresh_frequency)
+    app.exec_()
