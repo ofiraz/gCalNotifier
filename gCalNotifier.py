@@ -1402,8 +1402,21 @@ if __name__ == "__main__":
         start_getting_events_to_display_main_loop_thread()
 
         app = QApplication(sys.argv)
+
+        app.setWindowIcon(QtGui.QIcon('icons8-calendar-64.png'))
+
         g_mdi_window = MDIWindow()
+
+        # Set the MDI window size to be a little more than the event window size
+        g_mdi_window.setFixedWidth(730 + 100)
+        g_mdi_window.setFixedHeight(650 + 100)
+
         g_mdi_window.show()
+
+        # Show the window on the main monitor
+        monitor = QDesktopWidget().screenGeometry(0)
+        g_mdi_window.move(monitor.left(), monitor.top())
+
         app.exec_()
     else:
         # Loop forever
