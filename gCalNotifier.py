@@ -50,6 +50,7 @@ SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 EXIT_REASON_NONE = 0
 EXIT_REASON_DISMISS = 1
 EXIT_REASON_SNOOZE = 2
+EXIT_REASON_CHANGED = 3
 
 def init_global_objects():
     global g_events_to_present
@@ -696,6 +697,9 @@ class Window(QMainWindow, Ui_w_event):
             if (self.c_win_exit_reason == EXIT_REASON_NONE):
                 g_logger.debug("Cancel")
 
+            elif (self.c_win_exit_reason == EXIT_REASON_CHANGED):
+                g_logger.debug("Event changed")
+
             elif (self.c_win_exit_reason == EXIT_REASON_DISMISS):
                 g_logger.debug("Dismiss")
 
@@ -767,7 +771,7 @@ class Window(QMainWindow, Ui_w_event):
             if(has_event_changed(self.c_parsed_event)):
                 # The event has changed, closing the window to refresh the event
                 g_logger.debug("event changed - update_controls_based_on_event_time")
-                self.c_win_exit_reason = EXIT_REASON_NONE
+                self.c_win_exit_reason = EXIT_REASON_CHANGED
 
                 self.handle_window_exit()
                 
@@ -846,6 +850,7 @@ class Window(QMainWindow, Ui_w_event):
 
 def show_window_in_mdi(event_key_str, parsed_event):
     global g_logger
+    global g_mdi_window
 
     win = Window()
 
@@ -855,8 +860,6 @@ def show_window_in_mdi(event_key_str, parsed_event):
 
     sub = QMdiSubWindow()
     sub.setWidget(win)
-    #sub.setWidget(QTextEdit())
-    #sub.setWindowTitle(parsed_event['event_name'])
     g_mdi_window.mdi.addSubWindow(sub)
     sub.show()
 
