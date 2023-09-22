@@ -553,15 +553,25 @@ class Window(QMainWindow, Ui_w_event):
         }
 
     def showEvent(self, event):
-        # This method will be called when the main MDI window is shown
+        # This method will be called when the window is shown
         super().showEvent(event)  # Call the base class showEvent first
 
         # Make sure not button is clicked by mistake due to keyboard shortcuts
         self.pb_hidden_button.setFocus()
         self.pb_hidden_button.resize(0,0)
 
+    def closeEvent(self, event):
+        global g_win_exit_reason
+        global g_snooze_time_in_minutes
 
+        super().closeEvent(event)  # Call the base class closeEvent first
 
+        g_win_exit_reason = EXIT_REASON_NONE
+        g_snooze_time_in_minutes = 0
+        self.c_window_closed = True
+
+        self.handle_window_exit_from_within_window()
+        
     # Identify the video meeting softwate via its URL
     def identify_video_meeting_in_url(self, win_label, url, text_if_not_identified):
         global g_logger
