@@ -54,28 +54,17 @@ EXIT_REASON_CHANGED = 3
 
 def init_global_objects():
     global g_events_to_present
-    global g_events_to_present_lock
     global g_dismissed_events
-    global g_dismissed_lock
     global g_snoozed_events
-    global g_snoozed_lock
     global g_displayed_events
-    global g_displayed_lock
     global g_logger
     global g_log_level
     global g_mdi_window
 
-    g_events_to_present = {}
-    g_events_to_present_lock = threading.Lock()
-
-    g_dismissed_events = {}
-    g_dismissed_lock = threading.Lock()
-
-    g_snoozed_events = {}
-    g_snoozed_lock = threading.Lock()
-
-    g_displayed_events = {}
-    g_displayed_lock = threading.Lock()
+    g_events_to_present = Events_Collection()
+    g_dismissed_events = Events_Collection()
+    g_snoozed_events = Events_Collection()
+    g_displayed_events = Events_Collection()
 
     g_logger = init_logging("gCalNotifier", "Main", g_log_level, LOG_LEVEL_INFO)
 
@@ -374,13 +363,9 @@ def get_events_from_google_cal_with_try(google_account, cal_id, event_id = None)
 
 def add_items_to_show_from_calendar(google_account, cal_name, cal_id):
     global g_events_to_present
-    global g_events_to_present_lock
     global g_dismissed_events
-    global g_dismissed_lock
     global g_snoozed_events
-    global g_snoozed_lock
     global g_displayed_events
-    global g_displayed_lock
     global g_logger
 
     g_logger.debug("add_items_to_show_from_calendar for " + google_account)
@@ -413,25 +398,21 @@ def add_items_to_show_from_calendar(google_account, cal_name, cal_id):
         event_key_str = json.dumps(event_key)
         g_logger.debug("Event ID " + str(event_id))
 
-        with g_dismissed_lock:
-            if (event_key_str in g_dismissed_events):
-                g_logger.debug("Skipping dismissed event")
-                continue
+        if (g_dismissed_events.is_event_in(event_key_str)):
+            g_logger.debug("Skipping dismissed event")
+            continue
 
-        with g_snoozed_lock:
-            if (event_key_str in g_snoozed_events):
-                g_logger.debug("Skipping snoozed event")
-                continue
+        if (g_snoozed_events.is_event_in(event_key_str)):
+            g_logger.debug("Skipping snoozed event")
+            continue
 
-        with g_displayed_lock:
-            if (event_key_str in g_displayed_events):
-                g_logger.debug("Skipping displayed event")
-                continue
+        if (g_displayed_events.is_event_in(event_key_str)):
+            g_logger.debug("Skipping displayed event")
+            continue
         
-        with g_events_to_present_lock:
-            if (event_id in g_events_to_present):
-                g_logger.debug("Skipping event as it is already in the events to present")
-                continue
+        if (g_events_to_present.is_event_in(event_key_str)):
+            g_logger.debug("Skipping event as it is already in the events to present")
+            continue
 
         # Event not in the any other list
         parsed_event['raw_event'] = event
@@ -446,8 +427,7 @@ def add_items_to_show_from_calendar(google_account, cal_name, cal_id):
             # Event to get presented
             g_logger.debug(str(event))
 
-            with g_events_to_present_lock:
-                g_events_to_present[event_key_str] = parsed_event
+            g_events_to_present.add_event(event_key_str, parsed_event)
 
             g_logger.debug(
                 "Event to be presented - "
@@ -471,6 +451,57 @@ def set_events_to_be_displayed():
                 cal_for_account['calendar name'], 
                 cal_for_account['calendar id'])
 
+class Events_Collection:
+    def __init__(self):
+        self.c_events = {}
+        self.c_lock = threading.Lock()   
+
+    def is_event_in(self, event_key_str):
+        with self.c_lock:
+            return(event_key_str in self.c_events)
+        
+    def add_event(self, event_key_str, parsed_event):
+        with self.c_lock:
+            self.c_events[event_key_str] = parsed_event
+
+    def remove_event(self, event_key_str):
+        with self.c_lock:
+            del self.c_events[event_key_str]
+
+    def lock(self):
+        self.c_lock.acquire()
+
+    def unlock(self):
+        self.c_lock.release()
+
+    def items(self):
+        return(self.c_events.items())
+
+    def pop(self):
+        with self.c_lock:
+            if (len(self.c_events) > 0):
+                event_key_str = next(iter(self.c_events))
+                parsed_event = self.c_events[event_key_str]
+                del self.c_events[event_key_str]
+                return(event_key_str, parsed_event)
+            else:
+                # Empty collection
+                return(None, None)
+
+    def remove_events_based_on_condition(self, condition_function):
+            events_to_delete = []
+
+            with self.c_lock:
+                for event_key_str, parsed_event in self.c_events.items():
+                    if (condition_function(event_key_str, parsed_event)):
+                        # The condition was met, need remove the item
+                        events_to_delete.append(event_key_str)
+
+                # Delete the events that were collected to be deleted
+                while (len(events_to_delete) > 0):
+                    event_key_str = events_to_delete.pop()
+                    del self.c_events[event_key_str]
+    
 # The notification window
 class Window(QMainWindow, Ui_w_event):
     c_snooze_buttons = {}
@@ -682,12 +713,9 @@ class Window(QMainWindow, Ui_w_event):
 
     def handle_window_exit(self):
         global g_logger
-        global g_dismissed_lock
         global g_dismissed_events
-        global g_snoozed_lock
         global g_snoozed_events
         global g_displayed_events
-        global g_displayed_lock  
 
         if isinstance(self.parent(), QMdiSubWindow):
             # MDI mode
@@ -704,8 +732,7 @@ class Window(QMainWindow, Ui_w_event):
                 g_logger.debug("Dismiss")
 
                 if (now_datetime < self.c_parsed_event['end_date']):
-                    with g_dismissed_lock:
-                        g_dismissed_events[self.c_event_key_str] = self.c_parsed_event
+                    g_dismissed_events.add_event(self.c_event_key_str, self.c_parsed_event)
 
             elif (self.c_win_exit_reason == EXIT_REASON_SNOOZE):
                 g_logger.debug("Snooze")
@@ -718,15 +745,13 @@ class Window(QMainWindow, Ui_w_event):
 
                 g_logger.debug("Snooze until " + str(self.c_parsed_event['event_wakeup_time']))
                     
-                with g_snoozed_lock:
-                    g_snoozed_events[self.c_event_key_str] = self.c_parsed_event
+                g_snoozed_events.add_event(self.c_event_key_str, self.c_parsed_event)
 
             else:
                 g_logger.error("No exit reason")
 
             # Remove the event from the presented events
-            with g_displayed_lock:
-                del g_displayed_events[self.c_event_key_str]
+            g_displayed_events.remove_event(self.c_event_key_str)
 
             self.parent().close()
 
@@ -1018,89 +1043,81 @@ def parse_event(event, parsed_event):
     # The event needs to be notified
     return(True)
 
+def condition_function_for_removing_snoozed_events(event_key_str, parsed_event):
+    global g_logger
+    global g_events_to_present
+
+    now_datetime = get_now_datetime()
+
+    g_logger.debug("Snoozed event " + event_key_str + " " + str(parsed_event['event_wakeup_time']) + " " + str(now_datetime))
+
+    if(has_event_changed(parsed_event)):
+        # The event has changed, we will let the system re-parse the event as new
+        g_logger.info("event changed - set_items_to_present_from_snoozed")
+        
+    elif (now_datetime >= parsed_event['event_wakeup_time']):
+        # Event needs to be woke up
+        g_events_to_present.add_event(event_key_str, parsed_event)
+
+    else:
+        # No need to remove the evnet
+        return(False)
+    
+    # Need to remove the evnet
+    return(True)
+
 def set_items_to_present_from_snoozed():
     global g_logger
     global g_snoozed_events
-    global g_snoozed_lock
 
-    now_datetime = get_now_datetime()
+    g_snoozed_events.remove_events_based_on_condition(condition_function_for_removing_snoozed_events)
 
-    # Identified the snoozed evnets that need to wake up
-    snoozed_events_to_delete = []
-
-    with g_snoozed_lock:
-        for event_key_str, snoozed_event in g_snoozed_events.items():
-            g_logger.debug("Snoozed event " + event_key_str + " " + str(snoozed_event['event_wakeup_time']) + " " + str(now_datetime))
-
-            if(has_event_changed(snoozed_event)):
-                # The event has changed, we will let the system re-parse the event as new
-                g_logger.info("event changed - set_items_to_present_from_snoozed")
-                snoozed_events_to_delete.append(event_key_str)
-
-            elif (now_datetime >= snoozed_event['event_wakeup_time']):
-                # Event needs to be woke up
-                with g_events_to_present_lock:
-                    g_events_to_present[event_key_str] = snoozed_event
-                snoozed_events_to_delete.append(event_key_str)
-
-        # Clear the snoozed events that were woken up from the snoozed list
-        while (len(snoozed_events_to_delete) > 0):
-            k = snoozed_events_to_delete.pop()
-            g_logger.debug("Deleteing event id " + str(k) + " from snoozed")
-            del g_snoozed_events[k]
+    return
 
 def present_relevant_events():
     global g_events_to_present
-    global g_events_to_present_lock
     global g_displayed_events
-    global g_displayed_lock
     
-    while True:  
-        with g_events_to_present_lock:
-            if (len(g_events_to_present) > 0):
-                event_key_str = next(iter(g_events_to_present))
-                parsed_event = g_events_to_present[event_key_str]
-                del g_events_to_present[event_key_str]
-            else:
-                # No more entries to present
-                return
+    while True:
+        event_key_str, parsed_event = g_events_to_present.pop()
+        if (event_key_str == None):
+            # No more entries to present
+            return
         
         # Add the event to the presented events
-        with g_displayed_lock:
-            g_displayed_events[event_key_str] = parsed_event
+        g_displayed_events.add_event(event_key_str, parsed_event)
         
         show_window_in_mdi(event_key_str, parsed_event)
 
-def clear_dismissed_events_that_have_ended():
-    global g_dismissed_events
-    global g_dismissed_lock
+def condition_function_for_removing_dismissed_events(event_key_str, parsed_event):
     global g_logger
+    global g_dismissed_events
 
     now_datetime = get_now_datetime()
 
-    # Clear dismissed events that have ended
-    dismissed_events_to_delete = []
+    g_logger.debug("Dismissed event " + event_key_str + " " + str(parsed_event['end_date']) + " " + str(now_datetime))
 
-    with g_dismissed_lock:
-        for k, parsed_event in g_dismissed_events.items():
-            g_logger.debug("Dismissed event " + str(k) + " " + str(parsed_event['end_date']) + " " + str(now_datetime))
+    if (now_datetime > parsed_event['end_date']):
+        # The event has ended
+        g_logger.debug("Event end date has passed - clear_dismissed_events_that_have_ended")
+        g_logger.debug("Dismissed event end date" + str(parsed_event['end_date']))
 
-            if (now_datetime > parsed_event['end_date']):
-                # The event has ended
-                g_logger.debug("Event end date has passed - clear_dismissed_events_that_have_ended")
-                g_logger.debug("Dismissed event end date" + str(parsed_event['end_date']))
+    elif has_event_changed(parsed_event):
+        # The event has changed, we will let the system re-parse the event as new
+        g_logger.info("event changed - clear_dismissed_events_that_have_ended")
 
-                dismissed_events_to_delete.append(k)
+    else:
+        # No need to remove the evnet
+        return(False)
+    
+    # Need to remove the evnet
+    return(True)
 
-            elif has_event_changed(parsed_event):
-                # The event has changed, we will let the system re-parse the event as new
-                g_logger.info("event changed - clear_dismissed_events_that_have_ended")
-                dismissed_events_to_delete.append(k)
+def clear_dismissed_events_that_have_ended():
 
-        while (len(dismissed_events_to_delete) > 0):
-            k = dismissed_events_to_delete.pop()
-            g_logger.debug("Deleteing event id " + str(k) + " from dismissed")
-            del g_dismissed_events[k]
+    g_dismissed_events.remove_events_based_on_condition(condition_function_for_removing_dismissed_events)
+
+    return
 
 def load_config():
     global g_google_accounts
