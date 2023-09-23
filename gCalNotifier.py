@@ -64,7 +64,7 @@ def init_global_objects():
     g_events_to_present = Events_Collection()
     g_dismissed_events = Events_Collection()
     g_snoozed_events = Events_Collection()
-    g_displayed_events = Events_Collection()
+    g_displayed_events = Events_Collection(g_mdi_window.add_event_to_display_cb, g_mdi_window.remove_event_from_display_cb)
 
     g_logger = init_logging("gCalNotifier", "Main", g_log_level, LOG_LEVEL_INFO)
 
@@ -452,21 +452,36 @@ def set_events_to_be_displayed():
                 cal_for_account['calendar id'])
 
 class Events_Collection:
-    def __init__(self):
+    def __init__(self, add_cb = None, remove_cb = None):
         self.c_events = {}
-        self.c_lock = threading.Lock()   
+        self.c_lock = threading.Lock()
+        self.c_add_cb = add_cb
+        self.c_remove_cb = remove_cb
 
     def is_event_in(self, event_key_str):
         with self.c_lock:
             return(event_key_str in self.c_events)
         
+
+    def add_event_safe(self, event_key_str, parsed_event):
+        self.c_events[event_key_str] = parsed_event
+
+        if (self.c_add_cb):
+            self.c_add_cb()
+        
     def add_event(self, event_key_str, parsed_event):
         with self.c_lock:
-            self.c_events[event_key_str] = parsed_event
+            self.add_event_safe(event_key_str, parsed_event)
+
+    def remove_event_safe(self, event_key_str):
+        del self.c_events[event_key_str]
+
+        if (self.c_remove_cb):
+            self.c_remove_cb()
 
     def remove_event(self, event_key_str):
         with self.c_lock:
-            del self.c_events[event_key_str]
+            self.remove_event_safe(event_key_str)
 
     def lock(self):
         self.c_lock.acquire()
@@ -482,7 +497,7 @@ class Events_Collection:
             if (len(self.c_events) > 0):
                 event_key_str = next(iter(self.c_events))
                 parsed_event = self.c_events[event_key_str]
-                del self.c_events[event_key_str]
+                self.remove_event_safe(event_key_str)
                 return(event_key_str, parsed_event)
             else:
                 # Empty collection
@@ -500,7 +515,7 @@ class Events_Collection:
                 # Delete the events that were collected to be deleted
                 while (len(events_to_delete) > 0):
                     event_key_str = events_to_delete.pop()
-                    del self.c_events[event_key_str]
+                    self.remove_event_safe(event_key_str)
     
 # The notification window
 class Window(QMainWindow, Ui_w_event):
@@ -1216,6 +1231,7 @@ def prep_google_accounts_and_calendars():
         get_calendar_list_for_account(google_account)
 
 class MDIWindow(QMainWindow):
+    c_num_of_displayed_events = 0
     count = 0
 
     def present_relevant_events_in_sub_windows(self):
@@ -1227,6 +1243,9 @@ class MDIWindow(QMainWindow):
         present_relevant_events()
 
         self.timer.start(int(g_refresh_frequency/2) * 1000)
+
+    def update_mdi_title(self):
+        self.setWindowTitle("[" + str(self.c_num_of_displayed_events) + "] gCalNotifier")
 
     def __init__(self):
         super().__init__()
@@ -1240,10 +1259,27 @@ class MDIWindow(QMainWindow):
         file.addAction("cascade")
         file.addAction("Tiled")
         file.triggered[QAction].connect(self.WindowTrig)
-        self.setWindowTitle("gCalNotifier")
+        self.update_mdi_title()
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.present_relevant_events_in_sub_windows) 
+
+    def add_event_to_display_cb(self):
+        self.c_num_of_displayed_events = self.c_num_of_displayed_events + 1
+
+        self.update_mdi_title()
+
+        # For the case the MDI window was minimized
+        self.showMaximized()
+
+    def remove_event_from_display_cb(self):
+        self.c_num_of_displayed_events = self.c_num_of_displayed_events - 1
+
+        self.update_mdi_title()
+
+        if (self.c_num_of_displayed_events == 0):
+            # No events to show
+            self.showMinimized()
 
     def showEvent(self, event):
         # This method will be called when the main MDI window is shown
@@ -1286,6 +1322,9 @@ def start_getting_events_to_display_main_loop_thread():
 if __name__ == "__main__":
     load_config()
 
+    app = QApplication(sys.argv)
+    g_mdi_window = MDIWindow()
+
     init_global_objects()
 
     prep_google_accounts_and_calendars()
@@ -1293,11 +1332,8 @@ if __name__ == "__main__":
     # Start a thread to look for events to display
     start_getting_events_to_display_main_loop_thread()
 
-    app = QApplication(sys.argv)
 
     app.setWindowIcon(QtGui.QIcon('icons8-calendar-64.png'))
-
-    g_mdi_window = MDIWindow()
 
     # Set the MDI window size to be a little more than the event window size
     g_mdi_window.setFixedWidth(730 + 100)
