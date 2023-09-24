@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
 
 from PyQt5 import QtGui
 from PyQt5 import QtCore
+import logging
 
 from gCalNotifier_ui import Ui_w_event
 
@@ -36,8 +37,6 @@ import threading
 from multiprocessing import Process, Pipe
 
 import json
-import traceback
-
 import re
 
 import webbrowser
