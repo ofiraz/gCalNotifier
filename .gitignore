@@ -23,3 +23,4 @@ app_credentials.json
 .qt_for_python/uic/gCalNotifier.py
 ui/gCalNotifier.ui.autosave
 family16965932704949589060@group.calendar.google.com_token.json
+.vscode/settings.json
