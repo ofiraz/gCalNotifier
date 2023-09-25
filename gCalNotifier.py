@@ -419,7 +419,7 @@ class Window(QMainWindow, Ui_w_event):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
         self.setupUi(self)
 
         self.timer = QtCore.QTimer()
