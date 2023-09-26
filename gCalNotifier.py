@@ -58,10 +58,10 @@ def init_global_objects():
     global g_log_level
     global g_mdi_window
 
-    g_events_to_present = Events_Collection()
-    g_dismissed_events = Events_Collection()
-    g_snoozed_events = Events_Collection()
-    g_displayed_events = Events_Collection(g_mdi_window.add_event_to_display_cb, g_mdi_window.remove_event_from_display_cb)
+    g_events_to_present = Events_Collection("g_events_to_present")
+    g_dismissed_events = Events_Collection("g_dismissed_events")
+    g_snoozed_events = Events_Collection("g_snoozed_events")
+    g_displayed_events = Events_Collection("g_displayed_events", g_mdi_window.add_event_to_display_cb, g_mdi_window.remove_event_from_display_cb)
 
     g_logger = init_logging("gCalNotifier", "Main", g_log_level, LOG_LEVEL_INFO)
 
@@ -338,16 +338,22 @@ def set_events_to_be_displayed():
                 cal_for_account['calendar id'])
 
 class Events_Collection:
-    def __init__(self, add_cb = None, remove_cb = None):
+    def __init__(self, collection_name, add_cb = None, remove_cb = None):
         self.c_events = {}
         self.c_lock = threading.Lock()
+        self.c_collection_name = collection_name
         self.c_add_cb = add_cb
         self.c_remove_cb = remove_cb
 
     def is_event_in(self, event_key_str):
+        global g_logger
+
+        g_logger.debug("Before lock for " + self.c_collection_name)
+
         with self.c_lock:
-            return(event_key_str in self.c_events)
-        
+            g_logger.debug("After lock for " + self.c_collection_name)
+
+            return(event_key_str in self.c_events)       
 
     def add_event_safe(self, event_key_str, parsed_event):
         self.c_events[event_key_str] = parsed_event
@@ -356,53 +362,74 @@ class Events_Collection:
             self.c_add_cb()
         
     def add_event(self, event_key_str, parsed_event):
+        global g_logger
+
+        g_logger.debug("Before lock for " + self.c_collection_name)
+
         with self.c_lock:
             self.add_event_safe(event_key_str, parsed_event)
 
+        g_logger.debug("After lock for " + self.c_collection_name)
+
+
     def remove_event_safe(self, event_key_str):
+        global g_logger
+
         del self.c_events[event_key_str]
 
         if (self.c_remove_cb):
             self.c_remove_cb()
 
     def remove_event(self, event_key_str):
+        global g_logger
+
+        g_logger.debug("Before lock for " + self.c_collection_name)
+
         with self.c_lock:
             self.remove_event_safe(event_key_str)
 
-    def lock(self):
-        self.c_lock.acquire()
-
-    def unlock(self):
-        self.c_lock.release()
-
-    def items(self):
-        return(self.c_events.items())
+        g_logger.debug("After lock for " + self.c_collection_name)
 
     def pop(self):
+        global g_logger
+
+        g_logger.debug("Before lock for " + self.c_collection_name)
+
         with self.c_lock:
             if (len(self.c_events) > 0):
                 event_key_str = next(iter(self.c_events))
                 parsed_event = self.c_events[event_key_str]
                 self.remove_event_safe(event_key_str)
+
+                g_logger.debug("After lock for " + self.c_collection_name)
+
                 return(event_key_str, parsed_event)
             else:
                 # Empty collection
+                g_logger.debug("After lock for " + self.c_collection_name)
+
                 return(None, None)
 
     def remove_events_based_on_condition(self, condition_function):
-            events_to_delete = []
+        global g_logger
 
-            with self.c_lock:
-                for event_key_str, parsed_event in self.c_events.items():
-                    if (condition_function(event_key_str, parsed_event)):
-                        # The condition was met, need remove the item
-                        events_to_delete.append(event_key_str)
+        events_to_delete = []
 
-                # Delete the events that were collected to be deleted
-                while (len(events_to_delete) > 0):
-                    event_key_str = events_to_delete.pop()
-                    self.remove_event_safe(event_key_str)
-    
+        g_logger.debug("Before lock for " + self.c_collection_name)
+
+        with self.c_lock:
+            for event_key_str, parsed_event in self.c_events.items():
+                if (condition_function(event_key_str, parsed_event)):
+                    # The condition was met, need remove the item
+                    events_to_delete.append(event_key_str)
+
+            # Delete the events that were collected to be deleted
+            while (len(events_to_delete) > 0):
+                event_key_str = events_to_delete.pop()
+                self.remove_event_safe(event_key_str)
+
+        g_logger.debug("After lock for " + self.c_collection_name)
+
 # The notification window
 class Window(QMainWindow, Ui_w_event):
     c_snooze_buttons = {}
@@ -1081,28 +1108,51 @@ class MDIWindow(QMainWindow):
         file.addAction("New")
         file.addAction("cascade")
         file.addAction("Tiled")
-        file.triggered[QAction].connect(self.WindowTrig)
+        file.triggered.connect(self.WindowTrig)
         self.update_mdi_title()
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.present_relevant_events_in_sub_windows) 
 
     def add_event_to_display_cb(self):
+        global g_logger
+
+        g_logger.debug("add_event_to_display_cb start")
+
         self.c_num_of_displayed_events = self.c_num_of_displayed_events + 1
 
+        g_logger.debug("add_event_to_display_cb update_mdi_title")
         self.update_mdi_title()
 
-        # For the case the MDI window was minimized
-        self.showMaximized()
+        '''
+        if (self.c_num_of_displayed_events == 1):
+            # For the case the MDI window was minimized
+            g_logger.info("add_event_to_display_cb showMaximized")
+            self.showNormal()
+        '''
+
+        g_logger.debug("add_event_to_display_cb end")
 
     def remove_event_from_display_cb(self):
+        global g_logger
+
+        g_logger.debug("remove_event_from_display_cb start")
+
         self.c_num_of_displayed_events = self.c_num_of_displayed_events - 1
 
+        g_logger.debug("remove_event_from_display_cb update_mdi_title")
         self.update_mdi_title()
 
+        '''
         if (self.c_num_of_displayed_events == 0):
             # No events to show
+            g_logger.info("remove_event_from_display_cb showMinimized")
+
             self.showMinimized()
+        '''
+
+        g_logger.debug("remove_event_from_display_cb end")
+
 
     def showEvent(self, event):
         # This method will be called when the main MDI window is shown
