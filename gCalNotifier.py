@@ -1092,6 +1092,12 @@ class MDIWindow(QMainWindow):
 
         present_relevant_events()
 
+        if ((self.c_num_of_displayed_events > 0) and self.isMinimized()):
+            # There is now at least one event, and the MDI is minimized - restore the window
+            g_logger.info("Before showNormal")
+            self.showNormal()
+            g_logger.info("After showNormal")
+
         self.timer.start(int(g_refresh_frequency/2) * 1000)
 
     def update_mdi_title(self):
@@ -1124,13 +1130,6 @@ class MDIWindow(QMainWindow):
         g_logger.debug("add_event_to_display_cb update_mdi_title")
         self.update_mdi_title()
 
-        '''
-        if (self.c_num_of_displayed_events == 1):
-            # For the case the MDI window was minimized
-            g_logger.info("add_event_to_display_cb showMaximized")
-            self.showNormal()
-        '''
-
         g_logger.debug("add_event_to_display_cb end")
 
     def remove_event_from_display_cb(self):
@@ -1143,13 +1142,11 @@ class MDIWindow(QMainWindow):
         g_logger.debug("remove_event_from_display_cb update_mdi_title")
         self.update_mdi_title()
 
-        '''
         if (self.c_num_of_displayed_events == 0):
             # No events to show
-            g_logger.info("remove_event_from_display_cb showMinimized")
+            g_logger.debug("remove_event_from_display_cb showMinimized")
 
             self.showMinimized()
-        '''
 
         g_logger.debug("remove_event_from_display_cb end")
 
