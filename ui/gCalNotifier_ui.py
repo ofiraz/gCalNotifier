@@ -18,7 +18,7 @@ class Ui_w_event(object):
         if not w_event.objectName():
             w_event.setObjectName(u"w_event")
         w_event.setEnabled(True)
-        w_event.resize(715, 649)
+        w_event.resize(668, 676)
         self.l_event_name = QLabel(w_event)
         self.l_event_name.setObjectName(u"l_event_name")
         self.l_event_name.setGeometry(QRect(70, 10, 581, 31))
