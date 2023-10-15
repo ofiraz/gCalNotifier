@@ -57,6 +57,7 @@ def init_global_objects():
     global g_logger
     global g_log_level
     global g_mdi_window
+    global g_events_logger
 
     g_events_to_present = Events_Collection("g_events_to_present")
     g_dismissed_events = Events_Collection("g_dismissed_events")
@@ -64,7 +65,7 @@ def init_global_objects():
     g_displayed_events = Events_Collection("g_displayed_events", g_mdi_window.add_event_to_display_cb, g_mdi_window.remove_event_from_display_cb)
 
     g_logger = init_logging("gCalNotifier", "Main", g_log_level, LOG_LEVEL_INFO)
-
+    g_events_logger = init_logging("EventsLog", "Main", LOG_LEVEL_INFO, LOG_LEVEL_INFO)
 
 def get_now_datetime():
     return(datetime.datetime.now().astimezone())
@@ -644,20 +645,21 @@ class Window(QMainWindow, Ui_w_event):
         global g_dismissed_events
         global g_snoozed_events
         global g_displayed_events
+        global g_events_logger
 
         if isinstance(self.parent(), QMdiSubWindow):
             # MDI mode
 
             now_datetime = get_now_datetime()
-
+    
             if (self.c_win_exit_reason == EXIT_REASON_NONE):
-                g_logger.debug("Cancel")
+                g_events_logger.info("Event windows was closed by user - not snoozed or dismissed, for event: " + self.c_parsed_event['event_name'])
 
             elif (self.c_win_exit_reason == EXIT_REASON_CHANGED):
-                g_logger.debug("Event changed")
+                g_events_logger.info("Event windows was closed because there was a change in the event, for event: " + self.c_parsed_event['event_name'])
 
             elif (self.c_win_exit_reason == EXIT_REASON_DISMISS):
-                g_logger.debug("Dismiss")
+                g_events_logger.info("Event dismissed by user, for event: " + self.c_parsed_event['event_name'])
 
                 if (now_datetime < self.c_parsed_event['end_date']):
                     g_dismissed_events.add_event(self.c_event_key_str, self.c_parsed_event)
@@ -671,12 +673,12 @@ class Window(QMainWindow, Ui_w_event):
                     delta_diff = datetime.timedelta(minutes=self.c_snooze_time_in_minutes)
                     self.c_parsed_event['event_wakeup_time'] = now_datetime + delta_diff
 
-                g_logger.debug("Snooze until " + str(self.c_parsed_event['event_wakeup_time']))
+                g_events_logger.info("Event snoozed by user, for event: " + self.c_parsed_event['event_name'] + " until " + str(self.c_parsed_event['event_wakeup_time']))
                     
                 g_snoozed_events.add_event(self.c_event_key_str, self.c_parsed_event)
 
             else:
-                g_logger.error("No exit reason")
+                g_events_logger.error("Event windows was closed without a reason, for event: " + self.c_parsed_event['event_name'])
 
             # Remove the event from the presented events
             g_displayed_events.remove_event(self.c_event_key_str)
@@ -804,6 +806,7 @@ class Window(QMainWindow, Ui_w_event):
 def show_window_in_mdi(event_key_str, parsed_event):
     global g_logger
     global g_mdi_window
+    global g_events_logger
 
     win = Window()
 
@@ -815,6 +818,8 @@ def show_window_in_mdi(event_key_str, parsed_event):
     sub.setWidget(win)
     g_mdi_window.mdi.addSubWindow(sub)
     sub.show()
+
+    g_events_logger.info("Displaying event:" + parsed_event['event_name'])
 
     g_mdi_window.raise_()
     g_mdi_window.activateWindow()
