@@ -651,7 +651,7 @@ class Window(QMainWindow, Ui_w_event):
             # MDI mode
 
             now_datetime = get_now_datetime()
-    
+
             if (self.c_win_exit_reason == EXIT_REASON_NONE):
                 g_events_logger.info("Event windows was closed by user - not snoozed or dismissed, for event: " + self.c_parsed_event['event_name'])
 
@@ -1116,8 +1116,9 @@ class MDIWindow(QMainWindow):
         bar = self.menuBar()
  
         file = bar.addMenu("File")
+        file.addAction("Reset")
         file.addAction("New")
-        file.addAction("cascade")
+        file.addAction("Cascade")
         file.addAction("Tiled")
         file.triggered.connect(self.WindowTrig)
         self.update_mdi_title()
@@ -1155,6 +1156,10 @@ class MDIWindow(QMainWindow):
 
         g_logger.debug("remove_event_from_display_cb end")
 
+    def reset_all_events(self):
+        global g_events_logger
+
+        g_events_logger.info("Reseting the app")
 
     def showEvent(self, event):
         # This method will be called when the main MDI window is shown
@@ -1162,7 +1167,10 @@ class MDIWindow(QMainWindow):
         self.present_relevant_events_in_sub_windows()
 
     def WindowTrig(self, p):
-        if p.text() == "New":
+        if p.text() == "Reset":
+            self.reset_all_events()
+
+        elif p.text() == "New":
             MDIWindow.count = MDIWindow.count + 1
             sub = QMdiSubWindow()
             sub.setWidget(QTextEdit())
@@ -1170,10 +1178,10 @@ class MDIWindow(QMainWindow):
             self.mdi.addSubWindow(sub)
             sub.show()
  
-        if p.text() == "cascade":
+        elif p.text() == "Cascade":
             self.mdi.cascadeSubWindows()
  
-        if p.text() == "Tiled":
+        elif p.text() == "Tiled":
             self.mdi.tileSubWindows()
 
 def get_events_to_display_main_loop():
