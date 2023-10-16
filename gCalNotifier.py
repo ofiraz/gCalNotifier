@@ -10,12 +10,8 @@ from PyQt5 import QtGui
 from PyQt5 import QtCore
 import logging
 
-from gCalNotifier_ui import Ui_w_event
-
 import datetime
 import pytz
-from tzlocal import get_localzone
-import validators
 
 from logging_module import (
     init_logging,
@@ -39,15 +35,18 @@ from multiprocessing import Process, Pipe
 import json
 import re
 
-import webbrowser
+from json_utils import nice_json
 
-from deepdiff import DeepDiff
+from datetime_utils import get_now_datetime
 
-# Exit reasons from the dialog
-EXIT_REASON_NONE = 0
-EXIT_REASON_DISMISS = 1
-EXIT_REASON_SNOOZE = 2
-EXIT_REASON_CHANGED = 3
+from EventWindow import Window
+
+from event_utils import (
+    has_event_changed,
+    get_max_reminder_in_minutes,
+    has_self_declined,
+    NO_POPUP_REMINDER
+)
 
 def init_global_objects():
     global g_events_to_present
@@ -67,12 +66,6 @@ def init_global_objects():
     g_logger = init_logging("gCalNotifier", "Main", g_log_level, LOG_LEVEL_INFO)
     g_events_logger = init_logging("EventsLog", "Main", LOG_LEVEL_INFO, LOG_LEVEL_INFO)
 
-def get_now_datetime():
-    return(datetime.datetime.now().astimezone())
-
-def nice_json(json_object):
-    return(json.dumps(json_object, indent = 1))
-
 def has_self_tentative(event):
     # Check if the current user is tentative for the evnet
     if(event.get('attendees')):
@@ -83,169 +76,6 @@ def has_self_tentative(event):
                 return(True)
 
     # The current user is not tentative for the meeting.
-    return(False)
-
-def has_self_declined(event):
-    # Check if the event was not declined by the current user
-    if(event.get('attendees')):
-        # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
-        for attendee in event['attendees']:
-            if(attendee.get('self') and attendee['self'] == True and attendee.get('responseStatus') and attendee['responseStatus'] == 'declined'):
-                # The user declined the meeting. No need to display it
-                return(True)
-
-    # The event was not declined by the current user
-    return(False)
-
-NO_POPUP_REMINDER = -1
-
-def get_max_reminder_in_minutes(p_event):
-    max_minutes_before = NO_POPUP_REMINDER
-
-    if (p_event['reminders'].get('useDefault') == True):
-        max_minutes_before = 15
-    else:
-        override_rule = p_event['reminders'].get('overrides')
-        if (override_rule):
-            for override_entry in override_rule:
-                if (override_entry['method'] == "popup"):
-                    if int(override_entry['minutes']) > max_minutes_before:
-                        max_minutes_before = int(override_entry['minutes'])
-
-    return(max_minutes_before)
-
-def has_event_changed_internal(orig_event, new_event):
-    global g_logger
-
-    g_logger.debug("Check for changes")
-
-    diff_result = DeepDiff(orig_event, new_event)
-    if (diff_result):
-
-        g_logger.debug("Check if relevant changes")
-        g_logger.debug(str(diff_result))
-
-        for key in diff_result:
-            if (key == 'values_changed'):
-                for key1 in diff_result['values_changed']:
-                    if (
-                        key1 == "root['etag']" 
-                        or key1 == "root['updated']" 
-                        or key1 == "root['recurringEventId']"
-                        or key1 == "root['conferenceData']['signature']"
-                        or key1 == "root['iCalUID']"
-                    ):
-                        # Not relevant changes
-                        continue
-
-                    if re.search("root\['attendees'\]\[[0-9]+\]\['responseStatus'\]", key1):
-                        # A change in the attendees response
-                        if has_self_declined(new_event):
-                            # The current user has declined the event
-                            g_logger.info("The current user has declined")
-                            return(True)
-
-                        continue
-
-                    if (key1 == "root['extendedProperties']['shared']['meetingParams']"):
-                        # Compare the internal parameters
-                        diff_extended_properties = DeepDiff(diff_result['values_changed'][key1]['new_value'], diff_result['values_changed'][key1]['old_value'])
-                        for key2 in diff_extended_properties:
-                            if (key2 == "invitees_hash"):
-                                # Not relevant change
-                                continue
-
-                            # Found a change
-                            g_logger.info("Found a relevant change")
-                            g_logger.info(key2 + ":" + str(diff_extended_properties[key2]))
-                            return(True)
-                        
-                        continue
-
-                    if re.search("root\['reminders'\]", key1):
-                        # A change in the reminders
-                        # Compare the max minutes to notify before in both original and new event
-                        orig_event_max_reminder_in_minutes = get_max_reminder_in_minutes(orig_event)
-                        new_event_max_reminder_in_minutes = get_max_reminder_in_minutes(new_event)
-                        
-                        if (orig_event_max_reminder_in_minutes != new_event_max_reminder_in_minutes):
-                            # The max reminder in minutes has changed
-                            g_logger.info("The max reminder in minutes has changed")
-                            return(True)
-
-                        continue
-
-                    # Found a change
-                    g_logger.info("Found a relevant change")
-                    g_logger.info(key1 + ":" + str(diff_result['values_changed'][key1]))
-                    return(True)
-                
-                continue
-            # key == 'values_changed'
-
-            elif (key == 'iterable_item_added' or key == 'iterable_item_removed' or key == 'dictionary_item_added' or key == 'dictionary_item_removed'):
-                for key1 in diff_result[key]:
-                    if (key1 == "root['conferenceData']['signature']"):
-                        # Not relevant changes
-                        continue
-                        
-                    if re.search("root\['attendees'\]\[[0-9]+\]", key1):
-                        # An attendee added - can be ignored
-                        continue
-
-                    if re.search("root\['reminders'\]", key1):
-                        # A change in the reminders
-                        # Compare the max minutes to notify before in both original and new event
-                        orig_event_max_reminder_in_minutes = get_max_reminder_in_minutes(orig_event)
-                        new_event_max_reminder_in_minutes = get_max_reminder_in_minutes(new_event)
-                        
-                        if (orig_event_max_reminder_in_minutes != new_event_max_reminder_in_minutes):
-                            # The max reminder in minutes has changed
-                            g_logger.info("The max reminder in minutes has changed")
-                            return(True)
-
-                        continue
-
-                    # Found a change
-                    g_logger.info("Found a relevant change")
-                    g_logger.info(key1)
-                    return(True)
-
-                continue
-            # key == 'iterable_item_added' or or key == 'iterable_item_removed'
-
-            g_logger.info("Found a relevant change")
-            g_logger.info(key + ":" + str(diff_result[key]))
-            return(True)
-
-    return(False)
-
-def has_event_changed(orig_event):
-    global g_logger
-
-    try:
-        # First check if the event still exists
-        raw_event = get_events_from_google_cal_with_try(
-            g_logger,
-            orig_event['google_account'],
-            orig_event['cal id'],
-            orig_event['raw_event']['id'])
-
-    except ConnectivityIssue:
-        # Having a connectivity issue - we will assume the event did not change in the g-cal
-        return False
-
-    if(raw_event is None):
-        # The event does not exist anymore
-        g_logger.info("event does not exist anymore - strange")
-        g_logger.info("*********** " + orig_event['event_name'] + " ***********")
-
-        return True
-
-    if (has_event_changed_internal(orig_event['raw_event'], raw_event)):
-        g_logger.info("*********** " + orig_event['event_name'] + " ***********")
-        return(True)
-
     return(False)
 
 def add_items_to_show_from_calendar(google_account, cal_name, cal_id):
@@ -431,384 +261,15 @@ class Events_Collection:
 
         g_logger.debug("After lock for " + self.c_collection_name)
 
-# The notification window
-class Window(QMainWindow, Ui_w_event):
-    c_snooze_buttons = {}
-    c_parsed_event = {}
-    c_event_key_str = ""
-    c_is_first_display_of_window = False
-    c_hidden_all_snooze_before_buttons = False
-    c_updated_label_post_start = False
-    c_updated_label_post_end = False
-    c_video_link = None
-    c_window_closed = False
-    c_win_exit_reason = EXIT_REASON_NONE
-    c_snooze_time_in_minutes = 0
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
-        self.setupUi(self)
-
-        self.timer = QtCore.QTimer()
-
-        self.connectSignalsSlots()
-
-        # Initialize the snooze buttons
-        self.c_snooze_buttons = {
-            self.pb_m10m:-10,
-            self.pb_m5m:-5,
-            self.pb_m2m:-2,
-            self.pb_m1m:-1,
-            self.pb_0m:0,
-            self.pb_1m:1,
-            self.pb_5m:5,
-            self.pb_15m:15,
-            self.pb_30m:30,
-            self.pb_1h:60,
-            self.pb_2h:120,
-            self.pb_4h:240,
-            self.pb_8h:480
-        }
-
-    def showEvent(self, event):
-        # This method will be called when the window is shown
-        super().showEvent(event)  # Call the base class showEvent first
-
-        # Make sure not button is clicked by mistake due to keyboard shortcuts
-        self.pb_hidden_button.setFocus()
-        self.pb_hidden_button.resize(0,0)
-
-    def closeEvent(self, event):
-        global g_logger
-
-        super().closeEvent(event)  # Call the base class closeEvent first
-
-        if (self.c_win_exit_reason == EXIT_REASON_NONE):
-            self.c_snooze_time_in_minutes = 0
-            self.c_window_closed = True
-
-            self.handle_window_exit()
-        
-    # Identify the video meeting softwate via its URL
-    def identify_video_meeting_in_url(self, win_label, url, text_if_not_identified):
-        global g_logger
-
-        if ("zoom.us" in url):
-            label_text = "Zoom Link"
-        elif ("webex.com" in url):
-            label_text = "Webex Link"
-        elif ("meet.google.com" in url):
-            label_text = "Google Meet Link"
-        elif ("bluejeans.com" in url):
-            label_text = "BlueJeans Link"
-        elif ("chime.aws" in url):
-            label_text = "AWS Chime Link"
-        elif ("teams.microsoft.com" in url):
-            label_text = "MS Teams Link"    
-        else:
-            label_text = text_if_not_identified
-
-        win_label.setText("<a href=\"" + url + "\">" + label_text + "</a>")
-        win_label.setOpenExternalLinks(True)
-        win_label.setToolTip(url)
-
-
-    def init_window_from_parsed_event(self, event_key_str, parsed_event):
-        self.c_win_exit_reason = EXIT_REASON_NONE
-        self.c_snooze_time_in_minutes = 0
-
-        self.c_event_key_str = event_key_str
-        self.c_parsed_event = parsed_event
-        self.c_is_first_display_of_window = True
-        self.c_window_closed = False
-
-        self.setWindowTitle(parsed_event['event_name'])
-
-        self.l_account.setText(parsed_event['cal name'] + " calendar in " + parsed_event['google_account'])
-
-        self.l_event_name.setText(parsed_event['event_name'])
-
-        g_logger.info("Nofied for " + parsed_event['google_account'] + ": " + parsed_event['event_name'])
-
-        if parsed_event['all_day_event']:
-            self.l_all_day.setText("An all day event")
-        else:
-            self.l_all_day.setHidden(True)
-
-        parsed_event['start_time_in_loacal_tz'] = str(parsed_event['start_date'].astimezone(get_localzone()))
-        parsed_event['end_time_in_loacal_tz'] = str(parsed_event['end_date'].astimezone(get_localzone()))
-
-        self.l_event_start.setText('Starting at ' + parsed_event['start_time_in_loacal_tz'])
-        self.l_event_end.setText('Ending at ' + parsed_event['end_time_in_loacal_tz'])
-
-        self.l_event_link.setText("<a href=\"" + parsed_event['html_link'] + "\">Link to event in GCal</a>")
-        self.l_event_link.setToolTip(parsed_event['html_link'])
-
-        if (parsed_event['event_location'] == "No location"):
-            self.l_location_or_video_link.setHidden(True)
-        else:
-            valid_url = validators.url(parsed_event['event_location'])
-            if (valid_url):
-                self.identify_video_meeting_in_url(
-                    self.l_location_or_video_link,
-                    parsed_event['event_location'],
-                    "Link to location or to a video URL")
-
-                self.c_video_link = parsed_event['event_location']
-
-            else:
-                self.l_location_or_video_link.setText('Location: ' + parsed_event['event_location'])
-
-        if (parsed_event['video_link'] == "No Video"):
-            self.l_video_link.setHidden(True)
-        else:
-            self.identify_video_meeting_in_url(
-                self.l_video_link,
-                parsed_event['video_link'],
-                "Video Link")
-
-            self.c_video_link = parsed_event['video_link']
-
-        # Hide the missing video message - in the next section we will decide whether to show it
-        is_hide_missing_video = True
-
-        need_to_record_meeting = parsed_event.get('need_to_record_meeting', False)
-        if (need_to_record_meeting):
-            is_hide_missing_video = False
-
-            self.l_missing_video.setText("Remember to record!!!")
-
-        elif (self.c_video_link is None):
-            self.pb_open_video.setHidden(True)
-            self.pb_open_video_and_snooze.setHidden(True)
-            self.pb_open_video_and_dismiss.setHidden(True)
-
-            if (parsed_event['num_of_attendees'] > 1):
-            # Num of attendees > 1 and no video link
-                # We expect a video link as there are multiple attendees for this meeting
-
-                # Let's check if we have our special sign
-                is_no_video_ok = re.search(
-                    'NO_VIDEO_OK',
-                    parsed_event['description'])
-
-                if (not is_no_video_ok):
-                    # We need to show the missing video message
-                    is_hide_missing_video = False
-
-        if (is_hide_missing_video):
-            self.l_missing_video.setHidden(True)
-        else:
-            self.l_missing_video.setAutoFillBackground(True) # This is important!!
-            color  = QtGui.QColor(233, 10, 150)
-            alpha  = 140
-            values = "{r}, {g}, {b}, {a}".format(r = color.red(),
-                                                g = color.green(),
-                                                b = color.blue(),
-                                                a = alpha
-                                                )
-            self.l_missing_video.setStyleSheet("QLabel { background-color: rgba("+values+"); }")
-
-
-        if (parsed_event['description'] != "No description"):
-            self.t_description.setHtml(parsed_event['description'])
-
-        self.t_raw_event.setText(nice_json(parsed_event['raw_event']))
-        self.tabWidget.setCurrentIndex(0)
-       
-        self.update_controls_based_on_event_time()
-
-    # Set the event handlers
-    def connectSignalsSlots(self):
-        self.pb_dismiss.clicked.connect(self.clickedDismiss)
-        self.pb_m10m.clicked.connect(lambda: self.snooze_general(self.pb_m10m))
-        self.pb_m5m.clicked.connect(lambda: self.snooze_general(self.pb_m5m))
-        self.pb_m2m.clicked.connect(lambda: self.snooze_general(self.pb_m2m))
-        self.pb_m1m.clicked.connect(lambda: self.snooze_general(self.pb_m1m))
-        self.pb_0m.clicked.connect(lambda: self.snooze_general(self.pb_0m))
-        self.pb_1m.clicked.connect(lambda: self.snooze_general(self.pb_1m))
-        self.pb_5m.clicked.connect(lambda: self.snooze_general(self.pb_5m))
-        self.pb_15m.clicked.connect(lambda: self.snooze_general(self.pb_15m))
-        self.pb_30m.clicked.connect(lambda: self.snooze_general(self.pb_30m))
-        self.pb_1h.clicked.connect(lambda: self.snooze_general(self.pb_1h))
-        self.pb_2h.clicked.connect(lambda: self.snooze_general(self.pb_2h))
-        self.pb_4h.clicked.connect(lambda: self.snooze_general(self.pb_4h))
-        self.pb_8h.clicked.connect(lambda: self.snooze_general(self.pb_8h))
-        self.timer.timeout.connect(self.update_controls_based_on_event_time) 
-        self.pb_open_video.clicked.connect(self.open_video)
-        self.pb_open_video_and_snooze.clicked.connect(self.open_video_and_snooze)
-        self.pb_open_video_and_dismiss.clicked.connect(self.open_video_and_dismiss)
-
-    def handle_window_exit(self):
-        global g_logger
-        global g_dismissed_events
-        global g_snoozed_events
-        global g_displayed_events
-        global g_events_logger
-
-        if isinstance(self.parent(), QMdiSubWindow):
-            # MDI mode
-
-            now_datetime = get_now_datetime()
-
-            if (self.c_win_exit_reason == EXIT_REASON_NONE):
-                g_events_logger.info("Event windows was closed by user - not snoozed or dismissed, for event: " + self.c_parsed_event['event_name'])
-
-            elif (self.c_win_exit_reason == EXIT_REASON_CHANGED):
-                g_events_logger.info("Event windows was closed because there was a change in the event, for event: " + self.c_parsed_event['event_name'])
-
-            elif (self.c_win_exit_reason == EXIT_REASON_DISMISS):
-                g_events_logger.info("Event dismissed by user, for event: " + self.c_parsed_event['event_name'])
-
-                if (now_datetime < self.c_parsed_event['end_date']):
-                    g_dismissed_events.add_event(self.c_event_key_str, self.c_parsed_event)
-
-            elif (self.c_win_exit_reason == EXIT_REASON_SNOOZE):
-                g_logger.debug("Snooze")
-                if (self.c_snooze_time_in_minutes <= 0):
-                    delta_diff = datetime.timedelta(minutes=abs(self.c_snooze_time_in_minutes))
-                    self.c_parsed_event['event_wakeup_time'] = self.c_parsed_event['start_date'] - delta_diff
-                else:
-                    delta_diff = datetime.timedelta(minutes=self.c_snooze_time_in_minutes)
-                    self.c_parsed_event['event_wakeup_time'] = now_datetime + delta_diff
-
-                g_events_logger.info("Event snoozed by user, for event: " + self.c_parsed_event['event_name'] + " until " + str(self.c_parsed_event['event_wakeup_time']))
-                    
-                g_snoozed_events.add_event(self.c_event_key_str, self.c_parsed_event)
-
-            else:
-                g_events_logger.error("Event windows was closed without a reason, for event: " + self.c_parsed_event['event_name'])
-
-            # Remove the event from the presented events
-            g_displayed_events.remove_event(self.c_event_key_str)
-
-            self.parent().close()
-
-        else:
-            g_logger.info("Are we supposed to get here?")
-            self.close()
-
-    def clickedDismiss(self):
-        self.c_win_exit_reason = EXIT_REASON_DISMISS
-        self.c_snooze_time_in_minutes = 0
-        self.c_window_closed = True
-
-        self.handle_window_exit()
-
-    def snooze_general(self, p_button):
-        self.c_win_exit_reason = EXIT_REASON_SNOOZE
-
-        if (p_button in self.c_snooze_buttons):
-            self.c_snooze_time_in_minutes = self.c_snooze_buttons[p_button]
-    
-        self.handle_window_exit()
-
-    def update_controls_based_on_event_time(self):
-        global g_logger
-        global g_mdi_window
-
-        if (self.c_window_closed):
-            if isinstance(self.parent(), QMdiSubWindow):
-                self.parent().close()
-            else:
-                self.close()
-
-            return
-
-        if (self.c_is_first_display_of_window):
-            l_changes_should_be_reflected = True
-            self.c_is_first_display_of_window = False
-        else:
-            l_changes_should_be_reflected = False
-
-            # Let's first check that the event has not changed
-            if(has_event_changed(self.c_parsed_event)):
-                # The event has changed, closing the window to refresh the event
-                g_logger.debug("event changed - update_controls_based_on_event_time")
-                self.c_win_exit_reason = EXIT_REASON_CHANGED
-
-                self.handle_window_exit()
-                
-                return()
-
-        now_datetime = get_now_datetime()
-
-        if (self.c_parsed_event['start_date'] > now_datetime):
-            # Event start did not arrive yet - hide all before snooze buttons that are not relevant anymore
-            time_to_event_start = self.c_parsed_event['start_date'] - now_datetime
-            time_to_event_in_minutes = time_to_event_start.seconds / 60
-
-            self.l_time_left.setText(str(int(time_to_event_in_minutes) + 1) + ' minutes left until the event starts')
-
-            for pb_button, snooze_time in self.c_snooze_buttons.items():
-                if (snooze_time <= 0 and abs(snooze_time) > time_to_event_in_minutes):
-                    if (pb_button.isHidden() == False):
-                        pb_button.setHidden(True)
-                        l_changes_should_be_reflected = True
-        else:
-            # Event start has passed
-
-            self.l_time_left.setHidden(True)
-
-            # Hide all before snooze buttons if were not hidden yet
-            if (self.c_hidden_all_snooze_before_buttons == False):
-                for pb_button, snooze_time in self.c_snooze_buttons.items():
-                    if (snooze_time <= 0):
-                        if (pb_button.isHidden() == False):
-                            pb_button.setHidden(True)
-                            l_changes_should_be_reflected = True
-
-                self.c_hidden_all_snooze_before_buttons = True
-
-            # Change the start label if not changed yet
-            if (self.c_updated_label_post_start == False):
-                self.l_event_start.setText('Event started at ' + self.c_parsed_event['start_time_in_loacal_tz'])
-                self.c_updated_label_post_start = True
-
-            if (self.c_parsed_event['end_date'] <= now_datetime):
-                # Event has ended - just change the label and no need to trigger the event anymore
-                self.l_event_end.setText('Event ended at ' + str(self.c_parsed_event['end_time_in_loacal_tz']))
-                self.c_updated_label_post_end = True
-
-        if (l_changes_should_be_reflected):
-            # There are changes that should be reflected - bring the window to the front
-            self.raise_()
-            self.activateWindow()
-
-            g_mdi_window.raise_()
-            g_mdi_window.activateWindow()
-
-        if (self.c_updated_label_post_end == False):
-        # Not all controls that could have changed have already changed
-            # Set timer to wake up in half a minute
-            self.timer.start(30 * 1000)
-
-    def open_video(self):
-        webbrowser.open(self.c_video_link)
-
-    def open_video_and_snooze(self):
-        self.open_video()
-
-        self.c_win_exit_reason = EXIT_REASON_SNOOZE
-
-        self.c_snooze_time_in_minutes = 5
-    
-        self.handle_window_exit()
-
-    def open_video_and_dismiss(self):
-        self.open_video()
-
-        self.c_win_exit_reason = EXIT_REASON_DISMISS
-
-        self.handle_window_exit()
-
 def show_window_in_mdi(event_key_str, parsed_event):
     global g_logger
     global g_mdi_window
     global g_events_logger
+    global g_dismissed_events
+    global g_snoozed_events
+    global g_displayed_events
 
-    win = Window()
+    win = Window(g_logger, g_events_logger, g_dismissed_events, g_snoozed_events, g_displayed_events, g_mdi_window)
 
     win.init_window_from_parsed_event(event_key_str, parsed_event)
     win.setFixedWidth(730)
@@ -984,7 +445,7 @@ def condition_function_for_removing_snoozed_events(event_key_str, parsed_event):
 
     g_logger.debug("Snoozed event " + event_key_str + " " + str(parsed_event['event_wakeup_time']) + " " + str(now_datetime))
 
-    if(has_event_changed(parsed_event)):
+    if(has_event_changed(g_logger, parsed_event)):
         # The event has changed, we will let the system re-parse the event as new
         g_logger.info("event changed - set_items_to_present_from_snoozed")
         
@@ -1035,7 +496,7 @@ def condition_function_for_removing_dismissed_events(event_key_str, parsed_event
         g_logger.debug("Event end date has passed - clear_dismissed_events_that_have_ended")
         g_logger.debug("Dismissed event end date" + str(parsed_event['end_date']))
 
-    elif has_event_changed(parsed_event):
+    elif has_event_changed(g_logger, parsed_event):
         # The event has changed, we will let the system re-parse the event as new
         g_logger.info("event changed - clear_dismissed_events_that_have_ended")
 
