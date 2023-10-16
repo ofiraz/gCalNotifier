@@ -14,6 +14,8 @@ import datetime
 
 import webbrowser
 
+import re
+
 from tzlocal import get_localzone
 
 from json_utils import nice_json
@@ -39,7 +41,7 @@ class Window(QMainWindow, Ui_w_event):
     c_hidden_all_snooze_before_buttons = False
     c_updated_label_post_start = False
     c_updated_label_post_end = False
-    c_video_link = None
+    c_video_link = ""
     c_window_closed = False
     c_win_exit_reason = EXIT_REASON_NONE
     c_snooze_time_in_minutes = 0
@@ -181,7 +183,7 @@ class Window(QMainWindow, Ui_w_event):
 
             self.l_missing_video.setText("Remember to record!!!")
 
-        elif (self.c_video_link is None):
+        elif (self.c_video_link == ""):
             self.pb_open_video.setHidden(True)
             self.pb_open_video_and_snooze.setHidden(True)
             self.pb_open_video_and_dismiss.setHidden(True)
