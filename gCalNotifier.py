@@ -39,7 +39,7 @@ from json_utils import nice_json
 
 from datetime_utils import get_now_datetime
 
-from EventWindow import Window
+from EventWindow import EventWindow
 
 from event_utils import (
     has_event_changed,
@@ -269,16 +269,16 @@ def show_window_in_mdi(event_key_str, parsed_event):
     global g_snoozed_events
     global g_displayed_events
 
-    win = Window(g_logger, g_events_logger, g_dismissed_events, g_snoozed_events, g_displayed_events, g_mdi_window)
+    event_win = EventWindow(g_logger, g_events_logger, g_dismissed_events, g_snoozed_events, g_displayed_events, g_mdi_window)
 
-    win.init_window_from_parsed_event(event_key_str, parsed_event)
-    win.setFixedWidth(730)
-    win.setFixedHeight(650)
+    event_win.init_window_from_parsed_event(event_key_str, parsed_event)
+    event_win.setFixedWidth(730)
+    event_win.setFixedHeight(650)
 
-    sub = QMdiSubWindow()
-    sub.setWidget(win)
-    g_mdi_window.mdi.addSubWindow(sub)
-    sub.show()
+    sub_win = QMdiSubWindow()
+    sub_win.setWidget(event_win)
+    g_mdi_window.mdi.addSubWindow(sub_win)
+    sub_win.show()
 
     g_events_logger.info("Displaying event:" + parsed_event['event_name'])
 

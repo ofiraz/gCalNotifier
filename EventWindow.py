@@ -33,7 +33,7 @@ EXIT_REASON_SNOOZE = 2
 EXIT_REASON_CHANGED = 3
 
 # The notification window
-class Window(QMainWindow, Ui_w_event):
+class EventWindow(QMainWindow, Ui_w_event):
     c_snooze_buttons = {}
     c_parsed_event = {}
     c_event_key_str = ""
