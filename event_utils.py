@@ -1,7 +1,13 @@
+import datetime
+
 from google_calendar_utilities import (
     get_events_from_google_cal_with_try,
     ConnectivityIssue
 )
+
+from json_utils import nice_json
+
+from datetime_utils import get_now_datetime
 
 from deepdiff import DeepDiff
 
@@ -166,3 +172,136 @@ def has_event_changed(p_logger, orig_event):
 
     return(False)
 
+def has_self_tentative(event):
+    # Check if the current user is tentative for the evnet
+    if(event.get('attendees')):
+        # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
+        for attendee in event['attendees']:
+            if(attendee.get('self') and attendee['self'] == True and attendee.get('responseStatus') and attendee['responseStatus'] == 'tentative'):
+                # The current user is tentative for the meeting.
+                return(True)
+
+    # The current user is not tentative for the meeting.
+    return(False)
+
+video_links_reg_exs = [
+    "(https://[a-zA-Z0-9-]*[\.]*zoom\.us/j/[a-zA-Z0-9-_\.&?=/]*)", # Zoom
+    "Click here to join the meeting<(https://teams.microsoft.com/l/meetup-join/.*)>", # Meet   
+    "[<>](https://[a-zA-Z0-9-]*\.webex\.com/[a-zA-Z0-9-]*/j\.php\?MTID=[a-zA-Z0-9-]*)[<>]", # Webex
+    "(https://chime.aws/[0-9]*)"
+]
+
+def look_for_video_link_in_meeting_description(p_meeting_description):
+    for reg_ex in video_links_reg_exs:
+        video_url_in_description = re.search(
+            reg_ex,
+            p_meeting_description)
+
+        if video_url_in_description:
+            return(video_url_in_description.group(1))
+
+    # No known video link found
+    return("No Video")
+
+def get_number_of_attendees(event):
+    num_of_attendees = 0
+
+    if(event.get('attendees')):
+        # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
+        for attendee in event['attendees']:
+            num_of_attendees = num_of_attendees + 1
+
+    return(num_of_attendees)
+
+def parse_event_description(p_logger, meeting_description, parsed_event):
+    # Check if the event has gCalNotifier config
+    need_to_record_meeting = re.search(
+        "record:yes", 
+        meeting_description) 
+    if need_to_record_meeting:
+        parsed_event['need_to_record_meeting'] = True
+        p_logger.debug("Need to record meeting")
+        
+    else:
+        parsed_event['need_to_record_meeting'] = False
+        p_logger.debug("No need to record meeting")
+
+def parse_event(p_logger, event, parsed_event):
+    p_logger.debug(nice_json(event))
+
+    # Check if the event was not declined by the current user
+    if has_self_declined(event):
+        return(False)
+
+    minutes_before_to_notify = get_max_reminder_in_minutes(event)
+    if (minutes_before_to_notify == NO_POPUP_REMINDER):
+        # No notification reminders
+        return(False)
+
+    # Event needs to be reminded, check if it is the time to remind
+    start_day = event['start'].get('dateTime')
+    if not start_day:
+        # An all day event
+        parsed_event['all_day_event'] = True
+        start_day = event['start'].get('date')
+        end_day = event['end'].get('date')
+        parsed_event['start_date']=datetime.datetime.strptime(start_day, '%Y-%m-%d').astimezone()
+        parsed_event['end_date']=datetime.datetime.strptime(end_day, '%Y-%m-%d').astimezone()
+    else:
+        # Not an all day event
+        parsed_event['all_day_event'] = False
+        end_day = event['end'].get('dateTime')
+        parsed_event['start_date']=datetime.datetime.strptime(start_day, '%Y-%m-%dT%H:%M:%S%z')
+        parsed_event['end_date']=datetime.datetime.strptime(end_day, '%Y-%m-%dT%H:%M:%S%z')
+
+    # Compute the time to wake up
+    delta_diff = datetime.timedelta(minutes=minutes_before_to_notify)
+    reminder_time = parsed_event['start_date'] - delta_diff
+    now_datetime = get_now_datetime()
+    if(now_datetime < reminder_time):
+        # Not the time to remind yet
+        return(False)
+
+    parsed_event['html_link'] = event['htmlLink']
+
+    parsed_event['event_location'] = event.get('location', "No location")
+
+    meeting_description = event.get('description')
+    if (meeting_description):
+        parsed_event['description'] = meeting_description
+        parse_event_description(p_logger, meeting_description, parsed_event)
+
+    else:
+        parsed_event['description'] = "No description"
+
+    if (has_self_tentative(event)):
+        # The current user is Tentative fot this event
+        parsed_event['event_name'] = "Tentative - " + parsed_event['event_name']
+
+    # Get the video conf data
+    parsed_event['video_link'] = "No Video"
+    conf_data = event.get('conferenceData')
+    if (conf_data):
+        entry_points = conf_data.get('entryPoints')
+        if (entry_points):
+            for entry_point in entry_points:
+                entry_point_type = entry_point.get('entryPointType')
+                if (entry_point_type and entry_point_type == 'video'):
+                    uri = entry_point.get('uri')
+                    if (uri):
+                        parsed_event['video_link'] = uri
+
+    if (parsed_event['video_link'] == "No Video"):
+        # Didn't find a video link in the expected location, let's see if there is a video link in the 
+        # description.
+        if (meeting_description):
+            parsed_event['video_link'] = look_for_video_link_in_meeting_description(meeting_description)
+
+            if (parsed_event['video_link'] == parsed_event['event_location']):
+                # The event location already contains the video link, no need to show it twice
+                parsed_event['video_link'] = "No Video"
+
+    parsed_event['num_of_attendees'] = get_number_of_attendees(event)
+
+    # The event needs to be notified
+    return(True)

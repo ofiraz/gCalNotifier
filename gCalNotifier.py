@@ -43,10 +43,11 @@ from EventWindow import EventWindow
 
 from event_utils import (
     has_event_changed,
-    get_max_reminder_in_minutes,
-    has_self_declined,
+    parse_event,
     NO_POPUP_REMINDER
 )
+
+from events_collection import Events_Collection
 
 def init_global_objects():
     global g_events_to_present
@@ -58,25 +59,13 @@ def init_global_objects():
     global g_mdi_window
     global g_events_logger
 
-    g_events_to_present = Events_Collection("g_events_to_present")
-    g_dismissed_events = Events_Collection("g_dismissed_events")
-    g_snoozed_events = Events_Collection("g_snoozed_events")
-    g_displayed_events = Events_Collection("g_displayed_events", g_mdi_window.add_event_to_display_cb, g_mdi_window.remove_event_from_display_cb)
-
     g_logger = init_logging("gCalNotifier", "Main", g_log_level, LOG_LEVEL_INFO)
     g_events_logger = init_logging("EventsLog", "Main", LOG_LEVEL_INFO, LOG_LEVEL_INFO)
 
-def has_self_tentative(event):
-    # Check if the current user is tentative for the evnet
-    if(event.get('attendees')):
-        # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
-        for attendee in event['attendees']:
-            if(attendee.get('self') and attendee['self'] == True and attendee.get('responseStatus') and attendee['responseStatus'] == 'tentative'):
-                # The current user is tentative for the meeting.
-                return(True)
-
-    # The current user is not tentative for the meeting.
-    return(False)
+    g_events_to_present = Events_Collection(g_logger, "g_events_to_present")
+    g_dismissed_events = Events_Collection(g_logger, "g_dismissed_events")
+    g_snoozed_events = Events_Collection(g_logger, "g_snoozed_events")
+    g_displayed_events = Events_Collection(g_logger, "g_displayed_events", g_mdi_window.add_event_to_display_cb, g_mdi_window.remove_event_from_display_cb)
 
 def add_items_to_show_from_calendar(google_account, cal_name, cal_id):
     global g_events_to_present
@@ -139,7 +128,7 @@ def add_items_to_show_from_calendar(google_account, cal_name, cal_id):
         parsed_event['cal id'] = cal_id
         g_logger.debug("Event Name " + parsed_event['event_name'])
 
-        need_to_notify = parse_event(event, parsed_event)
+        need_to_notify = parse_event(g_logger, event, parsed_event)
         if (need_to_notify == True):
             # Event to get presented
             g_logger.debug(str(event))
@@ -168,99 +157,6 @@ def set_events_to_be_displayed():
                 cal_for_account['calendar name'], 
                 cal_for_account['calendar id'])
 
-class Events_Collection:
-    def __init__(self, collection_name, add_cb = None, remove_cb = None):
-        self.c_events = {}
-        self.c_lock = threading.Lock()
-        self.c_collection_name = collection_name
-        self.c_add_cb = add_cb
-        self.c_remove_cb = remove_cb
-
-    def is_event_in(self, event_key_str):
-        global g_logger
-
-        g_logger.debug("Before lock for " + self.c_collection_name)
-
-        with self.c_lock:
-            g_logger.debug("After lock for " + self.c_collection_name)
-
-            return(event_key_str in self.c_events)       
-
-    def add_event_safe(self, event_key_str, parsed_event):
-        self.c_events[event_key_str] = parsed_event
-
-        if (self.c_add_cb):
-            self.c_add_cb()
-        
-    def add_event(self, event_key_str, parsed_event):
-        global g_logger
-
-        g_logger.debug("Before lock for " + self.c_collection_name)
-
-        with self.c_lock:
-            self.add_event_safe(event_key_str, parsed_event)
-
-        g_logger.debug("After lock for " + self.c_collection_name)
-
-
-    def remove_event_safe(self, event_key_str):
-        global g_logger
-
-        del self.c_events[event_key_str]
-
-        if (self.c_remove_cb):
-            self.c_remove_cb()
-
-    def remove_event(self, event_key_str):
-        global g_logger
-
-        g_logger.debug("Before lock for " + self.c_collection_name)
-
-        with self.c_lock:
-            self.remove_event_safe(event_key_str)
-
-        g_logger.debug("After lock for " + self.c_collection_name)
-
-    def pop(self):
-        global g_logger
-
-        g_logger.debug("Before lock for " + self.c_collection_name)
-
-        with self.c_lock:
-            if (len(self.c_events) > 0):
-                event_key_str = next(iter(self.c_events))
-                parsed_event = self.c_events[event_key_str]
-                self.remove_event_safe(event_key_str)
-
-                g_logger.debug("After lock for " + self.c_collection_name)
-
-                return(event_key_str, parsed_event)
-            else:
-                # Empty collection
-                g_logger.debug("After lock for " + self.c_collection_name)
-
-                return(None, None)
-
-    def remove_events_based_on_condition(self, condition_function):
-        global g_logger
-
-        events_to_delete = []
-
-        g_logger.debug("Before lock for " + self.c_collection_name)
-
-        with self.c_lock:
-            for event_key_str, parsed_event in self.c_events.items():
-                if (condition_function(event_key_str, parsed_event)):
-                    # The condition was met, need remove the item
-                    events_to_delete.append(event_key_str)
-
-            # Delete the events that were collected to be deleted
-            while (len(events_to_delete) > 0):
-                event_key_str = events_to_delete.pop()
-                self.remove_event_safe(event_key_str)
-
-        g_logger.debug("After lock for " + self.c_collection_name)
-
 def show_window_in_mdi(event_key_str, parsed_event):
     global g_logger
     global g_mdi_window
@@ -284,158 +180,6 @@ def show_window_in_mdi(event_key_str, parsed_event):
 
     g_mdi_window.raise_()
     g_mdi_window.activateWindow()
-
-video_links_reg_exs = [
-    "(https://[a-zA-Z0-9-]*[\.]*zoom\.us/j/[a-zA-Z0-9-_\.&?=/]*)", # Zoom
-    "Click here to join the meeting<(https://teams.microsoft.com/l/meetup-join/.*)>", # Meet   
-    "[<>](https://[a-zA-Z0-9-]*\.webex\.com/[a-zA-Z0-9-]*/j\.php\?MTID=[a-zA-Z0-9-]*)[<>]", # Webex
-    "(https://chime.aws/[0-9]*)"
-]
-
-def look_for_video_link_in_meeting_description(p_meeting_description):
-    for reg_ex in video_links_reg_exs:
-        video_url_in_description = re.search(
-            reg_ex,
-            p_meeting_description)
-
-        if video_url_in_description:
-            return(video_url_in_description.group(1))
-
-    # No known video link found
-    return("No Video")
-
-    # Look for a Zoom link
-    zoom_url_in_description = re.search(
-        "(https://[a-zA-Z0-9-]*[\.]*zoom\.us/[a-zA-Z0-9-\.&?=/]*)", 
-        p_meeting_description) 
-    if zoom_url_in_description:
-        return(zoom_url_in_description.group())
-
-    # Look for a Meet link
-    teams_url_in_description = re.search(
-        "Click here to join the meeting<(https://teams.microsoft.com/l/meetup-join/.*)>",
-        p_meeting_description) 
-
-    if teams_url_in_description:
-        return(teams_url_in_description.group(1))
-
-    # Look for a Webex link
-    webex_url_in_description = re.search(
-        ">(https://[a-zA-Z0-9-]*\.webex\.com/[a-zA-Z0-9-]*/j\.php\?MTID=[a-zA-Z0-9-]*)<",
-        p_meeting_description)
-
-    if webex_url_in_description:
-        return(webex_url_in_description.group(1))
-
-    # No known video link found
-    return("No Video")
-
-def get_number_of_attendees(event):
-    num_of_attendees = 0
-
-    if(event.get('attendees')):
-        # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
-        for attendee in event['attendees']:
-            num_of_attendees = num_of_attendees + 1
-
-    return(num_of_attendees)
-
-def parse_event_description(meeting_description, parsed_event):
-    global g_logger
-
-    # Check if the event has gCalNotifier config
-    need_to_record_meeting = re.search(
-        "record:yes", 
-        meeting_description) 
-    if need_to_record_meeting:
-        parsed_event['need_to_record_meeting'] = True
-        g_logger.debug("Need to record meeting")
-        
-    else:
-        parsed_event['need_to_record_meeting'] = False
-        g_logger.debug("No need to record meeting")
-
-def parse_event(event, parsed_event):
-    global g_logger
-
-    g_logger.debug(nice_json(event))
-
-    # Check if the event was not declined by the current user
-    if has_self_declined(event):
-        return(False)
-
-    minutes_before_to_notify = get_max_reminder_in_minutes(event)
-    if (minutes_before_to_notify == NO_POPUP_REMINDER):
-        # No notification reminders
-        return(False)
-
-    # Event needs to be reminded, check if it is the time to remind
-    start_day = event['start'].get('dateTime')
-    if not start_day:
-        # An all day event
-        parsed_event['all_day_event'] = True
-        start_day = event['start'].get('date')
-        end_day = event['end'].get('date')
-        parsed_event['start_date']=datetime.datetime.strptime(start_day, '%Y-%m-%d').astimezone()
-        parsed_event['end_date']=datetime.datetime.strptime(end_day, '%Y-%m-%d').astimezone()
-    else:
-        # Not an all day event
-        parsed_event['all_day_event'] = False
-        end_day = event['end'].get('dateTime')
-        parsed_event['start_date']=datetime.datetime.strptime(start_day, '%Y-%m-%dT%H:%M:%S%z')
-        parsed_event['end_date']=datetime.datetime.strptime(end_day, '%Y-%m-%dT%H:%M:%S%z')
-
-    # Compute the time to wake up
-    delta_diff = datetime.timedelta(minutes=minutes_before_to_notify)
-    reminder_time = parsed_event['start_date'] - delta_diff
-    now_datetime = get_now_datetime()
-    if(now_datetime < reminder_time):
-        # Not the time to remind yet
-        return(False)
-
-    parsed_event['html_link'] = event['htmlLink']
-
-    parsed_event['event_location'] = event.get('location', "No location")
-
-    meeting_description = event.get('description')
-    if (meeting_description):
-        parsed_event['description'] = meeting_description
-        parse_event_description(meeting_description, parsed_event)
-
-    else:
-        parsed_event['description'] = "No description"
-
-    if (has_self_tentative(event)):
-        # The current user is Tentative fot this event
-        parsed_event['event_name'] = "Tentative - " + parsed_event['event_name']
-
-    # Get the video conf data
-    parsed_event['video_link'] = "No Video"
-    conf_data = event.get('conferenceData')
-    if (conf_data):
-        entry_points = conf_data.get('entryPoints')
-        if (entry_points):
-            for entry_point in entry_points:
-                entry_point_type = entry_point.get('entryPointType')
-                if (entry_point_type and entry_point_type == 'video'):
-                    uri = entry_point.get('uri')
-                    if (uri):
-                        parsed_event['video_link'] = uri
-
-    if (parsed_event['video_link'] == "No Video"):
-        # Didn't find a video link in the expected location, let's see if there is a video link in the 
-        # description.
-        if (meeting_description):
-            parsed_event['video_link'] = look_for_video_link_in_meeting_description(meeting_description)
-
-            if (parsed_event['video_link'] == parsed_event['event_location']):
-                # The event location already contains the video link, no need to show it twice
-                parsed_event['video_link'] = "No Video"
-
-    parsed_event['num_of_attendees'] = get_number_of_attendees(event)
-
-    # The event needs to be notified
-    return(True)
 
 def condition_function_for_removing_snoozed_events(event_key_str, parsed_event):
     global g_logger
