@@ -49,6 +49,10 @@ from event_utils import (
 
 from events_collection import Events_Collection
 
+sys.path.insert(1, '/Users/ofir/git/personal/pyqt-realtime-log-widget')
+from pyqt_realtime_log_widget import LogWidget
+
+
 def init_global_objects():
     global g_events_to_present
     global g_dismissed_events
@@ -322,6 +326,7 @@ class MDIWindow(QMainWindow):
  
         file = bar.addMenu("File")
         file.addAction("Reset")
+        file.addAction("Logs")
         file.addAction("New")
         file.addAction("Cascade")
         file.addAction("Tiled")
@@ -375,6 +380,20 @@ class MDIWindow(QMainWindow):
         if p.text() == "Reset":
             self.reset_all_events()
 
+        elif p.text() == "Logs":
+            window = LogWidget(warn_before_close=False)
+
+            filename = "/Users/ofir/git/personal/gCalNotifier/EventsLog.log"
+            comm = "tail -f " + filename
+
+            window.setCommand(comm)
+
+            sub = QMdiSubWindow()
+            sub.setWidget(window)
+            sub.setWindowTitle("Logs")
+            self.mdi.addSubWindow(sub)
+            sub.show()
+ 
         elif p.text() == "New":
             MDIWindow.count = MDIWindow.count + 1
             sub = QMdiSubWindow()
