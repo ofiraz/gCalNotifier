@@ -22,10 +22,10 @@ class MDIWindow(QMainWindow):
     def init_app_events_collections(self):
         self.app_events_collections = App_Events_Collections()
 
-        self.app_events_collections.set_events_to_present(Events_Collection(self.logger, "events_to_present"))
-        self.app_events_collections.set_dismissed_events(Events_Collection(self.logger, "dismissed_events"))
-        self.app_events_collections.set_snoozed_events(Events_Collection(self.logger, "snoozed_events"))
-        self.app_events_collections.set_displayed_events(Events_Collection(self.logger, "displayed_events", self.add_event_to_display_cb, self.remove_event_from_display_cb))
+        self.app_events_collections.set_events_to_present(Events_Collection(self.logger, self.app_events_collections, "events_to_present"))
+        self.app_events_collections.set_dismissed_events(Events_Collection(self.logger, self.app_events_collections, "dismissed_events"))
+        self.app_events_collections.set_snoozed_events(Events_Collection(self.logger, self.app_events_collections, "snoozed_events"))
+        self.app_events_collections.set_displayed_events(Events_Collection(self.logger, self.app_events_collections, "displayed_events", self.add_event_to_display_cb, self.remove_event_from_display_cb))
 
     def __init__(self, logger, events_logger, refresh_frequency):
         super().__init__()
