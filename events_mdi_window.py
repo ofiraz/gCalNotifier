@@ -44,16 +44,46 @@ class MDIWindow(QMainWindow):
         self.setCentralWidget(self.mdi)
         bar = self.menuBar()
  
-        file = bar.addMenu("File")
-        file.addAction("Logs")
-        file.addAction("Clear dismissed and snoozed")
-        file.addAction("Cascade")
-        file.addAction("Tiled")
-        file.triggered.connect(self.WindowTrig)
+        # Menus
+        file_menu = bar.addMenu("File")
+        file_menu.addAction("Logs")
+        file_menu.addAction("Clear dismissed and snoozed")
+        file_menu.triggered.connect(self.FileMenuTrigger)
+
+        window_menu = bar.addMenu("Window")
+        window_menu.addAction("Cascade")
+        window_menu.addAction("Tiled")
+        window_menu.triggered.connect(self.WindowMenuTrigger)
+
         self.update_mdi_title()
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.present_relevant_events_in_sub_windows) 
+
+    def FileMenuTrigger(self, p):
+        if p.text() == "Clear dismissed and snoozed":
+            self.clear_dismissed_and_snoozed()
+
+        elif p.text() == "Logs":
+            window = LogWidget(warn_before_close=False)
+
+            filename = "/Users/ofir/git/personal/gCalNotifier/EventsLog.log"
+            comm = "tail -f " + filename
+
+            window.setCommand(comm)
+
+            sub = QMdiSubWindow()
+            sub.setWidget(window)
+            sub.setWindowTitle("Logs")
+            self.mdi.addSubWindow(sub)
+            sub.show()
+ 
+    def WindowMenuTrigger(self, p):
+        if p.text() == "Cascade":
+            self.mdi.cascadeSubWindows()
+ 
+        elif p.text() == "Tiled":
+            self.mdi.tileSubWindows()
 
     def show_window_in_mdi(self, event_key_str, parsed_event):
         event_win = EventWindow(self.logger, self.events_logger, self.app_events_collections, self)
@@ -136,28 +166,4 @@ class MDIWindow(QMainWindow):
         # This method will be called when the main MDI window is shown
         super().showEvent(event)  # Call the base class showEvent first
         self.present_relevant_events_in_sub_windows()
-
-    def WindowTrig(self, p):
-        if p.text() == "Clear dismissed and snoozed":
-            self.clear_dismissed_and_snoozed()
-
-        elif p.text() == "Logs":
-            window = LogWidget(warn_before_close=False)
-
-            filename = "/Users/ofir/git/personal/gCalNotifier/EventsLog.log"
-            comm = "tail -f " + filename
-
-            window.setCommand(comm)
-
-            sub = QMdiSubWindow()
-            sub.setWidget(window)
-            sub.setWindowTitle("Logs")
-            self.mdi.addSubWindow(sub)
-            sub.show()
- 
-        elif p.text() == "Cascade":
-            self.mdi.cascadeSubWindows()
- 
-        elif p.text() == "Tiled":
-            self.mdi.tileSubWindows()
 
