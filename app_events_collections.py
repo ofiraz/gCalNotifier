@@ -1,5 +1,3 @@
-from events_collection import Events_Collection
-
 class App_Events_Collections:
     def set_events_to_present(self, events_to_present):
         self.events_to_present = events_to_present

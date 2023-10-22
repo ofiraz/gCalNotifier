@@ -1,42 +1,24 @@
-from __future__ import print_function
 import sys
+import logging
 
 from PyQt5.QtWidgets import (
-    QApplication, QDesktopWidget, QTextBrowser, QAction, QTextEdit
+    QApplication, QDesktopWidget
 )
 
 from PyQt5 import QtGui
-import logging
-
-import datetime
-import pytz
 
 from logging_module import (
     init_logging,
-    LOG_LEVEL_CRITICAL,
-    LOG_LEVEL_ERROR,
-    LOG_LEVEL_WARNING,
     LOG_LEVEL_INFO,
-    LOG_LEVEL_DEBUG,
-    LOG_LEVEL_NOTSET
 )
 
 from google_calendar_utilities import (
     get_calendar_list_for_account
 )
 
-from multiprocessing import Process, Pipe
-
 import json
-import re
-
-from json_utils import nice_json
-
-from events_collection import Events_Collection
 
 from events_mdi_window import MDIWindow
-
-from app_events_collections import App_Events_Collections
 
 from get_events_thread import start_getting_events_to_display_main_loop_thread
 
