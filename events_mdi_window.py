@@ -15,6 +15,8 @@ from events_collection import Events_Collection
 
 from app_events_collections import App_Events_Collections
 
+from set_icon_with_number import set_icon_with_number
+
 def condition_function_to_clear_all_events(logger, app_events_collections, event_key_str, parsed_event):
     # Need to remove the evnet
     return(True)
@@ -31,11 +33,12 @@ class MDIWindow(QMainWindow):
         self.app_events_collections.set_snoozed_events(Events_Collection(self.logger, self.app_events_collections, "snoozed_events"))
         self.app_events_collections.set_displayed_events(Events_Collection(self.logger, self.app_events_collections, "displayed_events", self.add_event_to_display_cb, self.remove_event_from_display_cb))
 
-    def __init__(self, logger, events_logger, refresh_frequency):
+    def __init__(self, logger, events_logger, app, refresh_frequency):
         super().__init__()
 
         self.logger = logger
         self.events_logger = events_logger
+        self.app = app
         self.refresh_frequency = refresh_frequency
 
         self.init_app_events_collections()
@@ -55,7 +58,7 @@ class MDIWindow(QMainWindow):
         window_menu.addAction("Tiled")
         window_menu.triggered.connect(self.WindowMenuTrigger)
 
-        self.update_mdi_title()
+        self.update_mdi_title_and_icon()
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.present_relevant_events_in_sub_windows) 
@@ -127,16 +130,17 @@ class MDIWindow(QMainWindow):
 
         self.timer.start(int(self.refresh_frequency/2) * 1000)
 
-    def update_mdi_title(self):
+    def update_mdi_title_and_icon(self):
         self.setWindowTitle("[" + str(self.c_num_of_displayed_events) + "] gCalNotifier")
+        set_icon_with_number(self.app, self.c_num_of_displayed_events)
 
     def add_event_to_display_cb(self):
         self.logger.debug("add_event_to_display_cb start")
 
         self.c_num_of_displayed_events = self.c_num_of_displayed_events + 1
 
-        self.logger.debug("add_event_to_display_cb update_mdi_title")
-        self.update_mdi_title()
+        self.logger.debug("add_event_to_display_cb update_mdi_title_and_icon")
+        self.update_mdi_title_and_icon()
 
         self.logger.debug("add_event_to_display_cb end")
 
@@ -145,8 +149,8 @@ class MDIWindow(QMainWindow):
 
         self.c_num_of_displayed_events = self.c_num_of_displayed_events - 1
 
-        self.logger.debug("remove_event_from_display_cb update_mdi_title")
-        self.update_mdi_title()
+        self.logger.debug("remove_event_from_display_cb update_mdi_title_and_icon")
+        self.update_mdi_title_and_icon()
 
         if (self.c_num_of_displayed_events == 0):
             # No events to show

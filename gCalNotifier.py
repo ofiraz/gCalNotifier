@@ -5,8 +5,6 @@ from PyQt5.QtWidgets import (
     QApplication, QDesktopWidget
 )
 
-from PyQt5 import QtGui
-
 from logging_module import (
     init_logging,
     LOG_LEVEL_INFO,
@@ -33,7 +31,7 @@ def init_global_objects(log_level, refresh_frequency):
     g_events_logger = init_logging("EventsLog", "Main", LOG_LEVEL_INFO, LOG_LEVEL_INFO)
 
     g_app = QApplication(sys.argv)
-    g_mdi_window = MDIWindow(g_logger, g_events_logger, refresh_frequency)
+    g_mdi_window = MDIWindow(g_logger, g_events_logger, g_app, refresh_frequency)
 
     g_app_events_collections = g_mdi_window.app_events_collections
 
@@ -89,5 +87,4 @@ if __name__ == "__main__":
     monitor = QDesktopWidget().screenGeometry(0)
     g_mdi_window.move(monitor.left(), monitor.top())
 
-    g_app.setWindowIcon(QtGui.QIcon('icons8-calendar-64.png'))
     g_app.exec_()
