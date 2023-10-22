@@ -15,6 +15,10 @@ from events_collection import Events_Collection
 
 from app_events_collections import App_Events_Collections
 
+def condition_function_to_clear_all_events(logger, app_events_collections, event_key_str, parsed_event):
+    # Need to remove the evnet
+    return(True)
+
 class MDIWindow(QMainWindow):
     c_num_of_displayed_events = 0
     count = 0
@@ -41,8 +45,8 @@ class MDIWindow(QMainWindow):
         bar = self.menuBar()
  
         file = bar.addMenu("File")
-        file.addAction("Reset")
         file.addAction("Logs")
+        file.addAction("Clear dismissed and snoozed")
         file.addAction("Cascade")
         file.addAction("Tiled")
         file.triggered.connect(self.WindowTrig)
@@ -122,8 +126,11 @@ class MDIWindow(QMainWindow):
 
         self.logger.debug("remove_event_from_display_cb end")
 
-    def reset_all_events(self):
-        self.events_logger.info("Reseting the app")
+    def clear_dismissed_and_snoozed(self):
+        self.events_logger.info("Clearing dismissed and snoozed")
+
+        self.app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
+        self.app_events_collections.snoozed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
 
     def showEvent(self, event):
         # This method will be called when the main MDI window is shown
@@ -131,8 +138,8 @@ class MDIWindow(QMainWindow):
         self.present_relevant_events_in_sub_windows()
 
     def WindowTrig(self, p):
-        if p.text() == "Reset":
-            self.reset_all_events()
+        if p.text() == "Clear dismissed and snoozed":
+            self.clear_dismissed_and_snoozed()
 
         elif p.text() == "Logs":
             window = LogWidget(warn_before_close=False)
