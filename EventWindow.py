@@ -46,12 +46,10 @@ class EventWindow(QMainWindow, Ui_w_event):
     c_win_exit_reason = EXIT_REASON_NONE
     c_snooze_time_in_minutes = 0
 
-    def __init__(self, p_logger, p_events_logger, p_dismissed_events, p_snoozed_events, p_displayed_events, p_mdi_window, parent=None):
+    def __init__(self, p_logger, p_events_logger, app_events_collections, p_mdi_window, parent=None):
         self.c_logger = p_logger
         self.c_events_logger = p_events_logger
-        self.c_dismissed_events = p_dismissed_events
-        self.c_snoozed_events = p_snoozed_events
-        self.c_displayed_events = p_displayed_events
+        self.app_events_collections = app_events_collections
         self.c_mdi_window = p_mdi_window
 
         super().__init__(parent)
@@ -260,7 +258,7 @@ class EventWindow(QMainWindow, Ui_w_event):
                 self.c_events_logger.info("Event dismissed by user, for event: " + self.c_parsed_event['event_name'])
 
                 if (now_datetime < self.c_parsed_event['end_date']):
-                    self.c_dismissed_events.add_event(self.c_event_key_str, self.c_parsed_event)
+                    self.app_events_collections.dismissed_events.add_event(self.c_event_key_str, self.c_parsed_event)
 
             elif (self.c_win_exit_reason == EXIT_REASON_SNOOZE):
                 self.c_logger.debug("Snooze")
@@ -273,13 +271,13 @@ class EventWindow(QMainWindow, Ui_w_event):
 
                 self.c_events_logger.info("Event snoozed by user, for event: " + self.c_parsed_event['event_name'] + " until " + str(self.c_parsed_event['event_wakeup_time']))
                     
-                self.c_snoozed_events.add_event(self.c_event_key_str, self.c_parsed_event)
+                self.app_events_collections.snoozed_events.add_event(self.c_event_key_str, self.c_parsed_event)
 
             else:
                 self.c_events_logger.error("Event windows was closed without a reason, for event: " + self.c_parsed_event['event_name'])
 
             # Remove the event from the presented events
-            self.c_displayed_events.remove_event(self.c_event_key_str)
+            self.app_events_collections.displayed_events.remove_event(self.c_event_key_str)
 
             self.parent().close()
 

@@ -48,12 +48,10 @@ from events_collection import Events_Collection
 
 from events_mdi_window import MDIWindow
 
+from app_events_collections import App_Events_Collections
 
 def init_global_objects():
-    global g_events_to_present
-    global g_dismissed_events
-    global g_snoozed_events
-    global g_displayed_events
+    global g_app_events_collections
     global g_logger
     global g_log_level
     global g_mdi_window
@@ -63,21 +61,13 @@ def init_global_objects():
     g_logger = init_logging("gCalNotifier", "Main", g_log_level, LOG_LEVEL_INFO)
     g_events_logger = init_logging("EventsLog", "Main", LOG_LEVEL_INFO, LOG_LEVEL_INFO)
 
-    g_events_to_present = Events_Collection(g_logger, "g_events_to_present")
-    g_dismissed_events = Events_Collection(g_logger, "g_dismissed_events")
-    g_snoozed_events = Events_Collection(g_logger, "g_snoozed_events")
-
     g_app = QApplication(sys.argv)
-    g_mdi_window = MDIWindow(g_logger, g_events_logger, g_events_to_present, g_dismissed_events, g_snoozed_events, g_refresh_frequency)
+    g_mdi_window = MDIWindow(g_logger, g_events_logger, g_refresh_frequency)
 
-    g_displayed_events = Events_Collection(g_logger, "g_displayed_events", g_mdi_window.add_event_to_display_cb, g_mdi_window.remove_event_from_display_cb)
-    g_mdi_window.set_displayed_events(g_displayed_events)
+    g_app_events_collections = g_mdi_window.app_events_collections
 
 def add_items_to_show_from_calendar(google_account, cal_name, cal_id):
-    global g_events_to_present
-    global g_dismissed_events
-    global g_snoozed_events
-    global g_displayed_events
+    global g_app_events_collections
     global g_logger
 
     g_logger.debug("add_items_to_show_from_calendar for " + google_account)
@@ -110,19 +100,19 @@ def add_items_to_show_from_calendar(google_account, cal_name, cal_id):
         event_key_str = json.dumps(event_key)
         g_logger.debug("Event ID " + str(event_id))
 
-        if (g_dismissed_events.is_event_in(event_key_str)):
+        if (g_app_events_collections.dismissed_events.is_event_in(event_key_str)):
             g_logger.debug("Skipping dismissed event")
             continue
 
-        if (g_snoozed_events.is_event_in(event_key_str)):
+        if (g_app_events_collections.snoozed_events.is_event_in(event_key_str)):
             g_logger.debug("Skipping snoozed event")
             continue
 
-        if (g_displayed_events.is_event_in(event_key_str)):
+        if (g_app_events_collections.displayed_events.is_event_in(event_key_str)):
             g_logger.debug("Skipping displayed event")
             continue
         
-        if (g_events_to_present.is_event_in(event_key_str)):
+        if (g_app_events_collections.events_to_present.is_event_in(event_key_str)):
             g_logger.debug("Skipping event as it is already in the events to present")
             continue
 
@@ -139,7 +129,7 @@ def add_items_to_show_from_calendar(google_account, cal_name, cal_id):
             # Event to get presented
             g_logger.debug(str(event))
 
-            g_events_to_present.add_event(event_key_str, parsed_event)
+            g_app_events_collections.events_to_present.add_event(event_key_str, parsed_event)
 
             g_logger.debug(
                 "Event to be presented - "
@@ -165,7 +155,7 @@ def set_events_to_be_displayed():
 
 def condition_function_for_removing_snoozed_events(event_key_str, parsed_event):
     global g_logger
-    global g_events_to_present
+    global g_app_events_collections
 
     now_datetime = get_now_datetime()
 
@@ -177,7 +167,7 @@ def condition_function_for_removing_snoozed_events(event_key_str, parsed_event):
         
     elif (now_datetime >= parsed_event['event_wakeup_time']):
         # Event needs to be woke up
-        g_events_to_present.add_event(event_key_str, parsed_event)
+        g_app_events_collections.events_to_present.add_event(event_key_str, parsed_event)
 
     else:
         # No need to remove the evnet
@@ -188,15 +178,14 @@ def condition_function_for_removing_snoozed_events(event_key_str, parsed_event):
 
 def set_items_to_present_from_snoozed():
     global g_logger
-    global g_snoozed_events
+    global g_app_events_collections
 
-    g_snoozed_events.remove_events_based_on_condition(condition_function_for_removing_snoozed_events)
+    g_app_events_collections.snoozed_events.remove_events_based_on_condition(condition_function_for_removing_snoozed_events)
 
     return
 
 def condition_function_for_removing_dismissed_events(event_key_str, parsed_event):
     global g_logger
-    global g_dismissed_events
 
     now_datetime = get_now_datetime()
 
@@ -220,7 +209,7 @@ def condition_function_for_removing_dismissed_events(event_key_str, parsed_event
 
 def clear_dismissed_events_that_have_ended():
 
-    g_dismissed_events.remove_events_based_on_condition(condition_function_for_removing_dismissed_events)
+    g_app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_for_removing_dismissed_events)
 
     return
 

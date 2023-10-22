@@ -11,19 +11,30 @@ from EventWindow import EventWindow
 sys.path.insert(1, '/Users/ofir/git/personal/pyqt-realtime-log-widget')
 from pyqt_realtime_log_widget import LogWidget
 
+from events_collection import Events_Collection
+
+from app_events_collections import App_Events_Collections
+
 class MDIWindow(QMainWindow):
     c_num_of_displayed_events = 0
     count = 0
 
-    def __init__(self, logger, events_logger, events_to_present, dismissed_events, snoozed_events, refresh_frequency):
+    def init_app_events_collections(self):
+        self.app_events_collections = App_Events_Collections()
+
+        self.app_events_collections.set_events_to_present(Events_Collection(self.logger, "events_to_present"))
+        self.app_events_collections.set_dismissed_events(Events_Collection(self.logger, "dismissed_events"))
+        self.app_events_collections.set_snoozed_events(Events_Collection(self.logger, "snoozed_events"))
+        self.app_events_collections.set_displayed_events(Events_Collection(self.logger, "displayed_events", self.add_event_to_display_cb, self.remove_event_from_display_cb))
+
+    def __init__(self, logger, events_logger, refresh_frequency):
         super().__init__()
 
         self.logger = logger
         self.events_logger = events_logger
-        self.events_to_present = events_to_present
-        self.dismissed_events = dismissed_events
-        self.snoozed_events = snoozed_events
         self.refresh_frequency = refresh_frequency
+
+        self.init_app_events_collections()
  
         self.mdi = QMdiArea()
         self.setCentralWidget(self.mdi)
@@ -40,11 +51,8 @@ class MDIWindow(QMainWindow):
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.present_relevant_events_in_sub_windows) 
 
-    def set_displayed_events(self, displayed_events):
-        self.displayed_events = displayed_events
-
     def show_window_in_mdi(self, event_key_str, parsed_event):
-        event_win = EventWindow(self.logger, self.events_logger, self.dismissed_events, self.snoozed_events, self.displayed_events, self)
+        event_win = EventWindow(self.logger, self.events_logger, self.app_events_collections, self)
 
         event_win.init_window_from_parsed_event(event_key_str, parsed_event)
         event_win.setFixedWidth(730)
@@ -62,13 +70,13 @@ class MDIWindow(QMainWindow):
 
     def present_relevant_events(self):
         while True:
-            event_key_str, parsed_event = self.events_to_present.pop()
+            event_key_str, parsed_event = self.app_events_collections.events_to_present.pop()
             if (event_key_str == None):
                 # No more entries to present
                 return
             
             # Add the event to the presented events
-            self.displayed_events.add_event(event_key_str, parsed_event)
+            self.app_events_collections.displayed_events.add_event(event_key_str, parsed_event)
             
             self.show_window_in_mdi(event_key_str, parsed_event)
 
