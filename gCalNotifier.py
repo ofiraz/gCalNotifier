@@ -3,11 +3,10 @@ import sys
 import time
 
 from PyQt5.QtWidgets import (
-    QApplication, QMainWindow, QDesktopWidget, QTextBrowser, QMdiArea, QAction, QMdiSubWindow, QTextEdit
+    QApplication, QDesktopWidget, QTextBrowser, QAction, QTextEdit
 )
 
 from PyQt5 import QtGui
-from PyQt5 import QtCore
 import logging
 
 import datetime
@@ -39,8 +38,6 @@ from json_utils import nice_json
 
 from datetime_utils import get_now_datetime
 
-from EventWindow import EventWindow
-
 from event_utils import (
     has_event_changed,
     parse_event,
@@ -49,8 +46,7 @@ from event_utils import (
 
 from events_collection import Events_Collection
 
-sys.path.insert(1, '/Users/ofir/git/personal/pyqt-realtime-log-widget')
-from pyqt_realtime_log_widget import LogWidget
+from events_mdi_window import MDIWindow
 
 
 def init_global_objects():
@@ -62,6 +58,7 @@ def init_global_objects():
     global g_log_level
     global g_mdi_window
     global g_events_logger
+    global g_app
 
     g_logger = init_logging("gCalNotifier", "Main", g_log_level, LOG_LEVEL_INFO)
     g_events_logger = init_logging("EventsLog", "Main", LOG_LEVEL_INFO, LOG_LEVEL_INFO)
@@ -69,7 +66,12 @@ def init_global_objects():
     g_events_to_present = Events_Collection(g_logger, "g_events_to_present")
     g_dismissed_events = Events_Collection(g_logger, "g_dismissed_events")
     g_snoozed_events = Events_Collection(g_logger, "g_snoozed_events")
+
+    g_app = QApplication(sys.argv)
+    g_mdi_window = MDIWindow(g_logger, g_events_logger, g_events_to_present, g_dismissed_events, g_snoozed_events, g_refresh_frequency)
+
     g_displayed_events = Events_Collection(g_logger, "g_displayed_events", g_mdi_window.add_event_to_display_cb, g_mdi_window.remove_event_from_display_cb)
+    g_mdi_window.set_displayed_events(g_displayed_events)
 
 def add_items_to_show_from_calendar(google_account, cal_name, cal_id):
     global g_events_to_present
@@ -161,30 +163,6 @@ def set_events_to_be_displayed():
                 cal_for_account['calendar name'], 
                 cal_for_account['calendar id'])
 
-def show_window_in_mdi(event_key_str, parsed_event):
-    global g_logger
-    global g_mdi_window
-    global g_events_logger
-    global g_dismissed_events
-    global g_snoozed_events
-    global g_displayed_events
-
-    event_win = EventWindow(g_logger, g_events_logger, g_dismissed_events, g_snoozed_events, g_displayed_events, g_mdi_window)
-
-    event_win.init_window_from_parsed_event(event_key_str, parsed_event)
-    event_win.setFixedWidth(730)
-    event_win.setFixedHeight(650)
-
-    sub_win = QMdiSubWindow()
-    sub_win.setWidget(event_win)
-    g_mdi_window.mdi.addSubWindow(sub_win)
-    sub_win.show()
-
-    g_events_logger.info("Displaying event:" + parsed_event['event_name'])
-
-    g_mdi_window.raise_()
-    g_mdi_window.activateWindow()
-
 def condition_function_for_removing_snoozed_events(event_key_str, parsed_event):
     global g_logger
     global g_events_to_present
@@ -215,21 +193,6 @@ def set_items_to_present_from_snoozed():
     g_snoozed_events.remove_events_based_on_condition(condition_function_for_removing_snoozed_events)
 
     return
-
-def present_relevant_events():
-    global g_events_to_present
-    global g_displayed_events
-    
-    while True:
-        event_key_str, parsed_event = g_events_to_present.pop()
-        if (event_key_str == None):
-            # No more entries to present
-            return
-        
-        # Add the event to the presented events
-        g_displayed_events.add_event(event_key_str, parsed_event)
-        
-        show_window_in_mdi(event_key_str, parsed_event)
 
 def condition_function_for_removing_dismissed_events(event_key_str, parsed_event):
     global g_logger
@@ -294,120 +257,6 @@ def prep_google_accounts_and_calendars():
     for google_account in g_google_accounts:
         get_calendar_list_for_account(g_logger, google_account)
 
-class MDIWindow(QMainWindow):
-    c_num_of_displayed_events = 0
-    count = 0
-
-    def present_relevant_events_in_sub_windows(self):
-        global g_logger
-        global g_refresh_frequency
-
-        g_logger.debug("Presenting relevant events")
-
-        present_relevant_events()
-
-        if ((self.c_num_of_displayed_events > 0) and self.isMinimized()):
-            # There is now at least one event, and the MDI is minimized - restore the window
-            g_logger.info("Before showNormal")
-            self.showNormal()
-            g_logger.info("After showNormal")
-
-        self.timer.start(int(g_refresh_frequency/2) * 1000)
-
-    def update_mdi_title(self):
-        self.setWindowTitle("[" + str(self.c_num_of_displayed_events) + "] gCalNotifier")
-
-    def __init__(self):
-        super().__init__()
- 
-        self.mdi = QMdiArea()
-        self.setCentralWidget(self.mdi)
-        bar = self.menuBar()
- 
-        file = bar.addMenu("File")
-        file.addAction("Reset")
-        file.addAction("Logs")
-        file.addAction("New")
-        file.addAction("Cascade")
-        file.addAction("Tiled")
-        file.triggered.connect(self.WindowTrig)
-        self.update_mdi_title()
-
-        self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.present_relevant_events_in_sub_windows) 
-
-    def add_event_to_display_cb(self):
-        global g_logger
-
-        g_logger.debug("add_event_to_display_cb start")
-
-        self.c_num_of_displayed_events = self.c_num_of_displayed_events + 1
-
-        g_logger.debug("add_event_to_display_cb update_mdi_title")
-        self.update_mdi_title()
-
-        g_logger.debug("add_event_to_display_cb end")
-
-    def remove_event_from_display_cb(self):
-        global g_logger
-
-        g_logger.debug("remove_event_from_display_cb start")
-
-        self.c_num_of_displayed_events = self.c_num_of_displayed_events - 1
-
-        g_logger.debug("remove_event_from_display_cb update_mdi_title")
-        self.update_mdi_title()
-
-        if (self.c_num_of_displayed_events == 0):
-            # No events to show
-            g_logger.debug("remove_event_from_display_cb showMinimized")
-
-            self.showMinimized()
-
-        g_logger.debug("remove_event_from_display_cb end")
-
-    def reset_all_events(self):
-        global g_events_logger
-
-        g_events_logger.info("Reseting the app")
-
-    def showEvent(self, event):
-        # This method will be called when the main MDI window is shown
-        super().showEvent(event)  # Call the base class showEvent first
-        self.present_relevant_events_in_sub_windows()
-
-    def WindowTrig(self, p):
-        if p.text() == "Reset":
-            self.reset_all_events()
-
-        elif p.text() == "Logs":
-            window = LogWidget(warn_before_close=False)
-
-            filename = "/Users/ofir/git/personal/gCalNotifier/EventsLog.log"
-            comm = "tail -f " + filename
-
-            window.setCommand(comm)
-
-            sub = QMdiSubWindow()
-            sub.setWidget(window)
-            sub.setWindowTitle("Logs")
-            self.mdi.addSubWindow(sub)
-            sub.show()
- 
-        elif p.text() == "New":
-            MDIWindow.count = MDIWindow.count + 1
-            sub = QMdiSubWindow()
-            sub.setWidget(QTextEdit())
-            sub.setWindowTitle("Sub Window" + str(MDIWindow.count))
-            self.mdi.addSubWindow(sub)
-            sub.show()
- 
-        elif p.text() == "Cascade":
-            self.mdi.cascadeSubWindows()
- 
-        elif p.text() == "Tiled":
-            self.mdi.tileSubWindows()
-
 def get_events_to_display_main_loop():
     global g_log_level
     global g_refresh_frequency
@@ -429,17 +278,12 @@ def start_getting_events_to_display_main_loop_thread():
 if __name__ == "__main__":
     load_config()
 
-    app = QApplication(sys.argv)
-    g_mdi_window = MDIWindow()
-
     init_global_objects()
 
     prep_google_accounts_and_calendars()
 
     # Start a thread to look for events to display
     start_getting_events_to_display_main_loop_thread()
-
-    app.setWindowIcon(QtGui.QIcon('icons8-calendar-64.png'))
 
     # Set the MDI window size to be a little more than the event window size
     g_mdi_window.setFixedWidth(730 + 100)
@@ -451,4 +295,5 @@ if __name__ == "__main__":
     monitor = QDesktopWidget().screenGeometry(0)
     g_mdi_window.move(monitor.left(), monitor.top())
 
-    app.exec_()
+    g_app.setWindowIcon(QtGui.QIcon('icons8-calendar-64.png'))
+    g_app.exec_()
