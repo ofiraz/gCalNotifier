@@ -15,7 +15,7 @@ def init_logging(module_name, process_name, file_log_level, start_message_log_le
     logger.setLevel(logging.DEBUG)
 
     # create formatter
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(lineno)d - ' + process_name + ' - %(process)d - (%(threadName)-10s) - %(levelname)s - %(message)s')
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(filename)s - %(lineno)d - ' + process_name + ' - %(process)d - (%(threadName)-10s) - %(levelname)s - %(message)s')
 
     # create console handler
     console_handler = logging.StreamHandler()
