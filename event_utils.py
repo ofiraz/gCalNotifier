@@ -251,8 +251,8 @@ def parse_event(p_logger, event, parsed_event):
         # Not an all day event
         parsed_event['all_day_event'] = False
         end_day = event['end'].get('dateTime')
-        parsed_event['start_date']=datetime.datetime.strptime(start_day, '%Y-%m-%dT%H:%M:%S%z')
-        parsed_event['end_date']=datetime.datetime.strptime(end_day, '%Y-%m-%dT%H:%M:%S%z')
+        parsed_event['start_date']=datetime.datetime.strptime(start_day, '%Y-%m-%dT%H:%M:%S%z').astimezone()
+        parsed_event['end_date']=datetime.datetime.strptime(end_day, '%Y-%m-%dT%H:%M:%S%z').astimezone()
 
     # Compute the time to wake up
     delta_diff = datetime.timedelta(minutes=minutes_before_to_notify)
