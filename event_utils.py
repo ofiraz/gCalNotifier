@@ -188,6 +188,7 @@ video_links_reg_exs = [
     "(https://[a-zA-Z0-9-]*[\.]*zoom\.us/j/[a-zA-Z0-9-_\.&?=/]*)", # Zoom
     "Click here to join the meeting<(https://teams.microsoft.com/l/meetup-join/.*)>", # Meet   
     "[<>](https://[a-zA-Z0-9-]*\.webex\.com/[a-zA-Z0-9-]*/j\.php\?MTID=[a-zA-Z0-9-]*)[<>]", # Webex
+    "(https://[a-zA-Z0-9-]*\.webex\.com/meet/[a-zA-Z0-9-\.]*)", # https://rbcteams.webex.com/meet/julian.sequeira
     "(https://chime.aws/[0-9]*)"
 ]
 
