@@ -175,10 +175,11 @@ class EventWindow(QMainWindow, Ui_w_event):
         # Hide the missing video message - in the next section we will decide whether to show it
         is_hide_missing_video = True
 
-        need_to_record_meeting = parsed_event.get('need_to_record_meeting', False)
-        if (need_to_record_meeting):
+        self.need_to_record_meeting = parsed_event.get('need_to_record_meeting', False)
+        if (self.need_to_record_meeting):
             is_hide_missing_video = False
 
+            self.pb_open_video_and_snooze.setText("and Snooze for 1m")
             self.l_missing_video.setText("Remember to record!!!")
 
         elif (self.c_video_link == ""):
@@ -385,7 +386,10 @@ class EventWindow(QMainWindow, Ui_w_event):
 
         self.c_win_exit_reason = EXIT_REASON_SNOOZE
 
-        self.c_snooze_time_in_minutes = 5
+        if (self.need_to_record_meeting):
+            self.c_snooze_time_in_minutes = 1
+        else:
+            self.c_snooze_time_in_minutes = 5
     
         self.handle_window_exit()
 
