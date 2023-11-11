@@ -128,6 +128,21 @@ def get_events_from_google_cal(g_logger, google_account, cal_id, event_id = None
 class ConnectivityIssue(Exception):
     pass
 
+Networking_excTypes = {
+    "ServerNotFoundError",
+    "timeout",
+    "TimeoutError",
+    "ConnectionResetError",
+    "TransportError",
+    "SSLCertVerificationError",
+    "SSLEOFError"
+}
+
+Networking_OSError_excMesg = {
+    "[Errno 51] Network is unreachable",
+    "[Errno 65] No route to host"
+}
+
 def get_events_from_google_cal_with_try(g_logger, google_account, cal_id, event_id = None):
     num_of_retries = 0
     none_networking_known_exception = False
@@ -139,14 +154,9 @@ def get_events_from_google_cal_with_try(g_logger, google_account, cal_id, event_
             excType = str(e.__class__.__name__)
             excMesg = str(e)
 
-            if ((excType == "ServerNotFoundError") 
-            or (excType == "timeout") 
-            or (excType == "TimeoutError") 
-            or (excType == "ConnectionResetError")
-            or (excType == "TransportError")
-            or (excType == "SSLCertVerificationError")
-            or (excType == "SSLEOFError")
-            or (excType == "OSError" and excMesg == "[Errno 51] Network is unreachable")
+            if (
+                (excType in Networking_excTypes) 
+                or ((excType == "OSError") and (excMesg in Networking_OSError_excMesg))
             ):
                 # Exceptions that chould be intermittent due to networking issues.
 
