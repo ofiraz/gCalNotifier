@@ -12,27 +12,25 @@ from PyQt5.QtWidgets import (
 
 from PyQt5.QtCore import QThread
 
-import os
 import sys
 import subprocess
+
+LOG_FILE = "/Users/ofir/git/personal/gCalNotifier/gCalNotifier.txt"
+PYTHON_BIN = "/Library/Frameworks/Python.framework/Versions/3.9/bin/python3.9"
+GCAL_PY = "/Users/ofir/git/personal/gCalNotifier/gCalNotifier.py"
+APP_ICON = 'icons8-calendar-64.png'
 
 class gCalNotifier_Thread(QThread):
     def __init__(self):
         super().__init__()
 
     def run(self):
-        #os.system("/Users/ofir/git/personal/gCalNotifier/gCalNotifier.sh")
-        #self.proc = subprocess.Popen("/Users/ofir/git/personal/gCalNotifier/gCalNotifier.sh")
-        out_file = open("/Users/ofir/git/personal/gCalNotifier/gCalNotifier.txt", "w")
+        out_file = open(LOG_FILE, "w")
         self.proc = subprocess.Popen(
-            ["/Library/Frameworks/Python.framework/Versions/3.9/bin/python3.9", "/Users/ofir/git/personal/gCalNotifier/gCalNotifier.py"],
+            [PYTHON_BIN, GCAL_PY],
             stdout=out_file,
             stderr=out_file)
-        print("after")
-        print(self.proc.pid)
-        print("Waiting")
         self.proc.wait()
-        print("Done")
 
 def my_message_box(text, icon):
     msg = QMessageBox()
@@ -57,7 +55,6 @@ def start_gCalNotifier():
 
 def end_app():
     if (my_thread.isRunning()):
-        print("here")
         print(my_thread.proc.pid)
 
         my_thread.proc.terminate()
@@ -70,7 +67,7 @@ app = QApplication(sys.argv)
 app.setQuitOnLastWindowClosed(False)
 
 # Create the icon
-icon = QIcon('icons8-calendar-64.png')
+icon = QIcon(APP_ICON)
 app.setWindowIcon(icon)
 
 # Create the tray
