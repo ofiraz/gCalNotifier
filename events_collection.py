@@ -1,4 +1,8 @@
 import threading
+import faulthandler
+import sys
+
+LOCK_TIMEOUT = 10
 
 class Events_Collection:
     def __init__(self, p_logger, app_events_collections, collection_name, add_cb = None, remove_cb = None):
@@ -10,13 +14,29 @@ class Events_Collection:
         self.c_add_cb = add_cb
         self.c_remove_cb = remove_cb
 
+    # Based on the discussion here https://stackoverflow.com/questions/16740104/python-lock-with-statement-and-timeout
+    def lock_with_timeout(self):
+        res = self.c_lock.acquire(timeout=LOCK_TIMEOUT)
+        
+        if (res):
+            # The lock was aquired
+            return
+        
+        else:
+            # Failed to aquire the lock - crash the app with a proper stack trace
+            self.c_logger.critical("Failed to aquire a lock")
+
+            faulthandler.dump_traceback()
+            sys.exit()
+
     def is_event_in(self, event_key_str):
-        self.c_logger.debug("Before lock for " + self.c_collection_name)
+        self.lock_with_timeout()
 
-        with self.c_lock:
-            self.c_logger.debug("After lock for " + self.c_collection_name)
+        return_value = event_key_str in self.c_events
 
-            return(event_key_str in self.c_events)       
+        self.c_lock.release()
+
+        return return_value
 
     def add_event_safe(self, event_key_str, parsed_event):
         self.c_events[event_key_str] = parsed_event
@@ -25,13 +45,11 @@ class Events_Collection:
             self.c_add_cb()
         
     def add_event(self, event_key_str, parsed_event):
-        self.c_logger.debug("Before lock for " + self.c_collection_name)
+        self.lock_with_timeout()
 
-        with self.c_lock:
-            self.add_event_safe(event_key_str, parsed_event)
+        self.add_event_safe(event_key_str, parsed_event)
 
-        self.c_logger.debug("After lock for " + self.c_collection_name)
-
+        self.c_lock.release()
 
     def remove_event_safe(self, event_key_str):
         del self.c_events[event_key_str]
@@ -40,45 +58,44 @@ class Events_Collection:
             self.c_remove_cb()
 
     def remove_event(self, event_key_str):
-        self.c_logger.debug("Before lock for " + self.c_collection_name)
+        self.lock_with_timeout()
 
-        with self.c_lock:
-            self.remove_event_safe(event_key_str)
+        self.remove_event_safe(event_key_str)
 
-        self.c_logger.debug("After lock for " + self.c_collection_name)
+        self.c_lock.release()
 
     def pop(self):
-        self.c_logger.debug("Before lock for " + self.c_collection_name)
+        self.lock_with_timeout()
 
-        with self.c_lock:
-            if (len(self.c_events) > 0):
-                event_key_str = next(iter(self.c_events))
-                parsed_event = self.c_events[event_key_str]
-                self.remove_event_safe(event_key_str)
+        if (len(self.c_events) > 0):
+            event_key_str = next(iter(self.c_events))
+            parsed_event = self.c_events[event_key_str]
+            self.remove_event_safe(event_key_str)
 
-                self.c_logger.debug("After lock for " + self.c_collection_name)
+        else:
+            # Empty collection
+            event_key_str = None
+            parsed_event = None
 
-                return(event_key_str, parsed_event)
-            else:
-                # Empty collection
-                self.c_logger.debug("After lock for " + self.c_collection_name)
+        self.c_lock.release()
 
-                return(None, None)
+        return(event_key_str, parsed_event)
 
     def remove_events_based_on_condition(self, condition_function):
         events_to_delete = []
 
+        self.lock_with_timeout()
+
         self.c_logger.debug("Before lock for " + self.c_collection_name)
 
-        with self.c_lock:
-            for event_key_str, parsed_event in self.c_events.items():
-                if (condition_function(self.c_logger, self.app_events_collections, event_key_str, parsed_event)):
-                    # The condition was met, need remove the item
-                    events_to_delete.append(event_key_str)
+        for event_key_str, parsed_event in self.c_events.items():
+            if (condition_function(self.c_logger, self.app_events_collections, event_key_str, parsed_event)):
+                # The condition was met, need remove the item
+                events_to_delete.append(event_key_str)
 
-            # Delete the events that were collected to be deleted
-            while (len(events_to_delete) > 0):
-                event_key_str = events_to_delete.pop()
-                self.remove_event_safe(event_key_str)
+        # Delete the events that were collected to be deleted
+        while (len(events_to_delete) > 0):
+            event_key_str = events_to_delete.pop()
+            self.remove_event_safe(event_key_str)
 
-        self.c_logger.debug("After lock for " + self.c_collection_name)
+        self.c_lock.release()
