@@ -21,9 +21,6 @@ GCAL_PY = "/Users/ofir/git/personal/gCalNotifier/gCalNotifier.py"
 APP_ICON = 'icons8-calendar-64.png'
 
 class gCalNotifier_Thread(QThread):
-    def __init__(self):
-        super().__init__()
-
     def run(self):
         out_file = open(LOG_FILE, "w")
         self.proc = subprocess.Popen(
