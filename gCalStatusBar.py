@@ -42,54 +42,73 @@ def gCalNotifier_thread_exit():
         QMessageBox.Critical)
 
 def start_gCalNotifier():
-    if (my_thread.isRunning()):
+    global g_gCalNotifier_thread
+
+    if (g_gCalNotifier_thread.isRunning()):
         my_message_box(
             "The gCalNotifier app is already running",
             QMessageBox.Information)
     
     else:
-        my_thread.start()
+        g_gCalNotifier_thread.start()
 
 def end_app():
-    if (my_thread.isRunning()):
-        print(my_thread.proc.pid)
+    global g_app
+    global g_gCalNotifier_thread
 
-        my_thread.proc.terminate()
-        my_thread.proc.wait()
+    if (g_gCalNotifier_thread.isRunning()):
+        print(g_gCalNotifier_thread.proc.pid)
 
-    app.quit()
+        g_gCalNotifier_thread.proc.terminate()
+        g_gCalNotifier_thread.proc.wait()
 
+    g_app.quit()
 
-app = QApplication(sys.argv)
-app.setQuitOnLastWindowClosed(False)
+def init_and_start_thread():
+    global g_gCalNotifier_thread
 
-# Create the icon
-icon = QIcon(APP_ICON)
-app.setWindowIcon(icon)
+    g_gCalNotifier_thread = gCalNotifier_Thread()
 
-# Create the tray
-tray = QSystemTrayIcon()
-tray.setIcon(icon)
-tray.setVisible(True)
+    g_gCalNotifier_thread.finished.connect(gCalNotifier_thread_exit)
 
-# Create the menu
-menu = QMenu()
+    start_gCalNotifier()
 
-start_gCalNot = QAction("Start gCalNotifier")
-start_gCalNot.triggered.connect(start_gCalNotifier)
-menu.addAction(start_gCalNot)
+def init_and_start_app():
+    global g_app
 
-# Add a Quit option to the menu.
-quit = QAction("Quit")
-quit.triggered.connect(end_app)
-menu.addAction(quit)
+    g_app = QApplication(sys.argv)
 
-# Add the menu to the tray
-tray.setContextMenu(menu)
+    g_app.setQuitOnLastWindowClosed(False)
 
-my_thread = gCalNotifier_Thread()
-my_thread.finished.connect(gCalNotifier_thread_exit)
+    # Create the icon
+    icon = QIcon(APP_ICON)
+    g_app.setWindowIcon(icon)
 
-start_gCalNotifier()
+    # Create the tray
+    tray = QSystemTrayIcon()
+    tray.setIcon(icon)
+    tray.setVisible(True)
 
-app.exec_()
+    # Create the menu
+    menu = QMenu()
+
+    start_gCalNot = QAction("Start gCalNotifier")
+    start_gCalNot.triggered.connect(start_gCalNotifier)
+    menu.addAction(start_gCalNot)
+
+    # Add a Quit option to the menu.
+    quit = QAction("Quit")
+    quit.triggered.connect(end_app)
+    menu.addAction(quit)
+
+    # Add the menu to the tray
+    tray.setContextMenu(menu)
+
+    # Start the app
+    g_app.exec_()
+
+# Main
+if __name__ == "__main__":
+    init_and_start_thread()
+
+    init_and_start_app()
