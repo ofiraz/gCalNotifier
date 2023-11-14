@@ -15,6 +15,9 @@ from PyQt5.QtCore import QThread
 import sys
 import subprocess
 
+sys.path.insert(1, '/Users/ofir/git/personal/pyqt-realtime-log-widget')
+from pyqt_realtime_log_widget import LogWidget
+
 LOG_FILE = "/Users/ofir/git/personal/gCalNotifier/gCalNotifier.txt"
 PYTHON_BIN = "/Library/Frameworks/Python.framework/Versions/3.9/bin/python3.9"
 GCAL_PY = "/Users/ofir/git/personal/gCalNotifier/gCalNotifier.py"
@@ -30,11 +33,13 @@ class gCalNotifier_Thread(QThread):
         self.proc.wait()
 
 def my_message_box(text, icon):
+    global msg
+
     msg = QMessageBox()
     msg.setWindowTitle("gCalNotifier Tray App")
     msg.setText(text)
     msg.setIcon(icon)
-    msg.exec_()
+    msg.show()
 
 def gCalNotifier_thread_exit():
     my_message_box(
@@ -73,6 +78,19 @@ def init_and_start_thread():
 
     start_gCalNotifier()
 
+def open_logs_window():
+    global logs_window
+    
+    logs_window = LogWidget(warn_before_close=False)
+
+    filename = "/Users/ofir/git/personal/gCalNotifier/EventsLog.log"
+    comm = "tail -f " + filename
+
+    logs_window.setCommand(comm)
+
+    logs_window.setWindowTitle("Logs")
+    logs_window.show()
+    
 def init_and_start_app():
     global g_app
 
@@ -95,6 +113,10 @@ def init_and_start_app():
     start_gCalNot = QAction("Start gCalNotifier")
     start_gCalNot.triggered.connect(start_gCalNotifier)
     menu.addAction(start_gCalNot)
+
+    logs_item = QAction("Logs")
+    logs_item.triggered.connect(open_logs_window)
+    menu.addAction(logs_item)
 
     # Add a Quit option to the menu.
     quit = QAction("Quit")

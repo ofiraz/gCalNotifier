@@ -49,7 +49,6 @@ class MDIWindow(QMainWindow):
  
         # Menus
         file_menu = bar.addMenu("File")
-        file_menu.addAction("Logs")
         file_menu.addAction("Clear dismissed and snoozed")
         file_menu.triggered.connect(self.FileMenuTrigger)
 
@@ -67,20 +66,6 @@ class MDIWindow(QMainWindow):
         if p.text() == "Clear dismissed and snoozed":
             self.clear_dismissed_and_snoozed()
 
-        elif p.text() == "Logs":
-            window = LogWidget(warn_before_close=False)
-
-            filename = "/Users/ofir/git/personal/gCalNotifier/EventsLog.log"
-            comm = "tail -f " + filename
-
-            window.setCommand(comm)
-
-            sub = QMdiSubWindow()
-            sub.setWidget(window)
-            sub.setWindowTitle("Logs")
-            self.mdi.addSubWindow(sub)
-            sub.show()
- 
     def WindowMenuTrigger(self, p):
         if p.text() == "Cascade":
             self.mdi.cascadeSubWindows()
