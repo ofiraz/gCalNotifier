@@ -1,8 +1,16 @@
 import sys
 import logging
 
+from PyQt5.QtGui import (
+    QIcon
+)
+
 from PyQt5.QtWidgets import (
-    QApplication, QDesktopWidget
+    QApplication, 
+    QDesktopWidget,
+    QSystemTrayIcon,
+    QMenu,
+    QAction
 )
 
 from logging_module import (
@@ -20,6 +28,55 @@ from events_mdi_window import MDIWindow
 
 from get_events_thread import start_getting_events_to_display_main_loop_thread
 
+sys.path.insert(1, '/Users/ofir/git/personal/pyqt-realtime-log-widget')
+from pyqt_realtime_log_widget import LogWidget
+
+APP_ICON = 'icons8-calendar-64.png'
+
+def open_logs_window():
+    global logs_window
+    
+    logs_window = LogWidget(warn_before_close=False)
+
+    filename = "/Users/ofir/git/personal/gCalNotifier/EventsLog.log"
+    comm = "tail -f " + filename
+
+    logs_window.setCommand(comm)
+
+    logs_window.setWindowTitle("Logs")
+    logs_window.show()
+    
+def init_system_tray(app):
+    global system_tray
+    global system_tray_menu
+    global logs_menu_item
+    global quit_menu_item
+    
+    #g_app.setQuitOnLastWindowClosed(False)
+
+    # Create the icon
+    icon = QIcon(APP_ICON)
+
+    # Create the system_tray
+    system_tray = QSystemTrayIcon()
+    system_tray.setIcon(icon)
+    system_tray.setVisible(True)
+
+    # Create the system_tray_menu
+    system_tray_menu = QMenu()
+
+    logs_menu_item = QAction("Logs")
+    logs_menu_item.triggered.connect(open_logs_window)
+    system_tray_menu.addAction(logs_menu_item)
+
+    # Add a Quit option to the menu.
+    quit_menu_item = QAction("Quit")
+    quit_menu_item.triggered.connect(app.quit)
+    system_tray_menu.addAction(quit_menu_item)
+
+    # Add the menu to the system_tray
+    system_tray.setContextMenu(system_tray_menu)
+
 def init_global_objects(log_level, refresh_frequency):
     global g_logger
     global g_events_logger
@@ -31,6 +88,7 @@ def init_global_objects(log_level, refresh_frequency):
     g_events_logger = init_logging("EventsLog", "Main", LOG_LEVEL_INFO, LOG_LEVEL_INFO)
 
     g_app = QApplication(sys.argv)
+
     g_mdi_window = MDIWindow(g_logger, g_events_logger, g_app, refresh_frequency)
 
     g_app_events_collections = g_mdi_window.app_events_collections
@@ -76,6 +134,8 @@ if __name__ == "__main__":
 
     # Start a thread to look for events to display
     start_getting_events_to_display_main_loop_thread(g_logger, g_refresh_frequency, g_google_accounts, g_app_events_collections)
+
+    init_system_tray(g_app)
 
     # Set the MDI window size to be a little more than the event window size
     g_mdi_window.setFixedWidth(730 + 100)
