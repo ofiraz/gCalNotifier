@@ -58,6 +58,16 @@ def clear_dismissed_and_snoozed():
     g_app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
     g_app_events_collections.snoozed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
 
+def quit_app():
+    global g_app
+    global g_mdi_window
+
+    # Let the MDI window know that the app is closing
+    g_mdi_window.need_to_close_the_window()
+
+    # Close the app
+    g_app.quit()
+
 def init_system_tray(app):
     global system_tray
     global system_tray_menu
@@ -88,7 +98,7 @@ def init_system_tray(app):
 
     # Add a Quit option to the menu.
     quit_menu_item = QAction("Quit")
-    quit_menu_item.triggered.connect(app.quit)
+    quit_menu_item.triggered.connect(quit_app)
     system_tray_menu.addAction(quit_menu_item)
 
     # Add the menu to the system_tray

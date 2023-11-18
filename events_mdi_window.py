@@ -20,6 +20,10 @@ from set_icon_with_number import set_icon_with_number
 class MDIWindow(QMainWindow):
     c_num_of_displayed_events = 0
     count = 0
+    want_to_close = False
+
+    def need_to_close_the_window(self):
+        self.want_to_close = True
 
     def init_app_events_collections(self):
         self.app_events_collections = App_Events_Collections()
@@ -51,8 +55,23 @@ class MDIWindow(QMainWindow):
 
         self.update_mdi_title_and_icon()
 
+        self.setWindowFlags(
+            QtCore.Qt.Window |
+            QtCore.Qt.CustomizeWindowHint |
+            QtCore.Qt.WindowTitleHint |
+            QtCore.Qt.WindowMinimizeButtonHint
+        )
+
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.present_relevant_events_in_sub_windows) 
+
+    # Prevent the window from getting closed
+    def closeEvent(self, event):
+        if self.want_to_close:
+            super(MDIWindow, self).closeEvent(event)
+        else:
+            event.ignore()
+
 
     def WindowMenuTrigger(self, p):
         if p.text() == "Cascade":
