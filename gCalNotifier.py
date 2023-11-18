@@ -44,6 +44,10 @@ def open_logs_window():
     logs_window.setCommand(comm)
 
     logs_window.setWindowTitle("Logs")
+
+    logs_window.setFixedWidth(730 + 100)
+    logs_window.setFixedHeight(650 + 100)
+
     logs_window.show()
 
 def condition_function_to_clear_all_events(logger, app_events_collections, event_key_str, parsed_event):
