@@ -17,10 +17,6 @@ from app_events_collections import App_Events_Collections
 
 from set_icon_with_number import set_icon_with_number
 
-def condition_function_to_clear_all_events(logger, app_events_collections, event_key_str, parsed_event):
-    # Need to remove the evnet
-    return(True)
-
 class MDIWindow(QMainWindow):
     c_num_of_displayed_events = 0
     count = 0
@@ -48,10 +44,6 @@ class MDIWindow(QMainWindow):
         bar = self.menuBar()
  
         # Menus
-        file_menu = bar.addMenu("File")
-        file_menu.addAction("Clear dismissed and snoozed")
-        file_menu.triggered.connect(self.FileMenuTrigger)
-
         window_menu = bar.addMenu("Window")
         window_menu.addAction("Cascade")
         window_menu.addAction("Tiled")
@@ -61,10 +53,6 @@ class MDIWindow(QMainWindow):
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.present_relevant_events_in_sub_windows) 
-
-    def FileMenuTrigger(self, p):
-        if p.text() == "Clear dismissed and snoozed":
-            self.clear_dismissed_and_snoozed()
 
     def WindowMenuTrigger(self, p):
         if p.text() == "Cascade":
@@ -144,12 +132,6 @@ class MDIWindow(QMainWindow):
             self.showMinimized()
 
         self.logger.debug("remove_event_from_display_cb end")
-
-    def clear_dismissed_and_snoozed(self):
-        self.events_logger.info("Clearing dismissed and snoozed")
-
-        self.app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
-        self.app_events_collections.snoozed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
 
     def showEvent(self, event):
         # This method will be called when the main MDI window is shown

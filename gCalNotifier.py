@@ -45,11 +45,24 @@ def open_logs_window():
 
     logs_window.setWindowTitle("Logs")
     logs_window.show()
+
+def condition_function_to_clear_all_events(logger, app_events_collections, event_key_str, parsed_event):
+    # Need to remove the evnet
+    return(True)
+
+def clear_dismissed_and_snoozed():
+    global g_events_logger
     
+    g_events_logger.info("Clearing dismissed and snoozed")
+
+    g_app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
+    g_app_events_collections.snoozed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
+
 def init_system_tray(app):
     global system_tray
     global system_tray_menu
     global logs_menu_item
+    global reset_menu_item
     global quit_menu_item
     
     #g_app.setQuitOnLastWindowClosed(False)
@@ -68,6 +81,10 @@ def init_system_tray(app):
     logs_menu_item = QAction("Logs")
     logs_menu_item.triggered.connect(open_logs_window)
     system_tray_menu.addAction(logs_menu_item)
+
+    reset_menu_item = QAction("Clear dismissed and snoozed")
+    reset_menu_item.triggered.connect(clear_dismissed_and_snoozed)
+    system_tray_menu.addAction(reset_menu_item)
 
     # Add a Quit option to the menu.
     quit_menu_item = QAction("Quit")
