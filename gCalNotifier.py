@@ -52,17 +52,12 @@ def open_logs_window():
 
     logs_window.show()
 
-def condition_function_to_clear_all_events(logger, app_events_collections, event_key_str, parsed_event):
-    # Need to remove the evnet
-    return(True)
-
 def clear_dismissed_and_snoozed():
     global g_events_logger
     
     g_events_logger.info("Clearing dismissed and snoozed")
 
-    g_app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
-    g_app_events_collections.snoozed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
+    g_app_events_collections.resest_is_needed()
 
 def quit_app():
     global g_app

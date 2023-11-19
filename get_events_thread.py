@@ -151,14 +151,26 @@ def clear_dismissed_events_that_have_ended(app_events_collections):
 
     return
 
+def condition_function_to_clear_all_events(logger, app_events_collections, event_key_str, parsed_event):
+    # Need to remove the evnet
+    return(True)
+
 def set_events_to_be_displayed(logger, google_accounts, app_events_collections):
-    # Update the events that were dismissed or snoozed in the event windows
-    move_events_to_dismiss_into_dismissed_events_collection(app_events_collections)
-    move_events_to_snooze_into_snoozed_events_collection(app_events_collections)
+    if (app_events_collections.is_reset_needed()):
+    # Need to reset the "system" by clearing all of the dismissed and snoozed events
+        app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
+        app_events_collections.snoozed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
 
-    clear_dismissed_events_that_have_ended(app_events_collections)
-    set_items_to_present_from_snoozed(app_events_collections)
+        app_events_collections.reset_done()
+    
+    else:
+        # Update the events that were dismissed or snoozed in the event windows
+        move_events_to_dismiss_into_dismissed_events_collection(app_events_collections)
+        move_events_to_snooze_into_snoozed_events_collection(app_events_collections)
 
+        clear_dismissed_events_that_have_ended(app_events_collections)
+        set_items_to_present_from_snoozed(app_events_collections)
+    
     for google_account in google_accounts:
         for cal_for_account in google_account["calendar list"]:
             logger.debug(google_account["account name"] + " " + str(cal_for_account))
