@@ -15,6 +15,20 @@ from event_utils import (
     NO_POPUP_REMINDER
 )
 
+def is_event_already_in_a_collection(app_events_collections, event_key_str):
+    for events_collection_to_check in [
+        app_events_collections.dismissed_events,
+        app_events_collections.events_to_dismiss,
+        app_events_collections.snoozed_events,
+        app_events_collections.events_to_snooze,
+        app_events_collections.displayed_events,
+        app_events_collections.events_to_present]:
+        if (events_collection_to_check.is_event_in(event_key_str)):
+            return(True)
+        
+    # The event is not in any of the collections
+    return(False)
+
 def add_items_to_show_from_calendar(logger, app_events_collections, google_account, cal_name, cal_id):
     logger.debug("add_items_to_show_from_calendar for " + google_account)
 
@@ -46,20 +60,8 @@ def add_items_to_show_from_calendar(logger, app_events_collections, google_accou
         event_key_str = json.dumps(event_key)
         logger.debug("Event ID " + str(event_id))
 
-        if (app_events_collections.dismissed_events.is_event_in(event_key_str)):
-            logger.debug("Skipping dismissed event")
-            continue
-
-        if (app_events_collections.snoozed_events.is_event_in(event_key_str)):
-            logger.debug("Skipping snoozed event")
-            continue
-
-        if (app_events_collections.displayed_events.is_event_in(event_key_str)):
-            logger.debug("Skipping displayed event")
-            continue
-        
-        if (app_events_collections.events_to_present.is_event_in(event_key_str)):
-            logger.debug("Skipping event as it is already in the events to present")
+        if (is_event_already_in_a_collection(app_events_collections, event_key_str)):
+            logger.debug("Skipping event as it is already in one of the collections")
             continue
 
         # Event not in the any other list
