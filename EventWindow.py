@@ -259,7 +259,7 @@ class EventWindow(QMainWindow, Ui_w_event):
                 self.c_events_logger.info("Event dismissed by user, for event: " + self.c_parsed_event['event_name'])
 
                 if (now_datetime < self.c_parsed_event['end_date']):
-                    self.app_events_collections.dismissed_events.add_event(self.c_event_key_str, self.c_parsed_event)
+                    self.app_events_collections.events_to_dismiss.add_event(self.c_event_key_str, self.c_parsed_event)
 
             elif (self.c_win_exit_reason == EXIT_REASON_SNOOZE):
                 self.c_logger.debug("Snooze")
@@ -272,7 +272,7 @@ class EventWindow(QMainWindow, Ui_w_event):
 
                 self.c_events_logger.info("Event snoozed by user, for event: " + self.c_parsed_event['event_name'] + " until " + str(self.c_parsed_event['event_wakeup_time']))
                     
-                self.app_events_collections.snoozed_events.add_event(self.c_event_key_str, self.c_parsed_event)
+                self.app_events_collections.events_to_snooze.add_event(self.c_event_key_str, self.c_parsed_event)
 
             else:
                 self.c_events_logger.error("Event windows was closed without a reason, for event: " + self.c_parsed_event['event_name'])

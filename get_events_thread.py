@@ -130,13 +130,32 @@ def condition_function_for_removing_dismissed_events(logger, app_events_collecti
     # Need to remove the evnet
     return(True)
 
-def clear_dismissed_events_that_have_ended(app_events_collections):
+def move_events_to_dismiss_into_dismissed_events_collection(app_events_collections):
+    while (True):
+        event_key_str, parsed_event = app_events_collections.events_to_dismiss.pop()
+        if (event_key_str is None):
+            break
 
+        app_events_collections.dismissed_events.add_event(event_key_str, parsed_event)
+
+def move_events_to_snooze_into_snoozed_events_collection(app_events_collections):
+    while (True):
+        event_key_str, parsed_event = app_events_collections.events_to_snooze.pop()
+        if (event_key_str is None):
+            break
+
+        app_events_collections.snoozed_events.add_event(event_key_str, parsed_event)
+
+def clear_dismissed_events_that_have_ended(app_events_collections):
     app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_for_removing_dismissed_events)
 
     return
 
 def set_events_to_be_displayed(logger, google_accounts, app_events_collections):
+    # Update the events that were dismissed or snoozed in the event windows
+    move_events_to_dismiss_into_dismissed_events_collection(app_events_collections)
+    move_events_to_snooze_into_snoozed_events_collection(app_events_collections)
+
     clear_dismissed_events_that_have_ended(app_events_collections)
     set_items_to_present_from_snoozed(app_events_collections)
 
