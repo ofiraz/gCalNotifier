@@ -11,10 +11,6 @@ from EventWindow import EventWindow
 sys.path.insert(1, '/Users/ofir/git/personal/pyqt-realtime-log-widget')
 from pyqt_realtime_log_widget import LogWidget
 
-from events_collection import Events_Collection
-
-from app_events_collections import App_Events_Collections
-
 from set_icon_with_number import set_icon_with_number
 
 class MDIWindow(QMainWindow):
@@ -25,15 +21,7 @@ class MDIWindow(QMainWindow):
     def need_to_close_the_window(self):
         self.want_to_close = True
 
-    def init_app_events_collections(self):
-        self.app_events_collections = App_Events_Collections()
-
-        self.app_events_collections.set_events_to_present(Events_Collection(self.logger, self.app_events_collections, "events_to_present"))
-        self.app_events_collections.set_dismissed_events(Events_Collection(self.logger, self.app_events_collections, "dismissed_events"))
-        self.app_events_collections.set_snoozed_events(Events_Collection(self.logger, self.app_events_collections, "snoozed_events"))
-        self.app_events_collections.set_displayed_events(Events_Collection(self.logger, self.app_events_collections, "displayed_events", self.add_event_to_display_cb, self.remove_event_from_display_cb))
-
-    def __init__(self, logger, events_logger, app, refresh_frequency):
+    def __init__(self, logger, events_logger, app, refresh_frequency, app_events_collections):
         super().__init__()
 
         self.logger = logger
@@ -41,7 +29,9 @@ class MDIWindow(QMainWindow):
         self.app = app
         self.refresh_frequency = refresh_frequency
 
-        self.init_app_events_collections()
+        self.app_events_collections = app_events_collections
+        self.app_events_collections.displayed_events.set_add_cb(self.add_event_to_display_cb)
+        self.app_events_collections.displayed_events.set_remove_cb(self.remove_event_from_display_cb)
  
         self.mdi = QMdiArea()
         self.setCentralWidget(self.mdi)

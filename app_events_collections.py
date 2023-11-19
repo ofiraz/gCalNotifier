@@ -1,12 +1,8 @@
+from events_collection import Events_Collection
+
 class App_Events_Collections:
-    def set_events_to_present(self, events_to_present):
-        self.events_to_present = events_to_present
-
-    def set_dismissed_events(self, dismissed_events):
-        self.dismissed_events = dismissed_events
-
-    def set_snoozed_events(self, snoozed_events):
-        self.snoozed_events = snoozed_events
-
-    def set_displayed_events(self, displayed_events):
-        self.displayed_events = displayed_events
+    def __init__(self, logger):
+        self.events_to_present = Events_Collection(logger, self, "events_to_present")
+        self.dismissed_events = Events_Collection(logger, self, "dismissed_events")
+        self.snoozed_events = Events_Collection(logger, self, "snoozed_events")
+        self.displayed_events = Events_Collection(logger, self, "displayed_events")

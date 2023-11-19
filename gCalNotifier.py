@@ -31,6 +31,8 @@ from get_events_thread import start_getting_events_to_display_main_loop_thread
 sys.path.insert(1, '/Users/ofir/git/personal/pyqt-realtime-log-widget')
 from pyqt_realtime_log_widget import LogWidget
 
+from app_events_collections import App_Events_Collections
+
 APP_ICON = 'icons8-calendar-64.png'
 
 def open_logs_window():
@@ -120,9 +122,9 @@ def init_global_objects(log_level, refresh_frequency):
 
     g_app = QApplication(sys.argv)
 
-    g_mdi_window = MDIWindow(g_logger, g_events_logger, g_app, refresh_frequency)
+    g_app_events_collections = App_Events_Collections(g_logger)
 
-    g_app_events_collections = g_mdi_window.app_events_collections
+    g_mdi_window = MDIWindow(g_logger, g_events_logger, g_app, refresh_frequency, g_app_events_collections)
 
 def load_config():
     global g_google_accounts

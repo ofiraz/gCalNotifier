@@ -105,16 +105,11 @@ def condition_function_for_removing_snoozed_events(logger, app_events_collection
     return(True)
 
 def set_items_to_present_from_snoozed(app_events_collections):
-    global g_logger
-    global g_app_events_collections
-
     app_events_collections.snoozed_events.remove_events_based_on_condition(condition_function_for_removing_snoozed_events)
 
     return
 
 def condition_function_for_removing_dismissed_events(logger, app_events_collections, event_key_str, parsed_event):
-    global g_logger
-
     now_datetime = get_now_datetime()
 
     logger.debug("Dismissed event " + event_key_str + " " + str(parsed_event['end_date']) + " " + str(now_datetime))

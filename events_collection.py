@@ -5,13 +5,19 @@ import sys
 LOCK_TIMEOUT = 10
 
 class Events_Collection:
-    def __init__(self, p_logger, app_events_collections, collection_name, add_cb = None, remove_cb = None):
+    def __init__(self, p_logger, app_events_collections, collection_name):
         self.c_logger = p_logger
         self.c_events = {}
         self.c_lock = threading.Lock()
         self.c_collection_name = collection_name
         self.app_events_collections = app_events_collections
+        self.c_add_cb = None
+        self.c_remove_cb = None
+
+    def set_add_cb(self, add_cb):
         self.c_add_cb = add_cb
+
+    def set_remove_cb(self, remove_cb):
         self.c_remove_cb = remove_cb
 
     # Based on the discussion here https://stackoverflow.com/questions/16740104/python-lock-with-statement-and-timeout
