@@ -134,19 +134,17 @@ def condition_function_for_removing_dismissed_events(logger, app_events_collecti
 
 def move_events_to_dismiss_into_dismissed_events_collection(app_events_collections):
     while (True):
-        event_key_str, parsed_event = app_events_collections.events_to_dismiss.pop()
-        if (event_key_str is None):
-            break
-
-        app_events_collections.dismissed_events.add_event(event_key_str, parsed_event)
+        event_key_str, parsed_event = app_events_collections.dismissed_events.pop_from_another_collection_and_add_this_one(app_events_collections.events_to_dismiss)
+        if (event_key_str == None):
+            # No more entries to present
+            return
 
 def move_events_to_snooze_into_snoozed_events_collection(app_events_collections):
     while (True):
-        event_key_str, parsed_event = app_events_collections.events_to_snooze.pop()
-        if (event_key_str is None):
-            break
-
-        app_events_collections.snoozed_events.add_event(event_key_str, parsed_event)
+        event_key_str, parsed_event = app_events_collections.snoozed_events.pop_from_another_collection_and_add_this_one(app_events_collections.events_to_snooze)
+        if (event_key_str == None):
+            # No more entries to present
+            return
 
 def clear_dismissed_events_that_have_ended(app_events_collections):
     app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_for_removing_dismissed_events)

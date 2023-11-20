@@ -89,13 +89,10 @@ class MDIWindow(QMainWindow):
 
     def present_relevant_events(self):
         while True:
-            event_key_str, parsed_event = self.app_events_collections.events_to_present.pop()
+            event_key_str, parsed_event = self.app_events_collections.displayed_events.pop_from_another_collection_and_add_this_one(self.app_events_collections.events_to_present)
             if (event_key_str == None):
                 # No more entries to present
                 return
-            
-            # Add the event to the presented events
-            self.app_events_collections.displayed_events.add_event(event_key_str, parsed_event)
             
             self.show_window_in_mdi(event_key_str, parsed_event)
 
