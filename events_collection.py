@@ -1,6 +1,7 @@
 import threading
 import faulthandler
 import sys
+import time
 
 LOCK_TIMEOUT = 10
 
@@ -22,10 +23,16 @@ class Events_Collection:
 
     # Based on the discussion here https://stackoverflow.com/questions/16740104/python-lock-with-statement-and-timeout
     def lock_with_timeout(self):
+        time_before_lock = time.time()
         res = self.c_lock.acquire(timeout=LOCK_TIMEOUT)
+        time_after_lock = time.time()
         
         if (res):
             # The lock was aquired
+            time_diff = time_after_lock - time_before_lock
+            if (time_diff > 1):
+                self.c_logger.info("The lock for " + self.c_collection_name + " was more than 1 second - " + str(time_diff))
+
             return
         
         else:
