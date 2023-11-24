@@ -12,7 +12,7 @@ from google.oauth2.credentials import Credentials
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
 
-def get_calendar_list_for_account(g_logger, google_account):
+def get_calendar_list_for_account(logger, google_account):
     google_account_name = google_account["account name"]
     additional_calendars = google_account.get("additional calenadars")
 
@@ -39,7 +39,7 @@ def get_calendar_list_for_account(g_logger, google_account):
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            g_logger.info("Creating a token for " + google_account_name)
+            logger.info("Creating a token for " + google_account_name)
             flow = InstalledAppFlow.from_client_secrets_file(
                 Credentials_file, SCOPES)
             creds = flow.run_local_server(port=0)
@@ -49,7 +49,7 @@ def get_calendar_list_for_account(g_logger, google_account):
 
     service = build('calendar', 'v3', credentials=creds)
 
-    g_logger.info("Printing calendars for " + google_account_name)
+    logger.info("Printing calendars for " + google_account_name)
     page_token = None
     while True:
         calendar_list = service.calendarList().list(pageToken=page_token).execute()
@@ -63,17 +63,17 @@ def get_calendar_list_for_account(g_logger, google_account):
                     'calendar id' : calendar_list_entry['id']
                 }
                 calendar_list_for_account.append(calendar_list_entry_to_add)
-            g_logger.info(prefix_text + " " + calendar_list_entry['summary'] + " " + calendar_list_entry['id'])
+            logger.info(prefix_text + " " + calendar_list_entry['summary'] + " " + calendar_list_entry['id'])
 
         page_token = calendar_list.get('nextPageToken')
         if not page_token:
             break
 
     google_account["calendar list"] = calendar_list_for_account
-    g_logger.info("The calendar list for " + google_account_name + ":")
-    g_logger.info(str(calendar_list_for_account))
+    logger.info("The calendar list for " + google_account_name + ":")
+    logger.info(str(calendar_list_for_account))
 
-def get_events_from_google_cal(g_logger, google_account, cal_id, event_id = None):    
+def get_events_from_google_cal(logger, google_account, cal_id, event_id = None):    
     # Connect to the Google Account
     creds = None
     Credentials_file = 'app_credentials.json'
@@ -89,7 +89,7 @@ def get_events_from_google_cal(g_logger, google_account, cal_id, event_id = None
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            g_logger.info("Creating a token for " + google_account)
+            logger.info("Creating a token for " + google_account)
             flow = InstalledAppFlow.from_client_secrets_file(
                 Credentials_file, SCOPES)
             creds = flow.run_local_server(port=0)
@@ -102,7 +102,7 @@ def get_events_from_google_cal(g_logger, google_account, cal_id, event_id = None
     if (event_id is None):
         # Get the next 10 events
         now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
-        g_logger.debug('Getting the upcoming 10 events')
+        logger.debug('Getting the upcoming 10 events')
 
         events_result = service.events().list(
             calendarId=cal_id, 
@@ -143,13 +143,13 @@ Networking_OSError_excMesg = {
     "[Errno 65] No route to host"
 }
 
-def get_events_from_google_cal_with_try(g_logger, google_account, cal_id, event_id = None):
+def get_events_from_google_cal_with_try(logger, google_account, cal_id, event_id = None):
     num_of_retries = 0
     none_networking_known_exception = False
 
     while True:
         try: # In progress - handling intermittent exception from the Google service
-            raw_events = get_events_from_google_cal(g_logger, google_account, cal_id, event_id)
+            raw_events = get_events_from_google_cal(logger, google_account, cal_id, event_id)
         except Exception as e:
             excType = str(e.__class__.__name__)
             excMesg = str(e)
@@ -160,18 +160,18 @@ def get_events_from_google_cal_with_try(g_logger, google_account, cal_id, event_
             ):
                 # Exceptions that chould be intermittent due to networking issues.
 
-                g_logger.debug('Networking issue with Exception type ' + excType)
+                logger.debug('Networking issue with Exception type ' + excType)
 
             else:
                 # Not a known exception
 
                 none_networking_known_exception = True
 
-                g_logger.info("Error in get_events_from_google_cal_with_try for " + google_account)
-                g_logger.info('Exception type ' + excType)
-                g_logger.info('Exception msg ' + excMesg)
+                logger.info("Error in get_events_from_google_cal_with_try for " + google_account)
+                logger.info('Exception type ' + excType)
+                logger.info('Exception msg ' + excMesg)
 
-                g_logger.info(traceback.format_exc())
+                logger.info(traceback.format_exc())
 
             num_of_retries = num_of_retries + 1
 
@@ -181,7 +181,7 @@ def get_events_from_google_cal_with_try(g_logger, google_account, cal_id, event_
                     raise
                 else:
                     # Only known connectivity issues have happend
-                    g_logger.info('Only known connectivity issues have happend')
+                    logger.info('Only known connectivity issues have happend')
                     raise ConnectivityIssue()
 
             else:

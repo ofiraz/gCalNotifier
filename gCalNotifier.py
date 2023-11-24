@@ -33,6 +33,9 @@ from pyqt_realtime_log_widget import LogWidget
 
 from app_events_collections import App_Events_Collections
 
+from globals import app_globals
+from config import app_config
+
 APP_ICON = 'icons8-calendar-64.png'
 
 def open_logs_window():
@@ -105,63 +108,38 @@ def init_system_tray(app):
     # Add the menu to the system_tray
     system_tray.setContextMenu(system_tray_menu)
 
-def init_global_objects(log_level, refresh_frequency):
-    global g_logger
+def init_global_objects():
+    global g_globals
     global g_events_logger
     global g_app
     global g_mdi_window
     global g_app_events_collections
 
-    g_logger = init_logging("gCalNotifier", "Main", log_level, LOG_LEVEL_INFO)
     g_events_logger = init_logging("EventsLog", "Main", LOG_LEVEL_INFO, LOG_LEVEL_INFO)
 
     g_app = QApplication(sys.argv)
 
-    g_app_events_collections = App_Events_Collections(g_logger)
+    g_app_events_collections = App_Events_Collections(g_globals.logger)
 
-    g_mdi_window = MDIWindow(g_logger, g_events_logger, g_app, refresh_frequency, g_app_events_collections)
+    g_mdi_window = MDIWindow(g_globals.logger, g_events_logger, g_app, g_globals.config.refresh_frequency, g_app_events_collections)
 
-def load_config():
-    global g_google_accounts
-    global g_log_level
-    global g_refresh_frequency
+def prep_google_accounts_and_calendars(logger):
+    global g_globals
 
-    with open("gCalNotifier.json") as f:
-        l_config = json.load(f)
-
-    g_google_accounts = l_config.get("google accounts")
-    if (not g_google_accounts):
-        print("No \'google accounts\' defined in the config file")
-        sys.exit()
-
-    for google_account in g_google_accounts:
-        account_name = google_account.get("account name")
-        if (not account_name):
-            print ("No \'account name\' defined for a google account entry")
-            sys.exit()
- 
-    g_log_level = l_config.get("log level")
-    if (not g_log_level):
-        g_log_level = logging.INFO
-
-    g_refresh_frequency = l_config.get("refresh frequency")
-    if (not g_refresh_frequency):
-        g_refresh_frequency = 30
-
-def prep_google_accounts_and_calendars(logger, google_accounts):
-    for google_account in google_accounts:
+    for google_account in g_globals.config.google_accounts:
         get_calendar_list_for_account(logger, google_account)
 
 # Main
 if __name__ == "__main__":
-    load_config()
+    #load_config()
+    g_globals = app_globals()
 
-    init_global_objects(g_log_level, g_refresh_frequency)
+    init_global_objects()
 
-    prep_google_accounts_and_calendars(g_logger, g_google_accounts)
+    prep_google_accounts_and_calendars(g_globals.logger)
 
     # Start a thread to look for events to display
-    start_getting_events_to_display_main_loop_thread(g_logger, g_events_logger, g_refresh_frequency, g_google_accounts, g_app_events_collections)
+    start_getting_events_to_display_main_loop_thread(g_events_logger, g_globals, g_app_events_collections)
 
     init_system_tray(g_app)
 

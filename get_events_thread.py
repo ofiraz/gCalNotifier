@@ -2,6 +2,9 @@ import threading
 import time
 import json
 
+from globals import app_globals
+from config import app_config
+
 from google_calendar_utilities import (
     get_events_from_google_cal_with_try,
     ConnectivityIssue
@@ -173,7 +176,7 @@ def condition_function_to_clear_all_events(logger, app_events_collections, event
     # Need to remove the evnet
     return(True)
 
-def set_events_to_be_displayed(logger, events_logger, google_accounts, app_events_collections):
+def set_events_to_be_displayed(events_logger, globals, app_events_collections):
     if (app_events_collections.is_reset_needed()):
     # Need to reset the "system" by clearing all of the dismissed and snoozed events
         app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
@@ -189,29 +192,29 @@ def set_events_to_be_displayed(logger, events_logger, google_accounts, app_event
         clear_dismissed_events_that_have_ended(app_events_collections)
         set_items_to_present_from_snoozed(app_events_collections)
     
-    for google_account in google_accounts:
+    for google_account in globals.config.google_accounts:
         for cal_for_account in google_account["calendar list"]:
-            logger.debug(google_account["account name"] + " " + str(cal_for_account))
+            globals.logger.debug(google_account["account name"] + " " + str(cal_for_account))
             add_items_to_show_from_calendar(
-                logger,
+                globals.logger,
                 events_logger,
                 app_events_collections,
                 google_account["account name"], 
                 cal_for_account['calendar name'], 
                 cal_for_account['calendar id'])
 
-def get_events_to_display_main_loop(logger, events_logger, refresh_frequency, google_accounts, app_events_collections):
+def get_events_to_display_main_loop(events_logger, globals, app_events_collections):
     while True:
-        set_events_to_be_displayed(logger, events_logger, google_accounts, app_events_collections)
+        set_events_to_be_displayed(events_logger, globals, app_events_collections)
 
-        logger.debug("Going to sleep for " + str(refresh_frequency) + " seconds")
-        time.sleep(refresh_frequency)
+        globals.logger.debug("Going to sleep for " + str(globals.config.refresh_frequency) + " seconds")
+        time.sleep(globals.config.refresh_frequency)
 
 
-def start_getting_events_to_display_main_loop_thread(logger, events_logger, refresh_frequency,google_accounts, app_events_collections):
+def start_getting_events_to_display_main_loop_thread(events_logger,globals, app_events_collections):
     main_loop_thread = threading.Thread(
         target = get_events_to_display_main_loop,
-        args=(logger, events_logger, refresh_frequency, google_accounts, app_events_collections),
+        args=(events_logger, globals, app_events_collections),
         daemon=True)
 
     main_loop_thread.start()
