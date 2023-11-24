@@ -5,6 +5,8 @@ import json
 from globals import app_globals
 from config import app_config
 
+from events_collection import Events_Collection
+
 from google_calendar_utilities import (
     get_events_from_google_cal_with_try,
     ConnectivityIssue
@@ -22,10 +24,13 @@ from event_utils import (
 )
 
 def is_event_already_in_a_collection(app_events_collections, event_key_str):
+    global dismissed_events
+    global snoozed_events
+
     for events_collection_to_check in [
-        app_events_collections.dismissed_events,
+        dismissed_events,
         app_events_collections.events_to_dismiss,
-        app_events_collections.snoozed_events,
+        snoozed_events,
         app_events_collections.events_to_snooze,
         app_events_collections.displayed_events,
         app_events_collections.events_to_present]:
@@ -36,6 +41,9 @@ def is_event_already_in_a_collection(app_events_collections, event_key_str):
     return(False)
 
 def add_items_to_show_from_calendar(globals, app_events_collections, google_account, cal_name, cal_id):
+    global dismissed_events
+    global snoozed_events
+
     globals.logger.debug("add_items_to_show_from_calendar for " + google_account)
 
     # Get the next coming events from the google calendar
@@ -93,11 +101,11 @@ def add_items_to_show_from_calendar(globals, app_events_collections, google_acco
                 + " " + parsed_event['raw_event']['id'])
         elif (event_action == ACTION_DISMISS_EVENT):
             # No need to present the event - add it to the dismissed events
-            events_collection_to_add_the_event_to = app_events_collections.dismissed_events
+            events_collection_to_add_the_event_to = dismissed_events
         
         elif(event_action == ACTION_SNOOOZE_EVENT):
             # Too early to present the event
-            events_collection_to_add_the_event_to = app_events_collections.snoozed_events
+            events_collection_to_add_the_event_to = snoozed_events
 
         else:
             # Unexpected type
@@ -128,7 +136,9 @@ def condition_function_for_removing_snoozed_events(logger, event_key_str, parsed
     return(True)
 
 def set_items_to_present_from_snoozed(app_events_collections):
-    app_events_collections.snoozed_events.remove_events_based_on_condition(
+    global snoozed_events
+
+    snoozed_events.remove_events_based_on_condition(
         condition_function_for_removing_snoozed_events, 
         additional_param = app_events_collections.events_to_present)
 
@@ -156,21 +166,27 @@ def condition_function_for_removing_dismissed_events(logger, event_key_str, pars
     return(True)
 
 def move_events_to_dismiss_into_dismissed_events_collection(app_events_collections):
+    global dismissed_events
+
     while (True):
-        event_key_str, parsed_event = app_events_collections.dismissed_events.pop_from_another_collection_and_add_this_one(app_events_collections.events_to_dismiss)
+        event_key_str, parsed_event = dismissed_events.pop_from_another_collection_and_add_this_one(app_events_collections.events_to_dismiss)
         if (event_key_str == None):
             # No more entries to present
             return
 
 def move_events_to_snooze_into_snoozed_events_collection(app_events_collections):
+    global snoozed_events
+
     while (True):
-        event_key_str, parsed_event = app_events_collections.snoozed_events.pop_from_another_collection_and_add_this_one(app_events_collections.events_to_snooze)
+        event_key_str, parsed_event = snoozed_events.pop_from_another_collection_and_add_this_one(app_events_collections.events_to_snooze)
         if (event_key_str == None):
             # No more entries to present
             return
 
 def clear_dismissed_events_that_have_ended(app_events_collections):
-    app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_for_removing_dismissed_events)
+    global dismissed_events
+
+    dismissed_events.remove_events_based_on_condition(condition_function_for_removing_dismissed_events)
 
     return
 
@@ -179,10 +195,13 @@ def condition_function_to_clear_all_events(logger, event_key_str, parsed_event, 
     return(True)
 
 def set_events_to_be_displayed(globals, app_events_collections):
+    global dismissed_events
+    global snoozed_events
+
     if (app_events_collections.is_reset_needed()):
     # Need to reset the "system" by clearing all of the dismissed and snoozed events
-        app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
-        app_events_collections.snoozed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
+        dismissed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
+        snoozed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
 
         app_events_collections.reset_done()
     
@@ -205,6 +224,12 @@ def set_events_to_be_displayed(globals, app_events_collections):
                 cal_for_account['calendar id'])
 
 def get_events_to_display_main_loop(globals, app_events_collections):
+    global dismissed_events
+    global snoozed_events
+
+    dismissed_events = Events_Collection(globals.logger, "dismissed_events")
+    snoozed_events = Events_Collection(globals.logger, "snoozed_events")
+
     while True:
         set_events_to_be_displayed(globals, app_events_collections)
 

@@ -5,8 +5,6 @@ import threading
 class App_Events_Collections:
     def __init__(self, logger):
         self.events_to_present = Events_Collection(logger, "events_to_present")
-        self.dismissed_events = Events_Collection(logger, "dismissed_events")
-        self.snoozed_events = Events_Collection(logger, "snoozed_events")
         self.displayed_events = Events_Collection(logger, "displayed_events")
         self.events_to_dismiss = Events_Collection(logger, "events_to_dismiss")
         self.events_to_snooze = Events_Collection(logger, "events_to_snooze")
