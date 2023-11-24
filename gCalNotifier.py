@@ -106,11 +106,21 @@ def init_system_tray(app):
     # Add the menu to the system_tray
     system_tray.setContextMenu(system_tray_menu)
 
-def init_global_objects():
+def create_and_show_mdi_window():
     global g_globals
     global g_mdi_window
 
     g_mdi_window = MDIWindow(g_globals)
+
+    # Set the MDI window size to be a little more than the event window size
+    g_mdi_window.setFixedWidth(730 + 100)
+    g_mdi_window.setFixedHeight(650 + 100)
+
+    # Show the window on the main monitor
+    monitor = QDesktopWidget().screenGeometry(0)
+    g_mdi_window.move(monitor.left(), monitor.top())
+
+    g_mdi_window.show()
 
 def prep_google_accounts_and_calendars():
     global g_globals
@@ -122,8 +132,6 @@ def prep_google_accounts_and_calendars():
 if __name__ == "__main__":
     g_globals = app_globals()
 
-    init_global_objects()
-
     prep_google_accounts_and_calendars()
 
     # Start a thread to look for events to display
@@ -131,14 +139,6 @@ if __name__ == "__main__":
 
     init_system_tray(g_globals.app)
 
-    # Set the MDI window size to be a little more than the event window size
-    g_mdi_window.setFixedWidth(730 + 100)
-    g_mdi_window.setFixedHeight(650 + 100)
-
-    g_mdi_window.show()
-
-    # Show the window on the main monitor
-    monitor = QDesktopWidget().screenGeometry(0)
-    g_mdi_window.move(monitor.left(), monitor.top())
+    create_and_show_mdi_window()
 
     g_globals.app.exec_()
