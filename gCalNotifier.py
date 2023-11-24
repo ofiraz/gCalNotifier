@@ -61,14 +61,14 @@ def clear_dismissed_and_snoozed():
     g_globals.resest_is_needed()
 
 def quit_app():
-    global g_app
+    global g_globals
     global g_mdi_window
 
     # Let the MDI window know that the app is closing
     g_mdi_window.need_to_close_the_window()
 
     # Close the app
-    g_app.quit()
+    g_globals.app.quit()
 
 def init_system_tray(app):
     global system_tray
@@ -108,12 +108,9 @@ def init_system_tray(app):
 
 def init_global_objects():
     global g_globals
-    global g_app
     global g_mdi_window
 
-    g_app = QApplication(sys.argv)
-
-    g_mdi_window = MDIWindow(g_globals, g_app, g_globals.config.refresh_frequency)
+    g_mdi_window = MDIWindow(g_globals)
 
 def prep_google_accounts_and_calendars():
     global g_globals
@@ -132,7 +129,7 @@ if __name__ == "__main__":
     # Start a thread to look for events to display
     start_getting_events_to_display_main_loop_thread(g_globals)
 
-    init_system_tray(g_app)
+    init_system_tray(g_globals.app)
 
     # Set the MDI window size to be a little more than the event window size
     g_mdi_window.setFixedWidth(730 + 100)
@@ -144,4 +141,4 @@ if __name__ == "__main__":
     monitor = QDesktopWidget().screenGeometry(0)
     g_mdi_window.move(monitor.left(), monitor.top())
 
-    g_app.exec_()
+    g_globals.app.exec_()

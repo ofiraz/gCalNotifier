@@ -1,4 +1,5 @@
 import threading
+import sys
 
 from config import app_config
 
@@ -7,6 +8,10 @@ from events_collection import Events_Collection
 from logging_module import (
     init_logging,
     LOG_LEVEL_INFO,
+)
+
+from PyQt5.QtWidgets import (
+    QApplication
 )
 
 class app_globals:
@@ -20,6 +25,8 @@ class app_globals:
         self.displayed_events = Events_Collection(self.logger, "displayed_events")
         self.events_to_dismiss = Events_Collection(self.logger, "events_to_dismiss")
         self.events_to_snooze = Events_Collection(self.logger, "events_to_snooze")
+
+        self.app = QApplication(sys.argv)
 
         self.reset_needed = False
         self.reset_needed_lock = threading.Lock()

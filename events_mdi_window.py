@@ -21,12 +21,10 @@ class MDIWindow(QMainWindow):
     def need_to_close_the_window(self):
         self.want_to_close = True
 
-    def __init__(self, globals, app, refresh_frequency):
+    def __init__(self, globals):
         super().__init__()
 
         self.globals = globals
-        self.app = app
-        self.refresh_frequency = refresh_frequency
 
         self.globals.displayed_events.set_add_cb(self.add_event_to_display_cb)
         self.globals.displayed_events.set_remove_cb(self.remove_event_from_display_cb)
@@ -103,11 +101,11 @@ class MDIWindow(QMainWindow):
             # There is now at least one event, and the MDI is minimized - restore the window
             self.showNormal()
 
-        self.timer.start(int(self.refresh_frequency/2) * 1000)
+        self.timer.start(int(self.globals.config.refresh_frequency/2) * 1000)
 
     def update_mdi_title_and_icon(self):
         self.setWindowTitle("[" + str(self.c_num_of_displayed_events) + "] gCalNotifier")
-        set_icon_with_number(self.app, self.c_num_of_displayed_events)
+        set_icon_with_number(self.globals.app, self.c_num_of_displayed_events)
 
     def add_event_to_display_cb(self):
         self.globals.logger.debug("add_event_to_display_cb start")
