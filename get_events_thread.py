@@ -12,7 +12,10 @@ from datetime_utils import get_now_datetime
 from event_utils import (
     has_event_changed,
     parse_event,
-    NO_POPUP_REMINDER
+    NO_POPUP_REMINDER,
+    ACTION_DISPLAY_EVENT,
+    ACTION_SNOOOZE_EVENT,
+    ACTION_DISMISS_EVENT
 )
 
 def is_event_already_in_a_collection(app_events_collections, event_key_str):
@@ -29,7 +32,7 @@ def is_event_already_in_a_collection(app_events_collections, event_key_str):
     # The event is not in any of the collections
     return(False)
 
-def add_items_to_show_from_calendar(logger, app_events_collections, google_account, cal_name, cal_id):
+def add_items_to_show_from_calendar(logger, events_logger, app_events_collections, google_account, cal_name, cal_id):
     logger.debug("add_items_to_show_from_calendar for " + google_account)
 
     # Get the next coming events from the google calendar
@@ -72,12 +75,12 @@ def add_items_to_show_from_calendar(logger, app_events_collections, google_accou
         parsed_event['cal id'] = cal_id
         logger.debug("Event Name " + parsed_event['event_name'])
 
-        need_to_notify = parse_event(logger, event, parsed_event)
-        if (need_to_notify == True):
+        event_action = parse_event(logger, events_logger, event, parsed_event)
+        if (event_action == ACTION_DISPLAY_EVENT):
             # Event to get presented
             logger.debug(str(event))
 
-            app_events_collections.events_to_present.add_event(event_key_str, parsed_event)
+            events_collection_to_add_the_event_to = app_events_collections.events_to_present
 
             logger.debug(
                 "Event to be presented - "
@@ -85,6 +88,21 @@ def add_items_to_show_from_calendar(logger, app_events_collections, google_accou
                 + " " + parsed_event['google_account'] 
                 + " " + parsed_event['cal id']
                 + " " + parsed_event['raw_event']['id'])
+        elif (event_action == ACTION_DISMISS_EVENT):
+            # No need to present the event - add it to the dismissed events
+            events_collection_to_add_the_event_to = app_events_collections.dismissed_events
+        
+        elif(event_action == ACTION_SNOOOZE_EVENT):
+            # Too early to present the event
+            events_collection_to_add_the_event_to = app_events_collections.snoozed_events
+
+        else:
+            # Unexpected type
+            logger.error("Unexpected event action -" + str(event_action))
+            return
+
+        # Add the event to the needed collection
+        events_collection_to_add_the_event_to.add_event(event_key_str, parsed_event)
 
 def condition_function_for_removing_snoozed_events(logger, app_events_collections, event_key_str, parsed_event):
     now_datetime = get_now_datetime()
@@ -155,7 +173,7 @@ def condition_function_to_clear_all_events(logger, app_events_collections, event
     # Need to remove the evnet
     return(True)
 
-def set_events_to_be_displayed(logger, google_accounts, app_events_collections):
+def set_events_to_be_displayed(logger, events_logger, google_accounts, app_events_collections):
     if (app_events_collections.is_reset_needed()):
     # Need to reset the "system" by clearing all of the dismissed and snoozed events
         app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
@@ -176,23 +194,24 @@ def set_events_to_be_displayed(logger, google_accounts, app_events_collections):
             logger.debug(google_account["account name"] + " " + str(cal_for_account))
             add_items_to_show_from_calendar(
                 logger,
+                events_logger,
                 app_events_collections,
                 google_account["account name"], 
                 cal_for_account['calendar name'], 
                 cal_for_account['calendar id'])
 
-def get_events_to_display_main_loop(logger, refresh_frequency, google_accounts, app_events_collections):
+def get_events_to_display_main_loop(logger, events_logger, refresh_frequency, google_accounts, app_events_collections):
     while True:
-        set_events_to_be_displayed(logger, google_accounts, app_events_collections)
+        set_events_to_be_displayed(logger, events_logger, google_accounts, app_events_collections)
 
         logger.debug("Going to sleep for " + str(refresh_frequency) + " seconds")
         time.sleep(refresh_frequency)
 
 
-def start_getting_events_to_display_main_loop_thread(logger, refresh_frequency,google_accounts, app_events_collections):
+def start_getting_events_to_display_main_loop_thread(logger, events_logger, refresh_frequency,google_accounts, app_events_collections):
     main_loop_thread = threading.Thread(
         target = get_events_to_display_main_loop,
-        args=(logger, refresh_frequency, google_accounts, app_events_collections),
+        args=(logger, events_logger, refresh_frequency, google_accounts, app_events_collections),
         daemon=True)
 
     main_loop_thread.start()

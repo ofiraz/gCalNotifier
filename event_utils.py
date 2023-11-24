@@ -228,19 +228,13 @@ def parse_event_description(p_logger, meeting_description, parsed_event):
         parsed_event['need_to_record_meeting'] = False
         p_logger.debug("No need to record meeting")
 
-def parse_event(p_logger, event, parsed_event):
+ACTION_DISPLAY_EVENT = 1
+ACTION_SNOOOZE_EVENT = 2
+ACTION_DISMISS_EVENT = 3
+
+def parse_event(p_logger, events_logger, event, parsed_event):
     p_logger.debug(nice_json(event))
 
-    # Check if the event was not declined by the current user
-    if has_self_declined(event):
-        return(False)
-
-    minutes_before_to_notify = get_max_reminder_in_minutes(event)
-    if (minutes_before_to_notify == NO_POPUP_REMINDER):
-        # No notification reminders
-        return(False)
-
-    # Event needs to be reminded, check if it is the time to remind
     start_day = event['start'].get('dateTime')
     if not start_day:
         # An all day event
@@ -256,14 +250,20 @@ def parse_event(p_logger, event, parsed_event):
         parsed_event['start_date']=datetime.datetime.strptime(start_day, '%Y-%m-%dT%H:%M:%S%z').astimezone()
         parsed_event['end_date']=datetime.datetime.strptime(end_day, '%Y-%m-%dT%H:%M:%S%z').astimezone()
 
-    # Compute the time to wake up
-    delta_diff = datetime.timedelta(minutes=minutes_before_to_notify)
-    reminder_time = parsed_event['start_date'] - delta_diff
-    now_datetime = get_now_datetime()
-    if(now_datetime < reminder_time):
-        # Not the time to remind yet
-        return(False)
+    # Check if the event was not declined by the current user
+    if has_self_declined(event):
+        events_logger.info("Event dismissed automatically as it was declined by me. For event: " + parsed_event['event_name'])
 
+        return(ACTION_DISMISS_EVENT)
+
+    minutes_before_to_notify = get_max_reminder_in_minutes(event)
+    if (minutes_before_to_notify == NO_POPUP_REMINDER):
+        # No notification reminders
+        events_logger.info("Event dismissed automatically as it does not have any reminders set. For event: " + parsed_event['event_name'])
+
+        return(ACTION_DISMISS_EVENT)
+
+    # Event needs to be reminded about, continue parsing the event
     parsed_event['html_link'] = event['htmlLink']
 
     parsed_event['event_location'] = event.get('location', "No location")
@@ -305,5 +305,17 @@ def parse_event(p_logger, event, parsed_event):
 
     parsed_event['num_of_attendees'] = get_number_of_attendees(event)
 
+    # Check if the time to remind about the event had arrived
+    delta_diff = datetime.timedelta(minutes=minutes_before_to_notify)
+    reminder_time = parsed_event['start_date'] - delta_diff
+    now_datetime = get_now_datetime()
+    if(now_datetime < reminder_time):
+        # Not the time to remind yet
+        parsed_event['event_wakeup_time'] = reminder_time
+
+        events_logger.info("Event automatically snoozed as there is time until it should be notified for the first time. For event: " + parsed_event['event_name'] + " until " + str(parsed_event['event_wakeup_time']))
+
+        return(ACTION_SNOOOZE_EVENT)
+
     # The event needs to be notified
-    return(True)
+    return(ACTION_DISPLAY_EVENT)

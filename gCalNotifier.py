@@ -161,7 +161,7 @@ if __name__ == "__main__":
     prep_google_accounts_and_calendars(g_logger, g_google_accounts)
 
     # Start a thread to look for events to display
-    start_getting_events_to_display_main_loop_thread(g_logger, g_refresh_frequency, g_google_accounts, g_app_events_collections)
+    start_getting_events_to_display_main_loop_thread(g_logger, g_events_logger, g_refresh_frequency, g_google_accounts, g_app_events_collections)
 
     init_system_tray(g_app)
 
