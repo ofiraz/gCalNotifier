@@ -10,5 +10,7 @@ class app_globals:
         self.config = app_config()
 
         self.logger = init_logging("gCalNotifier", "Main", self.config.log_level, LOG_LEVEL_INFO)
+        self.events_logger = init_logging("EventsLog", "Main", LOG_LEVEL_INFO, LOG_LEVEL_INFO)
+
 
 

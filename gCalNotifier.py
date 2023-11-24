@@ -56,9 +56,9 @@ def open_logs_window():
     logs_window.show()
 
 def clear_dismissed_and_snoozed():
-    global g_events_logger
+    global g_globals
     
-    g_events_logger.info("Clearing dismissed and snoozed")
+    g_globals.events_logger.info("Clearing dismissed and snoozed")
 
     g_app_events_collections.resest_is_needed()
 
@@ -110,36 +110,32 @@ def init_system_tray(app):
 
 def init_global_objects():
     global g_globals
-    global g_events_logger
     global g_app
     global g_mdi_window
     global g_app_events_collections
-
-    g_events_logger = init_logging("EventsLog", "Main", LOG_LEVEL_INFO, LOG_LEVEL_INFO)
 
     g_app = QApplication(sys.argv)
 
     g_app_events_collections = App_Events_Collections(g_globals.logger)
 
-    g_mdi_window = MDIWindow(g_globals.logger, g_events_logger, g_app, g_globals.config.refresh_frequency, g_app_events_collections)
+    g_mdi_window = MDIWindow(g_globals, g_app, g_globals.config.refresh_frequency, g_app_events_collections)
 
-def prep_google_accounts_and_calendars(logger):
+def prep_google_accounts_and_calendars():
     global g_globals
 
     for google_account in g_globals.config.google_accounts:
-        get_calendar_list_for_account(logger, google_account)
+        get_calendar_list_for_account(g_globals.logger, google_account)
 
 # Main
 if __name__ == "__main__":
-    #load_config()
     g_globals = app_globals()
 
     init_global_objects()
 
-    prep_google_accounts_and_calendars(g_globals.logger)
+    prep_google_accounts_and_calendars()
 
     # Start a thread to look for events to display
-    start_getting_events_to_display_main_loop_thread(g_events_logger, g_globals, g_app_events_collections)
+    start_getting_events_to_display_main_loop_thread(g_globals, g_app_events_collections)
 
     init_system_tray(g_app)
 

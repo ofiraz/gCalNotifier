@@ -35,12 +35,12 @@ def is_event_already_in_a_collection(app_events_collections, event_key_str):
     # The event is not in any of the collections
     return(False)
 
-def add_items_to_show_from_calendar(logger, events_logger, app_events_collections, google_account, cal_name, cal_id):
-    logger.debug("add_items_to_show_from_calendar for " + google_account)
+def add_items_to_show_from_calendar(globals, app_events_collections, google_account, cal_name, cal_id):
+    globals.logger.debug("add_items_to_show_from_calendar for " + google_account)
 
     # Get the next coming events from the google calendar
     try: # In progress - handling intermittent exception from the Google service
-        events = get_events_from_google_cal_with_try(logger, google_account, cal_id)
+        events = get_events_from_google_cal_with_try(globals.logger, google_account, cal_id)
 
     except ConnectivityIssue:
         # Having a connectivity issue - we will assume the event did not change in the g-cal
@@ -48,11 +48,11 @@ def add_items_to_show_from_calendar(logger, events_logger, app_events_collection
 
     # Handled the snoozed events
     if not events:
-        logger.debug('No upcoming events found')
+        globals.logger.debug('No upcoming events found')
         return
 
     for event in events:
-        logger.debug(str(event))
+        globals.logger.debug(str(event))
         parsed_event = {}
         now_datetime = get_now_datetime()
         a_snoozed_event_to_wakeup = False
@@ -64,10 +64,10 @@ def add_items_to_show_from_calendar(logger, events_logger, app_events_collection
             'event_id' : event_id
         }
         event_key_str = json.dumps(event_key)
-        logger.debug("Event ID " + str(event_id))
+        globals.logger.debug("Event ID " + str(event_id))
 
         if (is_event_already_in_a_collection(app_events_collections, event_key_str)):
-            logger.debug("Skipping event as it is already in one of the collections")
+            globals.logger.debug("Skipping event as it is already in one of the collections")
             continue
 
         # Event not in the any other list
@@ -76,16 +76,16 @@ def add_items_to_show_from_calendar(logger, events_logger, app_events_collection
         parsed_event['google_account'] = google_account
         parsed_event['cal name'] = cal_name
         parsed_event['cal id'] = cal_id
-        logger.debug("Event Name " + parsed_event['event_name'])
+        globals.logger.debug("Event Name " + parsed_event['event_name'])
 
-        event_action = parse_event(logger, events_logger, event, parsed_event)
+        event_action = parse_event(globals.logger, globals.events_logger, event, parsed_event)
         if (event_action == ACTION_DISPLAY_EVENT):
             # Event to get presented
-            logger.debug(str(event))
+            globals.logger.debug(str(event))
 
             events_collection_to_add_the_event_to = app_events_collections.events_to_present
 
-            logger.debug(
+            globals.logger.debug(
                 "Event to be presented - "
                 + " " + parsed_event['event_name'] 
                 + " " + parsed_event['google_account'] 
@@ -101,7 +101,7 @@ def add_items_to_show_from_calendar(logger, events_logger, app_events_collection
 
         else:
             # Unexpected type
-            logger.error("Unexpected event action -" + str(event_action))
+            globals.logger.error("Unexpected event action -" + str(event_action))
             return
 
         # Add the event to the needed collection
@@ -176,7 +176,7 @@ def condition_function_to_clear_all_events(logger, app_events_collections, event
     # Need to remove the evnet
     return(True)
 
-def set_events_to_be_displayed(events_logger, globals, app_events_collections):
+def set_events_to_be_displayed(globals, app_events_collections):
     if (app_events_collections.is_reset_needed()):
     # Need to reset the "system" by clearing all of the dismissed and snoozed events
         app_events_collections.dismissed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
@@ -196,25 +196,24 @@ def set_events_to_be_displayed(events_logger, globals, app_events_collections):
         for cal_for_account in google_account["calendar list"]:
             globals.logger.debug(google_account["account name"] + " " + str(cal_for_account))
             add_items_to_show_from_calendar(
-                globals.logger,
-                events_logger,
+                globals,
                 app_events_collections,
                 google_account["account name"], 
                 cal_for_account['calendar name'], 
                 cal_for_account['calendar id'])
 
-def get_events_to_display_main_loop(events_logger, globals, app_events_collections):
+def get_events_to_display_main_loop(globals, app_events_collections):
     while True:
-        set_events_to_be_displayed(events_logger, globals, app_events_collections)
+        set_events_to_be_displayed(globals, app_events_collections)
 
         globals.logger.debug("Going to sleep for " + str(globals.config.refresh_frequency) + " seconds")
         time.sleep(globals.config.refresh_frequency)
 
 
-def start_getting_events_to_display_main_loop_thread(events_logger,globals, app_events_collections):
+def start_getting_events_to_display_main_loop_thread(globals, app_events_collections):
     main_loop_thread = threading.Thread(
         target = get_events_to_display_main_loop,
-        args=(events_logger, globals, app_events_collections),
+        args=(globals, app_events_collections),
         daemon=True)
 
     main_loop_thread.start()

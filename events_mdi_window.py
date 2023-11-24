@@ -21,11 +21,10 @@ class MDIWindow(QMainWindow):
     def need_to_close_the_window(self):
         self.want_to_close = True
 
-    def __init__(self, logger, events_logger, app, refresh_frequency, app_events_collections):
+    def __init__(self, globals, app, refresh_frequency, app_events_collections):
         super().__init__()
 
-        self.logger = logger
-        self.events_logger = events_logger
+        self.globals = globals
         self.app = app
         self.refresh_frequency = refresh_frequency
 
@@ -71,7 +70,7 @@ class MDIWindow(QMainWindow):
             self.mdi.tileSubWindows()
 
     def show_window_in_mdi(self, event_key_str, parsed_event):
-        event_win = EventWindow(self.logger, self.events_logger, self.app_events_collections, self)
+        event_win = EventWindow(self.globals.logger, self.globals.events_logger, self.app_events_collections, self)
 
         event_win.init_window_from_parsed_event(event_key_str, parsed_event)
         event_win.setFixedWidth(730)
@@ -82,7 +81,7 @@ class MDIWindow(QMainWindow):
         self.mdi.addSubWindow(sub_win)
         sub_win.show()
 
-        self.events_logger.info("Displaying event:" + parsed_event['event_name'])
+        self.globals.events_logger.info("Displaying event:" + parsed_event['event_name'])
 
         self.raise_()
         self.activateWindow()
@@ -97,15 +96,13 @@ class MDIWindow(QMainWindow):
             self.show_window_in_mdi(event_key_str, parsed_event)
 
     def present_relevant_events_in_sub_windows(self):
-        self.logger.debug("Presenting relevant events")
+        self.globals.logger.debug("Presenting relevant events")
 
         self.present_relevant_events()
 
         if ((self.c_num_of_displayed_events > 0) and self.isMinimized()):
             # There is now at least one event, and the MDI is minimized - restore the window
-            self.logger.info("Before showNormal")
             self.showNormal()
-            self.logger.info("After showNormal")
 
         self.timer.start(int(self.refresh_frequency/2) * 1000)
 
@@ -114,30 +111,30 @@ class MDIWindow(QMainWindow):
         set_icon_with_number(self.app, self.c_num_of_displayed_events)
 
     def add_event_to_display_cb(self):
-        self.logger.debug("add_event_to_display_cb start")
+        self.globals.logger.debug("add_event_to_display_cb start")
 
         self.c_num_of_displayed_events = self.c_num_of_displayed_events + 1
 
-        self.logger.debug("add_event_to_display_cb update_mdi_title_and_icon")
+        self.globals.logger.debug("add_event_to_display_cb update_mdi_title_and_icon")
         self.update_mdi_title_and_icon()
 
-        self.logger.debug("add_event_to_display_cb end")
+        self.globals.logger.debug("add_event_to_display_cb end")
 
     def remove_event_from_display_cb(self):
-        self.logger.debug("remove_event_from_display_cb start")
+        self.globals.logger.debug("remove_event_from_display_cb start")
 
         self.c_num_of_displayed_events = self.c_num_of_displayed_events - 1
 
-        self.logger.debug("remove_event_from_display_cb update_mdi_title_and_icon")
+        self.globals.logger.debug("remove_event_from_display_cb update_mdi_title_and_icon")
         self.update_mdi_title_and_icon()
 
         if (self.c_num_of_displayed_events == 0):
             # No events to show
-            self.logger.debug("remove_event_from_display_cb showMinimized")
+            self.globals.logger.debug("remove_event_from_display_cb showMinimized")
 
             self.showMinimized()
 
-        self.logger.debug("remove_event_from_display_cb end")
+        self.globals.logger.debug("remove_event_from_display_cb end")
 
     def showEvent(self, event):
         # This method will be called when the main MDI window is shown
