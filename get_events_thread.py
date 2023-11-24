@@ -107,7 +107,7 @@ def add_items_to_show_from_calendar(globals, app_events_collections, google_acco
         # Add the event to the needed collection
         events_collection_to_add_the_event_to.add_event(event_key_str, parsed_event)
 
-def condition_function_for_removing_snoozed_events(logger, app_events_collections, event_key_str, parsed_event):
+def condition_function_for_removing_snoozed_events(logger, event_key_str, parsed_event, events_to_present):
     now_datetime = get_now_datetime()
 
     logger.debug("Snoozed event " + event_key_str + " " + str(parsed_event['event_wakeup_time']) + " " + str(now_datetime))
@@ -118,7 +118,7 @@ def condition_function_for_removing_snoozed_events(logger, app_events_collection
         
     elif (now_datetime >= parsed_event['event_wakeup_time']):
         # Event needs to be woke up
-        app_events_collections.events_to_present.add_event(event_key_str, parsed_event)
+        events_to_present.add_event(event_key_str, parsed_event)
 
     else:
         # No need to remove the evnet
@@ -128,11 +128,13 @@ def condition_function_for_removing_snoozed_events(logger, app_events_collection
     return(True)
 
 def set_items_to_present_from_snoozed(app_events_collections):
-    app_events_collections.snoozed_events.remove_events_based_on_condition(condition_function_for_removing_snoozed_events)
+    app_events_collections.snoozed_events.remove_events_based_on_condition(
+        condition_function_for_removing_snoozed_events, 
+        additional_param = app_events_collections.events_to_present)
 
     return
 
-def condition_function_for_removing_dismissed_events(logger, app_events_collections, event_key_str, parsed_event):
+def condition_function_for_removing_dismissed_events(logger, event_key_str, parsed_event, additional_param):
     now_datetime = get_now_datetime()
 
     logger.debug("Dismissed event " + event_key_str + " " + str(parsed_event['end_date']) + " " + str(now_datetime))
@@ -172,7 +174,7 @@ def clear_dismissed_events_that_have_ended(app_events_collections):
 
     return
 
-def condition_function_to_clear_all_events(logger, app_events_collections, event_key_str, parsed_event):
+def condition_function_to_clear_all_events(logger, event_key_str, parsed_event, additional_param):
     # Need to remove the evnet
     return(True)
 

@@ -6,12 +6,11 @@ import time
 LOCK_TIMEOUT = 10
 
 class Events_Collection:
-    def __init__(self, p_logger, app_events_collections, collection_name):
+    def __init__(self, p_logger, collection_name):
         self.c_logger = p_logger
         self.c_events = {}
         self.c_lock = threading.Lock()
         self.c_collection_name = collection_name
-        self.app_events_collections = app_events_collections
         self.c_add_cb = None
         self.c_remove_cb = None
 
@@ -94,7 +93,7 @@ class Events_Collection:
 
         return(event_key_str, parsed_event)
 
-    def remove_events_based_on_condition(self, condition_function):
+    def remove_events_based_on_condition(self, condition_function, additional_param = None):
         events_to_delete = []
 
         self.lock_with_timeout()
@@ -102,7 +101,7 @@ class Events_Collection:
         self.c_logger.debug("Before lock for " + self.c_collection_name)
 
         for event_key_str, parsed_event in self.c_events.items():
-            if (condition_function(self.c_logger, self.app_events_collections, event_key_str, parsed_event)):
+            if (condition_function(self.c_logger, event_key_str, parsed_event, additional_param)):
                 # The condition was met, need remove the item
                 events_to_delete.append(event_key_str)
 
