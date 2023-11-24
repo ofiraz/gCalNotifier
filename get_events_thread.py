@@ -23,24 +23,24 @@ from event_utils import (
     ACTION_DISMISS_EVENT
 )
 
-def is_event_already_in_a_collection(app_events_collections, event_key_str):
+def is_event_already_in_a_collection(globals, event_key_str):
     global dismissed_events
     global snoozed_events
 
     for events_collection_to_check in [
         dismissed_events,
-        app_events_collections.events_to_dismiss,
+        globals.events_to_dismiss,
         snoozed_events,
-        app_events_collections.events_to_snooze,
-        app_events_collections.displayed_events,
-        app_events_collections.events_to_present]:
+        globals.events_to_snooze,
+        globals.displayed_events,
+        globals.events_to_present]:
         if (events_collection_to_check.is_event_in(event_key_str)):
             return(True)
         
     # The event is not in any of the collections
     return(False)
 
-def add_items_to_show_from_calendar(globals, app_events_collections, google_account, cal_name, cal_id):
+def add_items_to_show_from_calendar(globals, google_account, cal_name, cal_id):
     global dismissed_events
     global snoozed_events
 
@@ -74,7 +74,7 @@ def add_items_to_show_from_calendar(globals, app_events_collections, google_acco
         event_key_str = json.dumps(event_key)
         globals.logger.debug("Event ID " + str(event_id))
 
-        if (is_event_already_in_a_collection(app_events_collections, event_key_str)):
+        if (is_event_already_in_a_collection(globals, event_key_str)):
             globals.logger.debug("Skipping event as it is already in one of the collections")
             continue
 
@@ -91,7 +91,7 @@ def add_items_to_show_from_calendar(globals, app_events_collections, google_acco
             # Event to get presented
             globals.logger.debug(str(event))
 
-            events_collection_to_add_the_event_to = app_events_collections.events_to_present
+            events_collection_to_add_the_event_to = globals.events_to_present
 
             globals.logger.debug(
                 "Event to be presented - "
@@ -135,12 +135,12 @@ def condition_function_for_removing_snoozed_events(logger, event_key_str, parsed
     # Need to remove the evnet
     return(True)
 
-def set_items_to_present_from_snoozed(app_events_collections):
+def set_items_to_present_from_snoozed(globals):
     global snoozed_events
 
     snoozed_events.remove_events_based_on_condition(
         condition_function_for_removing_snoozed_events, 
-        additional_param = app_events_collections.events_to_present)
+        additional_param = globals.events_to_present)
 
     return
 
@@ -165,25 +165,25 @@ def condition_function_for_removing_dismissed_events(logger, event_key_str, pars
     # Need to remove the evnet
     return(True)
 
-def move_events_to_dismiss_into_dismissed_events_collection(app_events_collections):
+def move_events_to_dismiss_into_dismissed_events_collection(globals):
     global dismissed_events
 
     while (True):
-        event_key_str, parsed_event = dismissed_events.pop_from_another_collection_and_add_this_one(app_events_collections.events_to_dismiss)
+        event_key_str, parsed_event = dismissed_events.pop_from_another_collection_and_add_this_one(globals.events_to_dismiss)
         if (event_key_str == None):
             # No more entries to present
             return
 
-def move_events_to_snooze_into_snoozed_events_collection(app_events_collections):
+def move_events_to_snooze_into_snoozed_events_collection(globals):
     global snoozed_events
 
     while (True):
-        event_key_str, parsed_event = snoozed_events.pop_from_another_collection_and_add_this_one(app_events_collections.events_to_snooze)
+        event_key_str, parsed_event = snoozed_events.pop_from_another_collection_and_add_this_one(globals.events_to_snooze)
         if (event_key_str == None):
             # No more entries to present
             return
 
-def clear_dismissed_events_that_have_ended(app_events_collections):
+def clear_dismissed_events_that_have_ended():
     global dismissed_events
 
     dismissed_events.remove_events_based_on_condition(condition_function_for_removing_dismissed_events)
@@ -194,36 +194,35 @@ def condition_function_to_clear_all_events(logger, event_key_str, parsed_event, 
     # Need to remove the evnet
     return(True)
 
-def set_events_to_be_displayed(globals, app_events_collections):
+def set_events_to_be_displayed(globals):
     global dismissed_events
     global snoozed_events
 
-    if (app_events_collections.is_reset_needed()):
+    if (globals.is_reset_needed()):
     # Need to reset the "system" by clearing all of the dismissed and snoozed events
         dismissed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
         snoozed_events.remove_events_based_on_condition(condition_function_to_clear_all_events)
 
-        app_events_collections.reset_done()
+        globals.reset_done()
     
     else:
         # Update the events that were dismissed or snoozed in the event windows
-        move_events_to_dismiss_into_dismissed_events_collection(app_events_collections)
-        move_events_to_snooze_into_snoozed_events_collection(app_events_collections)
+        move_events_to_dismiss_into_dismissed_events_collection(globals)
+        move_events_to_snooze_into_snoozed_events_collection(globals)
 
-        clear_dismissed_events_that_have_ended(app_events_collections)
-        set_items_to_present_from_snoozed(app_events_collections)
+        clear_dismissed_events_that_have_ended()
+        set_items_to_present_from_snoozed(globals)
     
     for google_account in globals.config.google_accounts:
         for cal_for_account in google_account["calendar list"]:
             globals.logger.debug(google_account["account name"] + " " + str(cal_for_account))
             add_items_to_show_from_calendar(
                 globals,
-                app_events_collections,
                 google_account["account name"], 
                 cal_for_account['calendar name'], 
                 cal_for_account['calendar id'])
 
-def get_events_to_display_main_loop(globals, app_events_collections):
+def get_events_to_display_main_loop(globals):
     global dismissed_events
     global snoozed_events
 
@@ -231,16 +230,16 @@ def get_events_to_display_main_loop(globals, app_events_collections):
     snoozed_events = Events_Collection(globals.logger, "snoozed_events")
 
     while True:
-        set_events_to_be_displayed(globals, app_events_collections)
+        set_events_to_be_displayed(globals)
 
         globals.logger.debug("Going to sleep for " + str(globals.config.refresh_frequency) + " seconds")
         time.sleep(globals.config.refresh_frequency)
 
 
-def start_getting_events_to_display_main_loop_thread(globals, app_events_collections):
+def start_getting_events_to_display_main_loop_thread(globals):
     main_loop_thread = threading.Thread(
         target = get_events_to_display_main_loop,
-        args=(globals, app_events_collections),
+        args=(globals,),
         daemon=True)
 
     main_loop_thread.start()

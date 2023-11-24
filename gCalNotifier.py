@@ -31,8 +31,6 @@ from get_events_thread import start_getting_events_to_display_main_loop_thread
 sys.path.insert(1, '/Users/ofir/git/personal/pyqt-realtime-log-widget')
 from pyqt_realtime_log_widget import LogWidget
 
-from app_events_collections import App_Events_Collections
-
 from globals import app_globals
 from config import app_config
 
@@ -60,7 +58,7 @@ def clear_dismissed_and_snoozed():
     
     g_globals.events_logger.info("Clearing dismissed and snoozed")
 
-    g_app_events_collections.resest_is_needed()
+    g_globals.resest_is_needed()
 
 def quit_app():
     global g_app
@@ -112,13 +110,10 @@ def init_global_objects():
     global g_globals
     global g_app
     global g_mdi_window
-    global g_app_events_collections
 
     g_app = QApplication(sys.argv)
 
-    g_app_events_collections = App_Events_Collections(g_globals.logger)
-
-    g_mdi_window = MDIWindow(g_globals, g_app, g_globals.config.refresh_frequency, g_app_events_collections)
+    g_mdi_window = MDIWindow(g_globals, g_app, g_globals.config.refresh_frequency)
 
 def prep_google_accounts_and_calendars():
     global g_globals
@@ -135,7 +130,7 @@ if __name__ == "__main__":
     prep_google_accounts_and_calendars()
 
     # Start a thread to look for events to display
-    start_getting_events_to_display_main_loop_thread(g_globals, g_app_events_collections)
+    start_getting_events_to_display_main_loop_thread(g_globals)
 
     init_system_tray(g_app)
 

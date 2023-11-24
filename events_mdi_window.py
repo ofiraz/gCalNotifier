@@ -21,16 +21,15 @@ class MDIWindow(QMainWindow):
     def need_to_close_the_window(self):
         self.want_to_close = True
 
-    def __init__(self, globals, app, refresh_frequency, app_events_collections):
+    def __init__(self, globals, app, refresh_frequency):
         super().__init__()
 
         self.globals = globals
         self.app = app
         self.refresh_frequency = refresh_frequency
 
-        self.app_events_collections = app_events_collections
-        self.app_events_collections.displayed_events.set_add_cb(self.add_event_to_display_cb)
-        self.app_events_collections.displayed_events.set_remove_cb(self.remove_event_from_display_cb)
+        self.globals.displayed_events.set_add_cb(self.add_event_to_display_cb)
+        self.globals.displayed_events.set_remove_cb(self.remove_event_from_display_cb)
  
         self.mdi = QMdiArea()
         self.setCentralWidget(self.mdi)
@@ -70,7 +69,7 @@ class MDIWindow(QMainWindow):
             self.mdi.tileSubWindows()
 
     def show_window_in_mdi(self, event_key_str, parsed_event):
-        event_win = EventWindow(self.globals.logger, self.globals.events_logger, self.app_events_collections, self)
+        event_win = EventWindow(self.globals, self)
 
         event_win.init_window_from_parsed_event(event_key_str, parsed_event)
         event_win.setFixedWidth(730)
@@ -88,7 +87,7 @@ class MDIWindow(QMainWindow):
 
     def present_relevant_events(self):
         while True:
-            event_key_str, parsed_event = self.app_events_collections.displayed_events.pop_from_another_collection_and_add_this_one(self.app_events_collections.events_to_present)
+            event_key_str, parsed_event = self.globals.displayed_events.pop_from_another_collection_and_add_this_one(self.globals.events_to_present)
             if (event_key_str == None):
                 # No more entries to present
                 return

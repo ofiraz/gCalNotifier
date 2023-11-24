@@ -46,10 +46,8 @@ class EventWindow(QMainWindow, Ui_w_event):
     c_win_exit_reason = EXIT_REASON_NONE
     c_snooze_time_in_minutes = 0
 
-    def __init__(self, p_logger, p_events_logger, app_events_collections, p_mdi_window, parent=None):
-        self.c_logger = p_logger
-        self.c_events_logger = p_events_logger
-        self.app_events_collections = app_events_collections
+    def __init__(self, globals, p_mdi_window, parent=None):
+        self.globals = globals
         self.c_mdi_window = p_mdi_window
 
         super().__init__(parent)
@@ -131,7 +129,7 @@ class EventWindow(QMainWindow, Ui_w_event):
 
         self.l_event_name.setText(parsed_event['event_name'])
 
-        self.c_logger.info("Nofied for " + parsed_event['google_account'] + ": " + parsed_event['event_name'])
+        self.globals.logger.info("Nofied for " + parsed_event['google_account'] + ": " + parsed_event['event_name'])
 
         if parsed_event['all_day_event']:
             self.l_all_day.setText("An all day event")
@@ -250,19 +248,19 @@ class EventWindow(QMainWindow, Ui_w_event):
             now_datetime = get_now_datetime()
 
             if (self.c_win_exit_reason == EXIT_REASON_NONE):
-                self.c_events_logger.info("Event windows was closed by user - not snoozed or dismissed, for event: " + self.c_parsed_event['event_name'])
+                self.globals.events_logger.info("Event windows was closed by user - not snoozed or dismissed, for event: " + self.c_parsed_event['event_name'])
 
             elif (self.c_win_exit_reason == EXIT_REASON_CHANGED):
-                self.c_events_logger.info("Event windows was closed because there was a change in the event, for event: " + self.c_parsed_event['event_name'])
+                self.globals.events_logger.info("Event windows was closed because there was a change in the event, for event: " + self.c_parsed_event['event_name'])
 
             elif (self.c_win_exit_reason == EXIT_REASON_DISMISS):
-                self.c_events_logger.info("Event dismissed by user, for event: " + self.c_parsed_event['event_name'])
+                self.globals.events_logger.info("Event dismissed by user, for event: " + self.c_parsed_event['event_name'])
 
                 if (now_datetime < self.c_parsed_event['end_date']):
-                    self.app_events_collections.events_to_dismiss.add_event(self.c_event_key_str, self.c_parsed_event)
+                    self.globals.events_to_dismiss.add_event(self.c_event_key_str, self.c_parsed_event)
 
             elif (self.c_win_exit_reason == EXIT_REASON_SNOOZE):
-                self.c_logger.debug("Snooze")
+                self.globals.logger.debug("Snooze")
                 if (self.c_snooze_time_in_minutes <= 0):
                     delta_diff = datetime.timedelta(minutes=abs(self.c_snooze_time_in_minutes))
                     self.c_parsed_event['event_wakeup_time'] = self.c_parsed_event['start_date'] - delta_diff
@@ -270,20 +268,20 @@ class EventWindow(QMainWindow, Ui_w_event):
                     delta_diff = datetime.timedelta(minutes=self.c_snooze_time_in_minutes)
                     self.c_parsed_event['event_wakeup_time'] = now_datetime + delta_diff
 
-                self.c_events_logger.info("Event snoozed by user, for event: " + self.c_parsed_event['event_name'] + " until " + str(self.c_parsed_event['event_wakeup_time']))
+                self.globals.events_logger.info("Event snoozed by user, for event: " + self.c_parsed_event['event_name'] + " until " + str(self.c_parsed_event['event_wakeup_time']))
                     
-                self.app_events_collections.events_to_snooze.add_event(self.c_event_key_str, self.c_parsed_event)
+                self.globals.events_to_snooze.add_event(self.c_event_key_str, self.c_parsed_event)
 
             else:
-                self.c_events_logger.error("Event windows was closed without a reason, for event: " + self.c_parsed_event['event_name'])
+                self.globals.events_logger.error("Event windows was closed without a reason, for event: " + self.c_parsed_event['event_name'])
 
             # Remove the event from the presented events
-            self.app_events_collections.displayed_events.remove_event(self.c_event_key_str)
+            self.globals.displayed_events.remove_event(self.c_event_key_str)
 
             self.parent().close()
 
         else:
-            self.c_logger.info("Are we supposed to get here?")
+            self.globals.logger.info("Are we supposed to get here?")
             self.close()
 
     def clickedDismiss(self):
@@ -317,9 +315,9 @@ class EventWindow(QMainWindow, Ui_w_event):
             l_changes_should_be_reflected = False
 
             # Let's first check that the event has not changed
-            if(has_event_changed(self.c_logger, self.c_parsed_event)):
+            if(has_event_changed(self.globals.logger, self.c_parsed_event)):
                 # The event has changed, closing the window to refresh the event
-                self.c_logger.debug("event changed - update_controls_based_on_event_time")
+                self.globals.logger.debug("event changed - update_controls_based_on_event_time")
                 self.c_win_exit_reason = EXIT_REASON_CHANGED
 
                 self.handle_window_exit()
