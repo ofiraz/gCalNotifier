@@ -226,8 +226,8 @@ def get_events_to_display_main_loop(globals):
     global dismissed_events
     global snoozed_events
 
-    dismissed_events = Events_Collection(globals.logger, "dismissed_events")
-    snoozed_events = Events_Collection(globals.logger, "snoozed_events")
+    dismissed_events = Events_Collection(globals.logger, "dismissed_events", use_rw_lock=True)
+    snoozed_events = Events_Collection(globals.logger, "snoozed_events", use_rw_lock=True)
 
     while True:
         set_events_to_be_displayed(globals)

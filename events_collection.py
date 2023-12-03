@@ -2,17 +2,24 @@ import threading
 import faulthandler
 import sys
 import time
+from readerwriterlock import rwlock 
 
 LOCK_TIMEOUT = 10
 
 class Events_Collection:
-    def __init__(self, p_logger, collection_name):
+    def __init__(self, p_logger, collection_name, use_rw_lock = False):
         self.c_logger = p_logger
         self.c_events = {}
-        self.c_lock = threading.Lock()
         self.c_collection_name = collection_name
         self.c_add_cb = None
         self.c_remove_cb = None
+
+        self.use_rw_lock = use_rw_lock
+        if (self.use_rw_lock == False):
+            self.c_lock = threading.Lock()
+
+        else:
+            self.c_rw_lock = rwlock.RWLockFair()
 
     def set_add_cb(self, add_cb):
         self.c_add_cb = add_cb
@@ -41,12 +48,40 @@ class Events_Collection:
             faulthandler.dump_traceback()
             sys.exit()
 
+    def lock_collection(self, lock_for_read):       
+        if (self.use_rw_lock == False):
+            # Not a RW lock
+            self.lock_with_timeout()
+            return None
+        
+        # A RW lock
+        if lock_for_read:
+            r_lock = self.c_rw_lock.gen_rlock()
+            r_lock.acquire()
+
+            return r_lock
+        
+        # Lock for write
+        w_lock = self.c_rw_lock.gen_wlock()
+        w_lock.acquire()
+
+        return w_lock
+    
+    def release_collection(self, lock):
+        if (self.use_rw_lock == False):
+            # Not a RW lock
+            self.c_lock.release()
+
+        else:
+            # A RW lock
+            lock.release()
+
     def is_event_in(self, event_key_str):
-        self.lock_with_timeout()
+        lock = self.lock_collection(lock_for_read=True)
 
         return_value = event_key_str in self.c_events
 
-        self.c_lock.release()
+        self.release_collection(lock)
 
         return return_value
 
@@ -57,11 +92,11 @@ class Events_Collection:
             self.c_add_cb()
         
     def add_event(self, event_key_str, parsed_event):
-        self.lock_with_timeout()
+        lock = self.lock_collection(lock_for_read=False)
 
         self.add_event_safe(event_key_str, parsed_event)
 
-        self.c_lock.release()
+        self.release_collection(lock)
 
     def remove_event_safe(self, event_key_str):
         del self.c_events[event_key_str]
@@ -70,14 +105,14 @@ class Events_Collection:
             self.c_remove_cb()
 
     def remove_event(self, event_key_str):
-        self.lock_with_timeout()
+        lock = self.lock_collection(lock_for_read=False)
 
         self.remove_event_safe(event_key_str)
 
-        self.c_lock.release()
+        self.release_collection(lock)
 
     def pop(self):
-        self.lock_with_timeout()
+        lock = self.lock_collection(lock_for_read=False)
 
         if (len(self.c_events) > 0):
             event_key_str = next(iter(self.c_events))
@@ -89,14 +124,20 @@ class Events_Collection:
             event_key_str = None
             parsed_event = None
 
-        self.c_lock.release()
+        self.release_collection(lock)
 
         return(event_key_str, parsed_event)
 
     def remove_events_based_on_condition(self, condition_function, additional_param = None):
+        if (self.use_rw_lock == False):
+            self.c_logger.critical("A critical programing error - this function should be used only for collections that are using a RW lock")
+
+            faulthandler.dump_traceback()
+            sys.exit()
+
         events_to_delete = []
 
-        self.lock_with_timeout()
+        lock = self.lock_collection(lock_for_read=True)
 
         self.c_logger.debug("Before lock for " + self.c_collection_name)
 
@@ -105,12 +146,13 @@ class Events_Collection:
                 # The condition was met, need remove the item
                 events_to_delete.append(event_key_str)
 
+        self.release_collection(lock)
+
         # Delete the events that were collected to be deleted
         while (len(events_to_delete) > 0):
             event_key_str = events_to_delete.pop()
-            self.remove_event_safe(event_key_str)
 
-        self.c_lock.release()
+            self.remove_event(event_key_str)
 
     def pop_from_another_collection_and_add_this_one(self, collection_to_pop_from):
         event_key_str, parsed_event = collection_to_pop_from.pop()
