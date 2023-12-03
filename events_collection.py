@@ -154,6 +154,20 @@ class Events_Collection:
 
             self.remove_event(event_key_str)
 
+    def ro_traverse_on_events(self, cb_function, additional_param = None):
+        if (self.use_rw_lock == False):
+            self.c_logger.critical("A critical programing error - this function should be used only for collections that are using a RW lock")
+
+            faulthandler.dump_traceback()
+            sys.exit()
+
+        lock = self.lock_collection(lock_for_read=True)
+
+        for event_key_str, parsed_event in self.c_events.items():
+            cb_function(self.c_logger, event_key_str, parsed_event, additional_param)
+
+        self.release_collection(lock)
+
     def pop_from_another_collection_and_add_this_one(self, collection_to_pop_from):
         event_key_str, parsed_event = collection_to_pop_from.pop()
 
