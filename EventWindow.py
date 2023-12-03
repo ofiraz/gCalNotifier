@@ -31,6 +31,7 @@ EXIT_REASON_NONE = 0
 EXIT_REASON_DISMISS = 1
 EXIT_REASON_SNOOZE = 2
 EXIT_REASON_CHANGED = 3
+EXIT_EVENT_ENDED_AND_NEED_TO_CLOSE_WINDOW = 4
 
 # The notification window
 class EventWindow(QMainWindow, Ui_w_event):
@@ -272,6 +273,9 @@ class EventWindow(QMainWindow, Ui_w_event):
                     
                 self.globals.events_to_snooze.add_event(self.c_event_key_str, self.c_parsed_event)
 
+            elif (self.c_win_exit_reason == EXIT_EVENT_ENDED_AND_NEED_TO_CLOSE_WINDOW):
+                self.globals.events_logger.info("Event windows was closed because the event has ended and it is set to automatically close at end, for event: " + self.c_parsed_event['event_name'])
+
             else:
                 self.globals.events_logger.error("Event windows was closed without a reason, for event: " + self.c_parsed_event['event_name'])
 
@@ -308,6 +312,24 @@ class EventWindow(QMainWindow, Ui_w_event):
 
             return
 
+        now_datetime = get_now_datetime()
+
+        if (not self.c_updated_label_post_end and (self.c_parsed_event['end_date'] <= now_datetime)):
+            # Event has ended
+
+            if self.c_parsed_event['close_event_window_when_event_has_ended']:
+                # We need to close the window automatically when the ecent ends
+                self.c_win_exit_reason = EXIT_EVENT_ENDED_AND_NEED_TO_CLOSE_WINDOW
+
+                self.handle_window_exit()
+                
+                return
+
+
+            # No need to close the window - just change the label and no need to trigger the event anymore
+            self.l_event_end.setText('Event ended at ' + str(self.c_parsed_event['end_time_in_loacal_tz']))
+            self.c_updated_label_post_end = True
+
         if (self.c_is_first_display_of_window):
             l_changes_should_be_reflected = True
             self.c_is_first_display_of_window = False
@@ -323,8 +345,6 @@ class EventWindow(QMainWindow, Ui_w_event):
                 self.handle_window_exit()
                 
                 return()
-
-        now_datetime = get_now_datetime()
 
         if (self.c_parsed_event['start_date'] > now_datetime):
             # Event start did not arrive yet - hide all before snooze buttons that are not relevant anymore
@@ -357,11 +377,6 @@ class EventWindow(QMainWindow, Ui_w_event):
             if (self.c_updated_label_post_start == False):
                 self.l_event_start.setText('Event started at ' + self.c_parsed_event['start_time_in_loacal_tz'])
                 self.c_updated_label_post_start = True
-
-            if (self.c_parsed_event['end_date'] <= now_datetime):
-                # Event has ended - just change the label and no need to trigger the event anymore
-                self.l_event_end.setText('Event ended at ' + str(self.c_parsed_event['end_time_in_loacal_tz']))
-                self.c_updated_label_post_end = True
 
         if (l_changes_should_be_reflected):
             # There are changes that should be reflected - bring the window to the front

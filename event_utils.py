@@ -216,18 +216,28 @@ def get_number_of_attendees(event):
     return(num_of_attendees)
 
 def parse_event_description(p_logger, meeting_description, parsed_event):
-    # Check if the event has gCalNotifier config
-    need_to_record_meeting = re.search(
-        "record:yes", 
-        meeting_description) 
-    if need_to_record_meeting:
-        parsed_event['need_to_record_meeting'] = True
-        p_logger.debug("Need to record meeting")
-        
-    else:
-        parsed_event['need_to_record_meeting'] = False
-        p_logger.debug("No need to record meeting")
+    parsed_event['need_to_record_meeting'] = False
+    parsed_event['close_event_window_when_event_has_ended'] = False
 
+    if (meeting_description):
+        parsed_event['description'] = meeting_description
+
+        # Check if the event has gCalNotifier config
+        need_to_record_meeting = re.search(
+            "record:yes", 
+            meeting_description) 
+        if need_to_record_meeting:
+            parsed_event['need_to_record_meeting'] = True
+
+        close_event_window_when_event_has_ended = re.search(
+            "close_event_window_when_event_has_ended:yes", 
+            meeting_description) 
+        if close_event_window_when_event_has_ended:
+            parsed_event['close_event_window_when_event_has_ended'] = True
+
+    else:
+        parsed_event['description'] = "No description"
+        
 ACTION_DISPLAY_EVENT = 1
 ACTION_SNOOOZE_EVENT = 2
 ACTION_DISMISS_EVENT = 3
@@ -269,12 +279,7 @@ def parse_event(p_logger, events_logger, event, parsed_event):
     parsed_event['event_location'] = event.get('location', "No location")
 
     meeting_description = event.get('description')
-    if (meeting_description):
-        parsed_event['description'] = meeting_description
-        parse_event_description(p_logger, meeting_description, parsed_event)
-
-    else:
-        parsed_event['description'] = "No description"
+    parse_event_description(p_logger, meeting_description, parsed_event)
 
     if (has_self_tentative(event)):
         # The current user is Tentative fot this event
