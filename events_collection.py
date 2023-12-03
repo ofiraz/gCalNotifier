@@ -113,14 +113,10 @@ class Events_Collection:
         self.c_lock.release()
 
     def pop_from_another_collection_and_add_this_one(self, collection_to_pop_from):
-        self.lock_with_timeout()
-
         event_key_str, parsed_event = collection_to_pop_from.pop()
 
         if (event_key_str is not None):
             # Add the event to the presented events
-            self.add_event_safe(event_key_str, parsed_event)
-
-        self.c_lock.release()
+            self.add_event(event_key_str, parsed_event)
 
         return(event_key_str, parsed_event) 
