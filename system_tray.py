@@ -27,6 +27,16 @@ class snoozed_item_to_display:
 def get_wakeup_time(snoozed_item):
     return snoozed_item.event_wakeup_time
         
+class dismissed_item_to_display:
+    def __init__(self, parsed_event):
+        self.google_account = parsed_event['google_account']
+        self.cal_name = parsed_event['cal name']
+        self.event_name = parsed_event['event_name']
+        self.event_end_time = parsed_event['end_date']
+
+def get_end_time(snoozed_item):
+    return snoozed_item.event_end_time
+
 class app_system_tray:
     def __init__(self, globals, mdi_window):
         self.globals = globals
@@ -46,6 +56,10 @@ class app_system_tray:
         self.display_snoozed_menu_item = QAction("Display snoozed events")
         self.display_snoozed_menu_item.triggered.connect(self.display_snoozed_events)
         self.system_tray_menu.addAction(self.display_snoozed_menu_item)
+
+        self.display_dismissed_menu_item = QAction("Display dismissed events")
+        self.display_dismissed_menu_item.triggered.connect(self.display_dismissed_events)
+        self.system_tray_menu.addAction(self.display_dismissed_menu_item)
 
         self.logs_menu_item = QAction("Logs")
         self.logs_menu_item.triggered.connect(self.open_logs_window)
@@ -94,6 +108,38 @@ class app_system_tray:
         self.table_window = TableWindow(data_for_table_widget)
         self.table_window.show()
         self.table_window.setWindowTitle("Snoozed Events")
+
+    def handle_dismissed_event_to_display(self, event_key_str, parsed_event, dismissed_list):
+        dismissed_item = dismissed_item_to_display(parsed_event)
+
+        dismissed_list.append(dismissed_item)
+
+    def display_dismissed_events(self):
+        dismissed_list = []
+
+        self.globals.dismissed_events.ro_traverse_on_events(self.handle_dismissed_event_to_display, additional_param = dismissed_list)
+
+        # Sort by the event time
+        dismissed_list.sort(key=get_end_time)
+
+        data_for_table_widget = []
+        
+        table_header = ["Google Account", "Calendar Name", "Event Name", "End Time"]
+        data_for_table_widget.append(table_header)
+        
+        for dismissed_item in dismissed_list:
+            row_data = [
+                dismissed_item.google_account,
+                dismissed_item.cal_name,
+                dismissed_item.event_name,
+                str(dismissed_item.event_end_time)
+            ]
+
+            data_for_table_widget.append(row_data)
+        
+        self.table_window = TableWindow(data_for_table_widget)
+        self.table_window.show()
+        self.table_window.setWindowTitle("Dismissed Events")
 
     def open_logs_window(self):       
         self.logs_window = LogWidget(warn_before_close=False)
