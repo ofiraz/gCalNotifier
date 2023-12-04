@@ -164,7 +164,7 @@ class Events_Collection:
         lock = self.lock_collection(lock_for_read=True)
 
         for event_key_str, parsed_event in self.c_events.items():
-            cb_function(self.c_logger, event_key_str, parsed_event, additional_param)
+            cb_function(event_key_str, parsed_event, additional_param)
 
         self.release_collection(lock)
 
