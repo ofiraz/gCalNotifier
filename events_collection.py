@@ -128,32 +128,6 @@ class Events_Collection:
 
         return(event_key_str, parsed_event)
 
-    def remove_events_based_on_condition(self, condition_function, additional_param = None):
-        if (self.use_rw_lock == False):
-            self.c_logger.critical("A critical programing error - this function should be used only for collections that are using a RW lock")
-
-            faulthandler.dump_traceback()
-            sys.exit()
-
-        events_to_delete = []
-
-        lock = self.lock_collection(lock_for_read=True)
-
-        self.c_logger.debug("Before lock for " + self.c_collection_name)
-
-        for event_key_str, parsed_event in self.c_events.items():
-            if (condition_function(self.c_logger, event_key_str, parsed_event, additional_param)):
-                # The condition was met, need remove the item
-                events_to_delete.append(event_key_str)
-
-        self.release_collection(lock)
-
-        # Delete the events that were collected to be deleted
-        while (len(events_to_delete) > 0):
-            event_key_str = events_to_delete.pop()
-
-            self.remove_event(event_key_str)
-
     def ro_traverse_on_events(self, cb_function, additional_param = None):
         if (self.use_rw_lock == False):
             self.c_logger.critical("A critical programing error - this function should be used only for collections that are using a RW lock")
