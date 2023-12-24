@@ -176,3 +176,15 @@ class Events_Collection:
             self.add_event(event_key_str, parsed_event)
 
         return(event_key_str, parsed_event) 
+    
+    def __getitem__(self, event_key_str):
+        lock = self.lock_collection(lock_for_read=True)
+
+        parsed_event = None
+
+        if(event_key_str in self.c_events):
+            parsed_event = self.c_events[event_key_str]
+
+        self.release_collection(lock)
+
+        return parsed_event

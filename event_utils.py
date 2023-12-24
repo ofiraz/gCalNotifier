@@ -42,7 +42,7 @@ def get_max_reminder_in_minutes(p_event):
 
     return(max_minutes_before)
 
-def has_event_changed_internal(p_logger, orig_event, new_event):
+def has_raw_event_changed(p_logger, orig_event, new_event):
     p_logger.debug("Check for changes")
 
     diff_result = DeepDiff(orig_event, new_event)
@@ -166,7 +166,7 @@ def has_event_changed(p_logger, orig_event):
 
         return True
 
-    if (has_event_changed_internal(p_logger, orig_event['raw_event'], raw_event)):
+    if (has_raw_event_changed(p_logger, orig_event['raw_event'], raw_event)):
         p_logger.info("*********** " + orig_event['event_name'] + " ***********")
         return(True)
 

@@ -22,10 +22,6 @@ from json_utils import nice_json
 
 from datetime_utils import get_now_datetime
 
-from event_utils import (
-    has_event_changed
-)
-
 # Exit reasons from the dialog
 EXIT_REASON_NONE = 0
 EXIT_REASON_DISMISS = 1
@@ -123,6 +119,8 @@ class EventWindow(QMainWindow, Ui_w_event):
         self.c_parsed_event = parsed_event
         self.c_is_first_display_of_window = True
         self.c_window_closed = False
+
+        parsed_event['event_window'] = self
 
         self.setWindowTitle(parsed_event['event_name'])
 
@@ -337,7 +335,8 @@ class EventWindow(QMainWindow, Ui_w_event):
             l_changes_should_be_reflected = False
 
             # Let's first check that the event has not changed
-            if(has_event_changed(self.globals.logger, self.c_parsed_event)):
+            #if(has_event_changed(self.globals.logger, self.c_parsed_event)):
+            if (self.c_parsed_event['changed']):
                 # The event has changed, closing the window to refresh the event
                 self.globals.logger.debug("event changed - update_controls_based_on_event_time")
                 self.c_win_exit_reason = EXIT_REASON_CHANGED

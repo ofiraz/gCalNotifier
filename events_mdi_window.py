@@ -84,13 +84,24 @@ class MDIWindow(QMainWindow):
         self.activateWindow()
 
     def present_relevant_events(self):
+        at_list_one_event_presented = False
         while True:
-            event_key_str, parsed_event = self.globals.displayed_events.pop_from_another_collection_and_add_this_one(self.globals.events_to_present)
+            event_key_str, parsed_event = self.globals.events_to_present.pop()
             if (event_key_str == None):
                 # No more entries to present
-                return
+                break
             
+            if(self.globals.displayed_events.is_event_in(event_key_str)):
+                # The event is already displayed with older data, hence it should be closed first
+                self.globals.displayed_events[event_key_str]['event_window'].close()
+
+            # Add the new event to the displayed events list    
+            at_list_one_event_presented = True       
+            self.globals.displayed_events.add_event(event_key_str, parsed_event)
             self.show_window_in_mdi(event_key_str, parsed_event)
+
+        if (at_list_one_event_presented):
+            self.update_mdi_title_and_icon()
 
     def present_relevant_events_in_sub_windows(self):
         self.globals.logger.debug("Presenting relevant events")
@@ -113,7 +124,6 @@ class MDIWindow(QMainWindow):
         self.c_num_of_displayed_events = self.c_num_of_displayed_events + 1
 
         self.globals.logger.debug("add_event_to_display_cb update_mdi_title_and_icon")
-        self.update_mdi_title_and_icon()
 
         self.globals.logger.debug("add_event_to_display_cb end")
 
