@@ -23,20 +23,6 @@ from event_utils import (
     ACTION_DISMISS_EVENT
 )
 
-def is_event_already_in_a_collection(globals, event_key_str):
-    for events_collection_to_check in [
-        globals.dismissed_events,
-        globals.events_to_dismiss,
-        globals.snoozed_events,
-        globals.events_to_snooze,
-        globals.displayed_events,
-        globals.events_to_present]:
-        if (events_collection_to_check.is_event_in(event_key_str)):
-            return(True)
-        
-    # The event is not in any of the collections
-    return(False)
-
 def add_items_to_show_from_calendar(globals, google_account, cal_name, cal_id, new_all_events):
     global all_events
 
@@ -86,6 +72,15 @@ def add_items_to_show_from_calendar(globals, google_account, cal_name, cal_id, n
                 # The event has not changed - moving from the current collection to the new one
                 new_all_events.add_event(event_key_str, event_from_all_events)
                 all_events.remove_event(event_key_str)
+
+                if(globals.snoozed_events.is_event_in(event_key_str)):
+                    # It is a snoozed event, let's see if it needs to be woken
+                    now_datetime = get_now_datetime()
+
+                    if (now_datetime >= event_from_all_events['event_wakeup_time']):
+                        # Event needs to be woke up
+                        globals.events_to_present.add_event(event_key_str, event_from_all_events)
+                        globals.snoozed_events.remove_event(event_key_str)
 
                 continue
 
@@ -146,29 +141,6 @@ def add_items_to_show_from_calendar(globals, google_account, cal_name, cal_id, n
         # Add the event to the needed collection
         events_collection_to_add_the_event_to.add_event(event_key_str, parsed_event)
 
-def condition_function_for_removing_snoozed_events(logger, event_key_str, parsed_event, events_to_present):
-    now_datetime = get_now_datetime()
-
-    logger.debug("Snoozed event " + event_key_str + " " + str(parsed_event['event_wakeup_time']) + " " + str(now_datetime))
-
-    if (now_datetime >= parsed_event['event_wakeup_time']):
-        # Event needs to be woke up
-        events_to_present.add_event(event_key_str, parsed_event)
-
-    else:
-        # No need to remove the evnet
-        return(False)
-    
-    # Need to remove the evnet
-    return(True)
-
-def set_items_to_present_from_snoozed(globals):
-    globals.snoozed_events.remove_events_based_on_condition(
-        condition_function_for_removing_snoozed_events, 
-        additional_param = globals.events_to_present)
-
-    return
-
 def move_events_to_dismiss_into_dismissed_events_collection(globals):
     while (True):
         event_key_str, parsed_event = globals.dismissed_events.pop_from_another_collection_and_add_this_one(globals.events_to_dismiss)
@@ -201,9 +173,6 @@ def set_events_to_be_displayed(globals):
         # Update the events that were dismissed or snoozed in the event windows
         move_events_to_dismiss_into_dismissed_events_collection(globals)
         move_events_to_snooze_into_snoozed_events_collection(globals)
-
-        # clear_dismissed_events_that_have_ended(globals)
-        set_items_to_present_from_snoozed(globals)
 
     new_all_events = Events_Collection(globals.logger, "new_all_events")
     
