@@ -1,5 +1,6 @@
 import os.path
 import datetime
+import tzlocal
 import time
 import traceback
 
@@ -73,6 +74,19 @@ def get_calendar_list_for_account(logger, google_account):
     logger.info("The calendar list for " + google_account_name + ":")
     logger.info(str(calendar_list_for_account))
 
+def format_date_for_api(date_value):
+    #Printing in this format 2023-10-31T12:30:00-07:00
+    return date_value.strftime('%Y-%m-%dT%H:%M:%S%z')
+
+def get_time_now_and_one_day_ahead():
+    tz = tzlocal.get_localzone()
+    now = datetime.datetime.now(tz)
+    one_day_ahead = now + datetime.timedelta(days=1)
+
+    return(
+        format_date_for_api(now),
+        format_date_for_api(one_day_ahead))
+
 def get_events_from_google_cal(logger, google_account, cal_id, event_id = None):    
     # Connect to the Google Account
     creds = None
@@ -100,16 +114,17 @@ def get_events_from_google_cal(logger, google_account, cal_id, event_id = None):
     service = build('calendar', 'v3', credentials=creds)
 
     if (event_id is None):
-        # Get the next 10 events
-        now = datetime.datetime.utcnow().isoformat() + 'Z' # 'Z' indicates UTC time
-        logger.debug('Getting the upcoming 10 events')
+        logger.debug('Getting the events for the upcoming 24 hours')
+
+        now, one_day_ahead = get_time_now_and_one_day_ahead()
+
+        #timeMin='2023-10-31T12:30:00-07:00' 
+        #timeMax='2023-10-31T13:00:00-07:00'
 
         events_result = service.events().list(
             calendarId=cal_id, 
             timeMin=now,
-            #timeMin='2023-10-31T12:30:00-07:00', 
-            #timeMax='2023-10-31T13:00:00-07:00',
-            maxResults=10, 
+            timeMax=one_day_ahead,
             singleEvents=True,
             orderBy='startTime').execute()
 
