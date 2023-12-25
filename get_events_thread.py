@@ -138,6 +138,8 @@ def add_items_to_show_from_calendar(globals, google_account, cal_name, cal_id, n
                 continue
 
             else: # The event has changed
+                event_from_all_events['changed'] = True
+                
                 if (globals.dismissed_events.is_event_in(event_key_str)):
                     # Remove the changed event from the dismissed events, so it will get parsed from scratch
                     globals.dismissed_events.remove_event(event_key_str)
@@ -156,6 +158,7 @@ def add_items_to_show_from_calendar(globals, google_account, cal_name, cal_id, n
         parsed_event['cal name'] = cal_name
         parsed_event['cal id'] = cal_id
         parsed_event['deleted'] = False
+        parsed_event['changed'] = False
         globals.logger.debug("Event Name " + parsed_event['event_name'])
 
         event_action = parse_event(globals.logger, globals.events_logger, event, parsed_event)

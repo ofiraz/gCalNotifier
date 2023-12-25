@@ -311,9 +311,9 @@ class EventWindow(QMainWindow, Ui_w_event):
             return
 
         # Let's first check that the event was not deleted
-        if (self.c_parsed_event['deleted']):
+        if (self.c_parsed_event['deleted'] or self.c_parsed_event['changed']):
             # The event has changed, closing the window to refresh the event
-            self.globals.logger.debug("event changed - update_controls_based_on_event_time")
+            self.globals.logger.debug("event deleted or changed - update_controls_based_on_event_time")
             self.c_win_exit_reason = EXIT_REASON_CHANGED
 
             self.handle_window_exit()
