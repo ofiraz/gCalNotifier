@@ -92,13 +92,14 @@ class MDIWindow(QMainWindow):
                 break
             
             if(self.globals.displayed_events.is_event_in(event_key_str)):
-                # The event is already displayed with older data, hence it should be closed first
-                self.globals.displayed_events[event_key_str]['event_window'].close()
+                # The event is already displayed with older data, switch it to show the new data
+                self.globals.displayed_events[event_key_str]['event_window'].init_window_from_parsed_event(event_key_str, parsed_event)
 
-            # Add the new event to the displayed events list    
-            at_list_one_event_presented = True       
-            self.globals.displayed_events.add_event(event_key_str, parsed_event)
-            self.show_window_in_mdi(event_key_str, parsed_event)
+            else: # A totaly new event
+                # Add the new event to the displayed events list    
+                at_list_one_event_presented = True       
+                self.globals.displayed_events.add_event(event_key_str, parsed_event)
+                self.show_window_in_mdi(event_key_str, parsed_event)
 
         if (at_list_one_event_presented):
             self.update_mdi_title_and_icon()
