@@ -310,6 +310,16 @@ class EventWindow(QMainWindow, Ui_w_event):
 
             return
 
+        # Let's first check that the event has not changed
+        if (self.c_parsed_event['changed']):
+            # The event has changed, closing the window to refresh the event
+            self.globals.logger.debug("event changed - update_controls_based_on_event_time")
+            self.c_win_exit_reason = EXIT_REASON_CHANGED
+
+            self.handle_window_exit()
+            
+            return()
+
         now_datetime = get_now_datetime()
 
         if (not self.c_updated_label_post_end and (self.c_parsed_event['end_date'] <= now_datetime)):
@@ -333,17 +343,6 @@ class EventWindow(QMainWindow, Ui_w_event):
             self.c_is_first_display_of_window = False
         else:
             l_changes_should_be_reflected = False
-
-            # Let's first check that the event has not changed
-            #if(has_event_changed(self.globals.logger, self.c_parsed_event)):
-            if (self.c_parsed_event['changed']):
-                # The event has changed, closing the window to refresh the event
-                self.globals.logger.debug("event changed - update_controls_based_on_event_time")
-                self.c_win_exit_reason = EXIT_REASON_CHANGED
-
-                self.handle_window_exit()
-                
-                return()
 
         if (self.c_parsed_event['start_date'] > now_datetime):
             # Event start did not arrive yet - hide all before snooze buttons that are not relevant anymore
