@@ -4,7 +4,7 @@ from google_calendar_utilities import (
 
 from events_mdi_window import MDIWindow
 
-from get_events_thread import start_getting_events_to_display_main_loop_thread
+from get_events_thread import Get_Events
 
 from globals import app_globals
 
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     prep_google_accounts_and_calendars(g_globals)
 
     # Start a thread to look for events to display
-    start_getting_events_to_display_main_loop_thread(g_globals)
+    get_events = Get_Events(g_globals)
 
     g_mdi_window = MDIWindow(g_globals)
 
