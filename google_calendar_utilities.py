@@ -1,8 +1,7 @@
 import os.path
-import datetime
-import tzlocal
 import time
 import traceback
+from datetime_utils import get_time_now_and_one_day_ahead
 
 
 from googleapiclient.discovery import build
@@ -73,19 +72,6 @@ def get_calendar_list_for_account(logger, google_account):
     google_account["calendar list"] = calendar_list_for_account
     logger.info("The calendar list for " + google_account_name + ":")
     logger.info(str(calendar_list_for_account))
-
-def format_date_for_api(date_value):
-    #Printing in this format 2023-10-31T12:30:00-07:00
-    return date_value.strftime('%Y-%m-%dT%H:%M:%S%z')
-
-def get_time_now_and_one_day_ahead():
-    tz = tzlocal.get_localzone()
-    now = datetime.datetime.now(tz)
-    one_day_ahead = now + datetime.timedelta(days=1)
-
-    return(
-        format_date_for_api(now),
-        format_date_for_api(one_day_ahead))
 
 def get_events_from_google_cal(logger, google_account, cal_id, event_id = None):    
     # Connect to the Google Account
