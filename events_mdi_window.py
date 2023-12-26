@@ -1,7 +1,10 @@
 import sys
 
 from PyQt5.QtWidgets import (
-    QMainWindow, QMdiArea, QMdiSubWindow
+    QMainWindow, 
+    QMdiArea, 
+    QMdiSubWindow,
+    QDesktopWidget
 )
 
 from PyQt5 import QtCore
@@ -50,6 +53,16 @@ class MDIWindow(QMainWindow):
 
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.present_relevant_events_in_sub_windows) 
+
+        # Set the MDI window size to be a little more than the event window size
+        self.setFixedWidth(730 + 100)
+        self.setFixedHeight(650 + 100)
+
+        # Show the window on the main monitor
+        monitor = QDesktopWidget().screenGeometry(0)
+        self.move(monitor.left(), monitor.top())
+
+        self.show()
 
     # Prevent the window from getting closed
     def closeEvent(self, event):
