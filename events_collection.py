@@ -89,7 +89,7 @@ class Events_Collection:
         self.c_events[event_key_str] = parsed_event
 
         if (self.c_add_cb):
-            self.c_add_cb()
+            self.c_add_cb(parsed_event)
         
     def add_event(self, event_key_str, parsed_event):
         lock = self.lock_collection(lock_for_read=False)
@@ -99,10 +99,12 @@ class Events_Collection:
         self.release_collection(lock)
 
     def remove_event_safe(self, event_key_str):
+        parsed_event = self.c_events[event_key_str]
+        
         del self.c_events[event_key_str]
 
         if (self.c_remove_cb):
-            self.c_remove_cb()
+            self.c_remove_cb(parsed_event)
 
     def remove_event(self, event_key_str):
         lock = self.lock_collection(lock_for_read=False)

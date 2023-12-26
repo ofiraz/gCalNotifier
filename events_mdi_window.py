@@ -132,7 +132,7 @@ class MDIWindow(QMainWindow):
         self.setWindowTitle("[" + str(self.c_num_of_displayed_events) + "] gCalNotifier")
         set_icon_with_number(self.globals.app, self.c_num_of_displayed_events)
 
-    def add_event_to_display_cb(self):
+    def add_event_to_display_cb(self, parsed_event):
         self.globals.logger.debug("add_event_to_display_cb start")
 
         self.c_num_of_displayed_events = self.c_num_of_displayed_events + 1
@@ -141,7 +141,7 @@ class MDIWindow(QMainWindow):
 
         self.globals.logger.debug("add_event_to_display_cb end")
 
-    def remove_event_from_display_cb(self):
+    def remove_event_from_display_cb(self, parse_event):
         self.globals.logger.debug("remove_event_from_display_cb start")
 
         self.c_num_of_displayed_events = self.c_num_of_displayed_events - 1
