@@ -25,14 +25,32 @@ class Get_Events:
         self.globals = globals
         
         self.all_events = Events_Collection(self.globals.logger, "all_events")
+
         self.dismissed_events = Events_Collection(self.globals.logger, "dismissed_events", use_rw_lock=True)
+        self.dismissed_events.set_add_cb(self.add_event_to_dismissed_cb)
+        self.dismissed_events.set_remove_cb(self.remove_event_from_dismissed_cb)
+
         self.snoozed_events = Events_Collection(self.globals.logger, "snoozed_events", use_rw_lock=True)
+        self.snoozed_events.set_add_cb(self.add_event_to_snoozed_cb)
+        self.snoozed_events.set_remove_cb(self.remove_event_from_snoozed_cb)
  
         main_loop_thread = threading.Thread(
             target = self.get_events_to_display_main_loop,
             daemon=True)
         
         main_loop_thread.start()
+
+    def add_event_to_dismissed_cb(self, parsed_event):
+        parsed_event['is_dismissed'] = True
+
+    def remove_event_from_dismissed_cb(self, parsed_event):
+        parsed_event['is_dismissed'] = False
+    
+    def add_event_to_snoozed_cb(self, parsed_event):
+        parsed_event['is_snoozed'] = True
+
+    def remove_event_from_snoozed_cb(self, parsed_event):
+        parsed_event['is_snoozed'] = False
     
     def get_events_to_display_main_loop(self):           
         while True:
@@ -75,7 +93,7 @@ class Get_Events:
             if ((not is_reset_needed) and (now_datetime > parsed_event['end_date'])):
                 # The event has ended
 
-                if (self.dismissed_events.is_event_in(event_key_str)):
+                if (parsed_event['is_dismissed']):
                     # The event is a dismissed event - we can remove it from the list
                     self.dismissed_events.remove_event(event_key_str)
 
@@ -86,11 +104,11 @@ class Get_Events:
                 # The event did not end yet - this means that the event got deleted
                 parsed_event['deleted'] = True
 
-                if (self.dismissed_events.is_event_in(event_key_str)):
+                if (parsed_event['is_dismissed']):
                     # The event is dismissed, we can remove it
                     self.dismissed_events.remove_event(event_key_str)
                 
-                elif(self.snoozed_events.is_event_in(event_key_str)):
+                elif(parsed_event['is_snoozed']):
                     # The event is snoozed, we can remove it
                     self.snoozed_events.remove_event(event_key_str)
 
@@ -162,11 +180,11 @@ class Get_Events:
                     if (is_reset_needed):
                         # There is a need to reset
 
-                        if (self.dismissed_events.is_event_in(event_key_str)):
+                        if (event_from_all_events['is_dismissed']):
                             # Remove the changed event from the dismissed events, so it will get parsed from scratch
                             self.dismissed_events.remove_event(event_key_str)
 
-                        elif(self.snoozed_events.is_event_in(event_key_str)):
+                        elif(event_from_all_events['is_snoozed']):
                             # Remove the changed event from the snoozed events, so it will get parsed from scratch
                             self.snoozed_events.remove_event(event_key_str)
 
@@ -182,7 +200,7 @@ class Get_Events:
                             event_key_str,
                             event_from_all_events)
 
-                    elif(self.snoozed_events.is_event_in(event_key_str)):
+                    elif(event_from_all_events['is_snoozed']):
                         # It is a snoozed event, let's see if it needs to be woken
                         now_datetime = get_now_datetime()
 
@@ -196,11 +214,11 @@ class Get_Events:
                 else: # The event has changed
                     event_from_all_events['changed'] = True
                     
-                    if (self.dismissed_events.is_event_in(event_key_str)):
+                    if (event_from_all_events['is_dismissed']):
                         # Remove the changed event from the dismissed events, so it will get parsed from scratch
                         self.dismissed_events.remove_event(event_key_str)
 
-                    elif(self.snoozed_events.is_event_in(event_key_str)):
+                    elif(event_from_all_events['is_snoozed']):
                         # Remove the changed event from the snoozed events, so it will get parsed from scratch
                         self.snoozed_events.remove_event(event_key_str)
 
@@ -215,6 +233,9 @@ class Get_Events:
             parsed_event['cal id'] = cal_id
             parsed_event['deleted'] = False
             parsed_event['changed'] = False
+            parsed_event['is_dismissed'] = False
+            parsed_event['is_snoozed'] = False
+
             self.globals.logger.debug("Event Name " + parsed_event['event_name'])
 
             event_action = parse_event(self.globals.logger, self.globals.events_logger, event, parsed_event)
