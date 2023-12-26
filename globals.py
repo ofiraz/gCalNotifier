@@ -25,8 +25,6 @@ class app_globals:
         self.displayed_events = Events_Collection(self.logger, "displayed_events")
         self.events_to_dismiss = Events_Collection(self.logger, "events_to_dismiss")
         self.events_to_snooze = Events_Collection(self.logger, "events_to_snooze")
-        self.dismissed_events = Events_Collection(self.logger, "dismissed_events", use_rw_lock=True)
-        self.snoozed_events = Events_Collection(self.logger, "snoozed_events", use_rw_lock=True)
 
         self.app = QApplication(sys.argv)
 
