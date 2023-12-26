@@ -253,3 +253,8 @@ class Get_Events:
         # Add the event to the needed collection
         events_collection_to_add_the_event_to.add_event(event_key_str, parsed_event)
 
+    def get_dismissed_events_into_list(self, event_handling_function, target_list):
+        self.globals.dismissed_events.ro_traverse_on_events(event_handling_function, additional_param = target_list)
+
+    def get_snoozed_events_into_list(self, event_handling_function, target_list):
+        self.globals.snoozed_events.ro_traverse_on_events(event_handling_function, additional_param = target_list)

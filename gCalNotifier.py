@@ -21,10 +21,10 @@ if __name__ == "__main__":
     prep_google_accounts_and_calendars(g_globals)
 
     # Start a thread to look for events to display
-    get_events = Get_Events(g_globals)
+    get_events_object = Get_Events(g_globals)
 
     g_mdi_window = MDIWindow(g_globals)
 
-    sys_tray = app_system_tray(g_globals, g_mdi_window)
+    sys_tray = app_system_tray(g_globals, g_mdi_window, get_events_object)
 
     g_globals.app.exec_()

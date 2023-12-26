@@ -38,9 +38,10 @@ def get_end_time(snoozed_item):
     return snoozed_item.event_end_time
 
 class app_system_tray:
-    def __init__(self, globals, mdi_window):
+    def __init__(self, globals, mdi_window, get_events_object):
         self.globals = globals
         self.mdi_window = mdi_window
+        self.get_events_object = get_events_object
 
         # Create the icon
         icon = QIcon(APP_ICON)
@@ -85,7 +86,7 @@ class app_system_tray:
     def display_snoozed_events(self):
         snoozed_list = []
 
-        self.globals.snoozed_events.ro_traverse_on_events(self.handle_snoozed_event_to_display, additional_param = snoozed_list)
+        self.get_events_object.get_snoozed_events_into_list(self.handle_snoozed_event_to_display, snoozed_list)
 
         # Sort by the event time
         snoozed_list.sort(key=get_wakeup_time)
@@ -117,7 +118,7 @@ class app_system_tray:
     def display_dismissed_events(self):
         dismissed_list = []
 
-        self.globals.dismissed_events.ro_traverse_on_events(self.handle_dismissed_event_to_display, additional_param = dismissed_list)
+        self.get_events_object.get_dismissed_events_into_list(self.handle_dismissed_event_to_display, dismissed_list)
 
         # Sort by the event time
         dismissed_list.sort(key=get_end_time)
