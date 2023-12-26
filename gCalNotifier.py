@@ -2,11 +2,6 @@ from PyQt5.QtWidgets import (
     QDesktopWidget
 )
 
-from logging_module import (
-    init_logging,
-    LOG_LEVEL_INFO,
-)
-
 from google_calendar_utilities import (
     get_calendar_list_for_account
 )

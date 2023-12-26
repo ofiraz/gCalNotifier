@@ -18,7 +18,6 @@ from event_utils import (
     has_raw_event_changed,
     parse_event,
     get_action_for_parsed_event,
-    NO_POPUP_REMINDER,
     ACTION_DISPLAY_EVENT,
     ACTION_SNOOOZE_EVENT,
     ACTION_DISMISS_EVENT
