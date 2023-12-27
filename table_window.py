@@ -57,12 +57,14 @@ class Show_Events_Table_Window():
         # The rest should be provided by child classes
         self.get_events_into_list_function = None
         self.handle_event_to_display_function = None
-        self.sort_key_function = None
         self.table_header = []
         self.window_title = ""
 
     def get_row_data(self, event_item):
         return []
+    
+    def get_sort_value(self, item):
+        return None
         
     def open_window_with_events(self):
         events_list = []
@@ -70,7 +72,7 @@ class Show_Events_Table_Window():
         self.get_events_into_list_function(self.handle_event_to_display_function, events_list)
 
         # Sort by the event time
-        events_list.sort(key=self.sort_key_function)
+        events_list.sort(key=self.get_sort_value)
 
         data_for_table_widget = []
         
@@ -92,16 +94,12 @@ class snoozed_item_to_display:
         self.event_name = parsed_event['event_name']
         self.event_wakeup_time = parsed_event['event_wakeup_time']
 
-def get_wakeup_time(snoozed_item):
-    return snoozed_item.event_wakeup_time
-        
 class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
     def __init__(self, get_events_object):
         super().__init__(get_events_object)
 
         self.get_events_into_list_function = self.get_events_object.get_snoozed_events_into_list
         self.handle_event_to_display_function = self.handle_snoozed_event_to_display
-        self.sort_key_function = get_wakeup_time
         self.table_header = ["Google Account", "Calendar Name", "Event Name", "Snoozed Until"]
         self.window_title = "Snoozed Events"
         
@@ -109,6 +107,9 @@ class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
         snoozed_item = snoozed_item_to_display(parsed_event)
 
         snoozed_list.append(snoozed_item)
+
+    def get_sort_value(self, item):
+        return(item.event_wakeup_time)
 
     def get_row_data(self, event_item):
         row_data = [
@@ -127,16 +128,12 @@ class dismissed_item_to_display:
         self.event_name = parsed_event['event_name']
         self.event_end_time = parsed_event['end_date']
 
-def get_end_time(snoozed_item):
-    return snoozed_item.event_end_time
-
 class Show_Dismissed_Events_Table_Window(Show_Events_Table_Window):
     def __init__(self, get_events_object):
         super().__init__(get_events_object)
 
         self.get_events_into_list_function = self.get_events_object.get_dismissed_events_into_list
         self.handle_event_to_display_function = self.handle_dismissed_event_to_display
-        self.sort_key_function = get_end_time
         self.table_header = ["Google Account", "Calendar Name", "Event Name", "End Time"]
         self.window_title = "Dismissed Events"
         
@@ -145,6 +142,9 @@ class Show_Dismissed_Events_Table_Window(Show_Events_Table_Window):
 
         dismissed_list.append(dismissed_item)
 
+    def get_sort_value(self, item):
+        return(item.event_end_time)
+    
     def get_row_data(self, event_item):
         row_data = [
             event_item.google_account,
