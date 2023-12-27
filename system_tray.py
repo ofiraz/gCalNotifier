@@ -15,7 +15,7 @@ import sys
 sys.path.insert(1, '/Users/ofir/git/personal/pyqt-realtime-log-widget')
 from pyqt_realtime_log_widget import LogWidget
 
-from table_window import TableWindow
+from table_window import TableWindow, Show_Snoozed_Events_Table_Window
 
 class snoozed_item_to_display:
     def __init__(self, parsed_event):
@@ -84,6 +84,11 @@ class app_system_tray:
         snoozed_list.append(snoozed_item)
 
     def display_snoozed_events(self):
+        self.show_snoozed_events_window = Show_Snoozed_Events_Table_Window(self.get_events_object)
+
+        self.show_snoozed_events_window.open_window_with_events()
+
+        return
         snoozed_list = []
 
         self.get_events_object.get_snoozed_events_into_list(self.handle_snoozed_event_to_display, snoozed_list)
