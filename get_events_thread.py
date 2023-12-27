@@ -59,6 +59,15 @@ class Get_Events:
             self.globals.logger.debug("Going to sleep for " + str(self.globals.config.refresh_frequency) + " seconds")
             time.sleep(self.globals.config.refresh_frequency)
 
+    def wakeup_event_if_needed(self, event_key_str, parsed_event):
+        # It is a snoozed event, let's see if it needs to be woken
+        now_datetime = get_now_datetime()
+
+        if (now_datetime >= parsed_event['event_wakeup_time']):
+            # Event needs to be woke up
+            self.globals.events_to_present.add_event(event_key_str, parsed_event)
+            self.snoozed_events.remove_event(event_key_str)
+
     def set_events_to_be_displayed(self):
         is_reset_needed = self.globals.is_reset_needed()
         if (is_reset_needed):
@@ -90,28 +99,37 @@ class Get_Events:
             if (parsed_event == None):
                 break
 
-            if ((not is_reset_needed) and (now_datetime > parsed_event['end_date'])):
-                # The event has ended
+            if(is_reset_needed or (now_datetime < parsed_event['end_date'])):
+                # Two options here:
+                # 1. The user asked to reset all existing handling
+                # or 2. The event end time did not arrive yet, but it does not exist - i.e. got deleted
+                # In both cases we want to remove this event from all places and not add it again
 
                 if (parsed_event['is_dismissed']):
-                    # The event is a dismissed event - we can remove it from the list
-                    self.dismissed_events.remove_event(event_key_str)
-
-                # If the event is snoozed - keep it, the user wanted it to be snoozed for a longer time than the event end and wanted to know about it
-                # If the event is displayed - keep it, the user will close the event window when the time comes, or it will close itself if it is marked to do so
-            
-            else:
-                # The event did not end yet - this means that the event got deleted
-                parsed_event['deleted'] = True
-
-                if (parsed_event['is_dismissed']):
-                    # The event is dismissed, we can remove it
+                    # Unmarking all disimmsed events
                     self.dismissed_events.remove_event(event_key_str)
                 
                 elif(parsed_event['is_snoozed']):
-                    # The event is snoozed, we can remove it
+                    # Unmarking all snoozed events
                     self.snoozed_events.remove_event(event_key_str)
 
+                else:
+                    # Marking all other events as deleted for the case they are being displayed, and then we want the window to close
+                    parsed_event['deleted'] = True
+
+            else:
+                # The event has ended, and this is the reason we don't see it anymore - as our search is only for events from now on
+                if (parsed_event['is_dismissed']):
+                    # The event was dismissed - we don't to manage it anymore
+                    self.dismissed_events.remove_event(event_key_str)
+
+                else: # If it is not dismissed - it is either snoozed or displayed, we will need to re look at it in the next loop
+                    new_all_events.add_event(event_key_str, parsed_event)
+
+                    if(parsed_event['is_snoozed']):
+                        # The event is snoozed, if needed wake it up
+                        self.wakeup_event_if_needed(event_key_str, parsed_event)
+                                       
         # Switch the old and the new event collections
         self.all_events = new_all_events
 
@@ -201,14 +219,8 @@ class Get_Events:
                             event_from_all_events)
 
                     elif(event_from_all_events['is_snoozed']):
-                        # It is a snoozed event, let's see if it needs to be woken
-                        now_datetime = get_now_datetime()
-
-                        if (now_datetime >= event_from_all_events['event_wakeup_time']):
-                            # Event needs to be woke up
-                            self.globals.events_to_present.add_event(event_key_str, event_from_all_events)
-                            self.snoozed_events.remove_event(event_key_str)
-
+                        self.wakeup_event_if_needed(event_key_str, event_from_all_events)
+                        
                     continue
 
                 else: # The event has changed
