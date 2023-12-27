@@ -119,3 +119,38 @@ class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
         ]
 
         return row_data
+    
+class dismissed_item_to_display:
+    def __init__(self, parsed_event):
+        self.google_account = parsed_event['google_account']
+        self.cal_name = parsed_event['cal name']
+        self.event_name = parsed_event['event_name']
+        self.event_end_time = parsed_event['end_date']
+
+def get_end_time(snoozed_item):
+    return snoozed_item.event_end_time
+
+class Show_Dismissed_Events_Table_Window(Show_Events_Table_Window):
+    def __init__(self, get_events_object):
+        super().__init__(get_events_object)
+
+        self.get_events_into_list_function = self.get_events_object.get_dismissed_events_into_list
+        self.handle_event_to_display_function = self.handle_dismissed_event_to_display
+        self.sort_key_function = get_end_time
+        self.table_header = ["Google Account", "Calendar Name", "Event Name", "End Time"]
+        self.window_title = "Dismissed Events"
+        
+    def handle_dismissed_event_to_display(self, event_key_str, parsed_event, dismissed_list):
+        dismissed_item = dismissed_item_to_display(parsed_event)
+
+        dismissed_list.append(dismissed_item)
+
+    def get_row_data(self, event_item):
+        row_data = [
+            event_item.google_account,
+            event_item.cal_name,
+            event_item.event_name,
+            str(event_item.event_end_time)
+        ]
+
+        return row_data  
