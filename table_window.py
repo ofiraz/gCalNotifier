@@ -1,7 +1,6 @@
 # Following https://www.pythonguis.com/tutorials/qtableview-modelviews-numpy-pandas/
 
-import sys
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 from PyQt5.QtCore import Qt
 
 class TableModel(QtCore.QAbstractTableModel):
@@ -34,5 +33,20 @@ class TableWindow(QtWidgets.QMainWindow):
         self.model = TableModel(data)
         self.table.setModel(self.model)
 
+        total_column_width = self.resize_table_columns_to_contents()
+
+        self.setFixedWidth(total_column_width + 50)
+
         self.setCentralWidget(self.table)
 
+    def resize_table_columns_to_contents(self):
+        header = self.table.horizontalHeader()
+
+        total_column_width = 0
+
+        for col in range(self.model.columnCount(0)):
+            header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
+            total_column_width += self.table.columnWidth(col)
+
+        return(total_column_width)
+            
