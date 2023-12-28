@@ -21,7 +21,13 @@ if __name__ == "__main__":
     prep_google_accounts_and_calendars(g_globals)
 
     # Start a thread to look for events to display
-    get_events_object = Get_Events(g_globals)
+    start_time = None
+    end_time = None
+    
+    #start_time='2023-10-31T12:30:00-07:00' 
+    #end_time='2023-10-31T13:00:00-07:00'
+
+    get_events_object = Get_Events(g_globals, start_time, end_time)
 
     g_mdi_window = MDIWindow(g_globals)
 
