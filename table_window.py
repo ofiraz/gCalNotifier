@@ -25,19 +25,20 @@ class TableModel(QtCore.QAbstractTableModel):
         return len(self._data[0])
 
 class TableWindow(QtWidgets.QMainWindow):
-    def __init__(self, data):
+    def __init__(self, show_events_table_object):
         super().__init__()
 
-        self.table = QtWidgets.QTableView()
+        self.show_events_table_object = show_events_table_object
 
-        self.model = TableModel(data)
-        self.table.setModel(self.model)
+        self.table = QtWidgets.QTableView(self)
 
-        total_column_width = self.resize_table_columns_to_contents()
+        self.refresh_button = QtWidgets.QPushButton('Refresh',self)
 
-        self.setFixedWidth(total_column_width + 50)
+        self.refresh_button.move(0, 0)
 
-        self.setCentralWidget(self.table)
+        self.refresh_button.clicked.connect(self.update_table_data)
+
+        self.update_table_data()
 
     def resize_table_columns_to_contents(self):
         header = self.table.horizontalHeader()
@@ -49,6 +50,17 @@ class TableWindow(QtWidgets.QMainWindow):
             total_column_width += self.table.columnWidth(col)
 
         return(total_column_width)
+    
+    def update_table_data(self):
+        data = self.show_events_table_object.get_data_into_table()
+        self.model = TableModel(data)
+        self.table.setModel(self.model)
+
+        total_column_width = self.resize_table_columns_to_contents()
+
+        self.setFixedWidth(total_column_width + 50)
+
+        self.setCentralWidget(self.table)
     
 class Show_Events_Table_Window():
     def __init__(self, get_events_object):
@@ -68,7 +80,12 @@ class Show_Events_Table_Window():
     def get_sort_value(self, item):
         return None
         
-    def open_window_with_events(self):
+    def open_window_with_events(self):        
+        self.table_window = TableWindow(self)
+        self.table_window.show()
+        self.table_window.setWindowTitle(self.window_title)
+
+    def get_data_into_table(self):
         events_list = []
 
         self.get_events_into_list_function(self.handle_event_to_display, events_list)
@@ -85,9 +102,7 @@ class Show_Events_Table_Window():
 
             data_for_table_widget.append(row_data)
         
-        self.table_window = TableWindow(data_for_table_widget)
-        self.table_window.show()
-        self.table_window.setWindowTitle(self.window_title)
+        return(data_for_table_widget)
 
 class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
     def __init__(self, get_events_object):
