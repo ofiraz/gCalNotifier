@@ -21,7 +21,7 @@ from event_utils import (
 )
 
 class Get_Events:
-    def __init__(self, globals, start_time = None, end_time = None):
+    def __init__(self, globals, start_time, end_time):
         self.globals = globals
         
         self.all_events = Events_Collection(self.globals.logger, "all_events")
@@ -53,7 +53,7 @@ class Get_Events:
     def remove_event_from_snoozed_cb(self, parsed_event):
         parsed_event['is_snoozed'] = False
     
-    def get_events_to_display_main_loop(self, start_time = None, end_time = None):           
+    def get_events_to_display_main_loop(self, start_time, end_time):           
         while True:
             self.set_events_to_be_displayed(start_time, end_time)
 
@@ -69,7 +69,7 @@ class Get_Events:
             self.globals.events_to_present.add_event(event_key_str, parsed_event)
             self.snoozed_events.remove_event(event_key_str)
 
-    def set_events_to_be_displayed(self, start_time = None, end_time = None):
+    def set_events_to_be_displayed(self, start_time, end_time):
         is_reset_needed = self.globals.is_reset_needed()
         if (is_reset_needed):
         # Need to reset the "system" by clearing all of the dismissed and snoozed events - will be done while parsing the events
@@ -150,12 +150,12 @@ class Get_Events:
                 # No more entries to present
                 return
 
-    def add_items_to_show_from_calendar(self, google_account, cal_name, cal_id, new_all_events, is_reset_needed, start_time = None, end_time = None):
+    def add_items_to_show_from_calendar(self, google_account, cal_name, cal_id, new_all_events, is_reset_needed, start_time, end_time):
         self.globals.logger.debug("add_items_to_show_from_calendar for " + google_account)
 
         # Get the next coming events from the google calendar
         try: # In progress - handling intermittent exception from the Google service
-            events = get_events_from_google_cal_with_try(self.globals.logger, google_account, cal_id, start_time = start_time, end_time = end_time)
+            events = get_events_from_google_cal_with_try(self.globals.logger, google_account, cal_id, start_time, end_time)
 
         except ConnectivityIssue:
             # Having a connectivity issue - we will assume the event did not change in the g-cal

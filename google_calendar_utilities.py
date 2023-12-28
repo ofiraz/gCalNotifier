@@ -73,7 +73,7 @@ def get_calendar_list_for_account(logger, google_account):
     logger.info("The calendar list for " + google_account_name + ":")
     logger.info(str(calendar_list_for_account))
 
-def get_events_from_google_cal(logger, google_account, cal_id, event_id = None, start_time = None, end_time = None):    
+def get_events_from_google_cal(logger, google_account, cal_id, start_time, end_time):    
     # Connect to the Google Account
     creds = None
     Credentials_file = 'app_credentials.json'
@@ -99,30 +99,20 @@ def get_events_from_google_cal(logger, google_account, cal_id, event_id = None, 
 
     service = build('calendar', 'v3', credentials=creds)
 
-    if (event_id is None):
+    if (start_time is None):
         logger.debug('Getting the events for the upcoming 24 hours')
+        start_time, end_time = get_time_now_and_one_day_ahead()
 
-        if (start_time is None):
-            start_time, end_time = get_time_now_and_one_day_ahead()
+    events_result = service.events().list(
+        calendarId=cal_id, 
+        timeMin=start_time,
+        timeMax=end_time,
+        singleEvents=True,
+        orderBy='startTime').execute()
 
-        events_result = service.events().list(
-            calendarId=cal_id, 
-            timeMin=start_time,
-            timeMax=end_time,
-            singleEvents=True,
-            orderBy='startTime').execute()
+    events = events_result.get('items', [])
 
-        events = events_result.get('items', [])
-
-        return(events)
-
-    else:
-        # Get a specitic event
-        raw_event = service.events().get(
-        calendarId=cal_id,
-        eventId=str(event_id)).execute()
-
-        return(raw_event)
+    return(events)
 
 class ConnectivityIssue(Exception):
     pass
@@ -142,13 +132,13 @@ Networking_OSError_excMesg = {
     "[Errno 65] No route to host"
 }
 
-def get_events_from_google_cal_with_try(logger, google_account, cal_id, event_id = None, start_time = None, end_time = None):
+def get_events_from_google_cal_with_try(logger, google_account, cal_id, start_time, end_time):
     num_of_retries = 0
     none_networking_known_exception = False
 
     while True:
         try: # In progress - handling intermittent exception from the Google service
-            raw_events = get_events_from_google_cal(logger, google_account, cal_id, event_id, start_time, end_time)
+            raw_events = get_events_from_google_cal(logger, google_account, cal_id, start_time, end_time)
         except Exception as e:
             excType = str(e.__class__.__name__)
             excMesg = str(e)

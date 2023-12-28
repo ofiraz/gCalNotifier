@@ -1,10 +1,5 @@
 import datetime
 
-from google_calendar_utilities import (
-    get_events_from_google_cal_with_try,
-    ConnectivityIssue
-)
-
 from json_utils import nice_json
 
 from datetime_utils import get_now_datetime
@@ -143,32 +138,6 @@ def has_raw_event_changed(p_logger, orig_event, new_event):
             p_logger.info("Found a relevant change")
             p_logger.info(key + ":" + str(diff_result[key]))
             return(True)
-
-    return(False)
-
-def has_event_changed(p_logger, orig_event):
-    try:
-        # First check if the event still exists
-        raw_event = get_events_from_google_cal_with_try(
-            p_logger,
-            orig_event['google_account'],
-            orig_event['cal id'],
-            orig_event['raw_event']['id'])
-
-    except ConnectivityIssue:
-        # Having a connectivity issue - we will assume the event did not change in the g-cal
-        return False
-
-    if(raw_event is None):
-        # The event does not exist anymore
-        p_logger.info("event does not exist anymore - strange")
-        p_logger.info("*********** " + orig_event['event_name'] + " ***********")
-
-        return True
-
-    if (has_raw_event_changed(p_logger, orig_event['raw_event'], raw_event)):
-        p_logger.info("*********** " + orig_event['event_name'] + " ***********")
-        return(True)
 
     return(False)
 
