@@ -46,7 +46,7 @@ class app_system_tray:
         self.logs_menu_item.triggered.connect(self.open_logs_window)
         self.system_tray_menu.addAction(self.logs_menu_item)
 
-        self.reset_menu_item = QAction("Clear dismissed and snoozed")
+        self.reset_menu_item = QAction("Reset")
         self.reset_menu_item.triggered.connect(self.clear_dismissed_and_snoozed)
         self.system_tray_menu.addAction(self.reset_menu_item)
 
