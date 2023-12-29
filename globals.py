@@ -10,6 +10,10 @@ from logging_module import (
     LOG_LEVEL_INFO,
 )
 
+from google_calendar_utilities import (
+    get_calendar_list_for_account
+)
+
 from PyQt5.QtWidgets import (
     QApplication
 )
@@ -21,6 +25,8 @@ class app_globals:
         self.logger = init_logging("gCalNotifier", "Main", self.config.log_level, LOG_LEVEL_INFO)
         self.events_logger = init_logging("EventsLog", "Main", LOG_LEVEL_INFO, LOG_LEVEL_INFO)
 
+        self.prep_google_accounts_and_calendars()
+
         self.events_to_present = Events_Collection(self.logger, "events_to_present")
         self.displayed_events = Events_Collection(self.logger, "displayed_events")
         self.events_to_dismiss = Events_Collection(self.logger, "events_to_dismiss")
@@ -30,6 +36,10 @@ class app_globals:
 
         self.reset_needed = False
         self.reset_needed_lock = threading.Lock()
+
+    def prep_google_accounts_and_calendars(self):
+        for google_account in self.config.google_accounts:
+            get_calendar_list_for_account(self.logger, google_account)
 
     def resest_is_needed(self):
         with self.reset_needed_lock:
