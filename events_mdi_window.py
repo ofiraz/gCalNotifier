@@ -11,9 +11,6 @@ from PyQt5 import QtCore
 
 from EventWindow import EventWindow
 
-sys.path.insert(1, '/Users/ofir/git/personal/pyqt-realtime-log-widget')
-from pyqt_realtime_log_widget import LogWidget
-
 from set_icon_with_number import set_icon_with_number
 
 class MDIWindow(QMainWindow):
