@@ -8,6 +8,14 @@ from PyQt5.QtGui import (
     QIcon
 )
 
+from PyQt5 import QtGui
+
+from PyQt5 import QtCore
+
+from EventWindow import EventWindow
+
+from set_icon_with_number import set_icon_with_number
+
 APP_ICON = 'icons8-calendar-64.png'
 
 import sys
@@ -18,13 +26,17 @@ from pyqt_realtime_log_widget import LogWidget
 from table_window import Show_Snoozed_Events_Table_Window, Show_Dismissed_Events_Table_Window
 
 class app_system_tray:
-    def __init__(self, globals, mdi_window, get_events_object):
+    def __init__(self, globals, use_mdi, mdi_window, get_events_object):
         self.globals = globals
+        self.use_mdi = use_mdi
         self.mdi_window = mdi_window
         self.get_events_object = get_events_object
 
         # Create the icon
         icon = QIcon(APP_ICON)
+
+        # Create the app icon
+        self.globals.app.setWindowIcon(QtGui.QIcon(icon))
 
         # Create the system_tray
         self.system_tray = QSystemTrayIcon()
@@ -58,6 +70,71 @@ class app_system_tray:
         # Add the menu to the system_tray
         self.system_tray.setContextMenu(self.system_tray_menu)
 
+        # Prevent the closing of the system tray when the last event window closes
+        self.globals.app.setQuitOnLastWindowClosed(False) 
+
+        if (not use_mdi):
+            self.c_num_of_displayed_events = 0
+
+            self.globals.displayed_events.set_add_cb(self.add_event_to_display_cb)
+            self.globals.displayed_events.set_remove_cb(self.remove_event_from_display_cb)
+
+            self.timer = QtCore.QTimer()
+            self.timer.timeout.connect(self.present_relevant_events_in_windows) 
+            self.timer.start(int(self.globals.config.refresh_frequency/2) * 1000)
+
+            self.system_tray.show()
+
+    def add_event_to_display_cb(self, parsed_event):
+        self.c_num_of_displayed_events = self.c_num_of_displayed_events + 1
+
+    def remove_event_from_display_cb(self, parse_event):
+        self.c_num_of_displayed_events = self.c_num_of_displayed_events - 1
+
+        self.update_app_icon()
+
+    def show_window(self, event_key_str, parsed_event):
+        event_win = EventWindow(self.globals, use_mdi=False)
+
+        event_win.init_window_from_parsed_event(event_key_str, parsed_event)
+        event_win.setFixedWidth(730)
+        event_win.setFixedHeight(650)
+
+        event_win.show()
+        event_win.activateWindow()
+        event_win.raise_()
+
+
+        self.globals.events_logger.info("Displaying event:" + parsed_event['event_name'])
+
+    def present_relevant_events(self):
+        at_list_one_event_presented = False
+        while True:
+            event_key_str, parsed_event = self.globals.events_to_present.pop()
+            if (event_key_str == None):
+                # No more entries to present
+                break
+            
+            if(self.globals.displayed_events.is_event_in(event_key_str)):
+                # The event is already displayed with older data, switch it to show the new data
+                self.globals.displayed_events[event_key_str]['event_window'].init_window_from_parsed_event(event_key_str, parsed_event)
+
+            else: # A totaly new event
+                # Add the new event to the displayed events list    
+                at_list_one_event_presented = True       
+                self.globals.displayed_events.add_event(event_key_str, parsed_event)
+                self.show_window(event_key_str, parsed_event)
+
+        if (at_list_one_event_presented):
+            self.update_app_icon()
+
+    def present_relevant_events_in_windows(self):
+        self.globals.logger.debug("Presenting relevant events")
+
+        self.present_relevant_events()
+
+        self.timer.start(int(self.globals.config.refresh_frequency/2) * 1000)
+
     def display_snoozed_events(self):
         self.show_snoozed_events_window = Show_Snoozed_Events_Table_Window(self.get_events_object)
 
@@ -82,6 +159,8 @@ class app_system_tray:
         self.logs_window.setFixedHeight(650 + 100)
 
         self.logs_window.show()
+        self.logs_window.activateWindow()
+        self.logs_window.raise_()
 
     def clear_dismissed_and_snoozed(self):      
         self.globals.events_logger.info("Clearing dismissed and snoozed")
@@ -89,9 +168,12 @@ class app_system_tray:
         self.globals.resest_is_needed()
 
     def quit_app(self):
-        # Let the MDI window know that the app is closing
-        self.mdi_window.need_to_close_the_window()
+        if (self.use_mdi):
+            # Let the MDI window know that the app is closing
+            self.mdi_window.need_to_close_the_window()
 
         # Close the app
         self.globals.app.quit()
 
+    def update_app_icon(self):
+        set_icon_with_number(self.globals.app, self.c_num_of_displayed_events, sys_tray=self.system_tray)

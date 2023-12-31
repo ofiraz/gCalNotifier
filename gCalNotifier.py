@@ -6,9 +6,13 @@ from globals import app_globals
 
 from system_tray import app_system_tray
 
+from signal_hanlder import set_signal_handlers
+
 # Main
-if __name__ == "__main__":
+if __name__ == "__main__":    
     g_globals = app_globals()
+
+    set_signal_handlers(g_globals.logger)
 
     # Start a thread to look for events to display
     start_time = None
@@ -19,8 +23,13 @@ if __name__ == "__main__":
 
     get_events_object = Get_Events(g_globals, start_time, end_time)
 
-    g_mdi_window = MDIWindow(g_globals)
+    use_mdi = False
 
-    sys_tray = app_system_tray(g_globals, g_mdi_window, get_events_object)
+    if (use_mdi):
+        g_mdi_window = MDIWindow(g_globals)
+    else:
+        g_mdi_window = None
+
+    sys_tray = app_system_tray(g_globals, use_mdi, g_mdi_window, get_events_object)
 
     g_globals.app.exec_()

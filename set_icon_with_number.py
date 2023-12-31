@@ -1,7 +1,7 @@
 from PIL import Image, ImageFont, ImageDraw
 from PyQt5 import QtGui
 
-def set_icon_with_number(app, number):
+def set_icon_with_number(app, number, sys_tray=None):
     background = 'icons8-calendar-64.png'
     output = 'icon-with-number.png'
 
@@ -20,4 +20,8 @@ def set_icon_with_number(app, number):
     else:
         output = background
 
-    app.setWindowIcon(QtGui.QIcon(output))
+    icon = QtGui.QIcon(output)
+    app.setWindowIcon(icon)
+
+    if (sys_tray):
+        sys_tray.setIcon(icon)

@@ -1,5 +1,3 @@
-import sys
-
 from PyQt5.QtWidgets import (
     QMainWindow, 
     QMdiArea, 
@@ -77,7 +75,7 @@ class MDIWindow(QMainWindow):
             self.mdi.tileSubWindows()
 
     def show_window_in_mdi(self, event_key_str, parsed_event):
-        event_win = EventWindow(self.globals, self)
+        event_win = EventWindow(self.globals, use_mdi=True, p_mdi_window=self)
 
         event_win.init_window_from_parsed_event(event_key_str, parsed_event)
         event_win.setFixedWidth(730)

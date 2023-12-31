@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (
-    QMainWindow, QMdiSubWindow
+    QMainWindow, QMdiSubWindow, QDesktopWidget
 )
 
 from PyQt5 import (
@@ -43,8 +43,9 @@ class EventWindow(QMainWindow, Ui_w_event):
     c_win_exit_reason = EXIT_REASON_NONE
     c_snooze_time_in_minutes = 0
 
-    def __init__(self, globals, p_mdi_window, parent=None):
+    def __init__(self, globals, use_mdi, p_mdi_window=None, parent=None):
         self.globals = globals
+        self.use_mdi = use_mdi
         self.c_mdi_window = p_mdi_window
 
         super().__init__(parent)
@@ -241,7 +242,7 @@ class EventWindow(QMainWindow, Ui_w_event):
         self.pb_open_video_and_dismiss.clicked.connect(self.open_video_and_dismiss)
 
     def handle_window_exit(self):
-        if isinstance(self.parent(), QMdiSubWindow):
+        if (isinstance(self.parent(), QMdiSubWindow) or (not self.use_mdi)):
             # MDI mode
 
             now_datetime = get_now_datetime()
@@ -280,7 +281,10 @@ class EventWindow(QMainWindow, Ui_w_event):
             # Remove the event from the presented events
             self.globals.displayed_events.remove_event(self.c_event_key_str)
 
-            self.parent().close()
+            if (self.use_mdi):
+                self.parent().close()
+            else:
+                self.close()
 
         else:
             self.globals.logger.info("Are we supposed to get here?")
@@ -377,11 +381,18 @@ class EventWindow(QMainWindow, Ui_w_event):
 
         if (l_changes_should_be_reflected):
             # There are changes that should be reflected - bring the window to the front
-            self.raise_()
             self.activateWindow()
+            self.raise_()
 
-            self.c_mdi_window.raise_()
-            self.c_mdi_window.activateWindow()
+            if (self.use_mdi):
+                self.c_mdi_window.raise_()
+                self.c_mdi_window.activateWindow()
+
+            else:
+                # Show the window on the main monitor
+                monitor = QDesktopWidget().screenGeometry(0)
+                self.move(monitor.left(), monitor.top())
+
 
         if (self.c_updated_label_post_end == False):
         # Not all controls that could have changed have already changed
