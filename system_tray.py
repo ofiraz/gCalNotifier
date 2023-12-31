@@ -4,19 +4,11 @@ from PyQt5.QtWidgets import (
     QAction
 )
 
-from PyQt5.QtGui import (
-    QIcon
-)
-
-from PyQt5 import QtGui
-
 from PyQt5 import QtCore
 
 from EventWindow import EventWindow
 
 from set_icon_with_number import set_icon_with_number
-
-APP_ICON = 'icons8-calendar-64.png'
 
 import sys
 
@@ -31,16 +23,14 @@ class app_system_tray:
         self.use_mdi = use_mdi
         self.mdi_window = mdi_window
         self.get_events_object = get_events_object
-
-        # Create the icon
-        icon = QIcon(APP_ICON)
-
-        # Create the app icon
-        self.globals.app.setWindowIcon(QtGui.QIcon(icon))
+        self.c_num_of_displayed_events = 0
 
         # Create the system_tray
         self.system_tray = QSystemTrayIcon()
-        self.system_tray.setIcon(icon)
+
+        # Set the app icon
+        self.update_app_icon()
+
         self.system_tray.setVisible(True)
 
         # Create the system_tray_menu
@@ -74,8 +64,6 @@ class app_system_tray:
         self.globals.app.setQuitOnLastWindowClosed(False) 
 
         if (not use_mdi):
-            self.c_num_of_displayed_events = 0
-
             self.globals.displayed_events.set_add_cb(self.add_event_to_display_cb)
             self.globals.displayed_events.set_remove_cb(self.remove_event_from_display_cb)
 
