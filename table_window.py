@@ -84,6 +84,8 @@ class Show_Events_Table_Window():
         self.table_window = TableWindow(self)
         self.table_window.show()
         self.table_window.setWindowTitle(self.window_title)
+        self.table_window.activateWindow()
+        self.table_window.raise_()
 
     def get_data_into_table(self):
         events_list = []
