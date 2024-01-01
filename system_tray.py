@@ -1,7 +1,8 @@
 from PyQt5.QtWidgets import (
     QSystemTrayIcon,
     QMenu,
-    QAction
+    QAction,
+    QMainWindow
 )
 
 from PyQt5 import QtCore
@@ -17,8 +18,10 @@ from pyqt_realtime_log_widget import LogWidget
 
 from table_window import Show_Snoozed_Events_Table_Window, Show_Dismissed_Events_Table_Window
 
-class app_system_tray:
+class app_system_tray(QMainWindow):
     def __init__(self, globals, use_mdi, mdi_window, get_events_object):
+        super(app_system_tray, self).__init__()
+
         self.globals = globals
         self.use_mdi = use_mdi
         self.mdi_window = mdi_window
@@ -26,7 +29,7 @@ class app_system_tray:
         self.c_num_of_displayed_events = 0
 
         # Create the system_tray
-        self.system_tray = QSystemTrayIcon()
+        self.system_tray = QSystemTrayIcon(self)
 
         # Set the app icon
         self.update_app_icon()
