@@ -160,4 +160,4 @@ class app_system_tray(QMainWindow):
         self.globals.app.quit()
 
     def update_app_icon(self):
-        set_icon_with_number(self.globals.app, self.c_num_of_displayed_events, sys_tray=self.system_tray)
+        set_icon_with_number(self.globals.app, self.c_num_of_displayed_events, sys_tray=self.system_tray, show_number_in_icon = True)
