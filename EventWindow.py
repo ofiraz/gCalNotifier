@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (
-    QMainWindow, QMdiSubWindow, QDesktopWidget
+    QMdiSubWindow, QDesktopWidget, QWidget
 )
 
 from PyQt5 import (
@@ -30,7 +30,7 @@ EXIT_REASON_CHANGED = 3
 EXIT_EVENT_ENDED_AND_NEED_TO_CLOSE_WINDOW = 4
 
 # The notification window
-class EventWindow(QMainWindow, Ui_w_event):
+class EventWindow(QWidget, Ui_w_event):
     c_snooze_buttons = {}
     c_parsed_event = {}
     c_event_key_str = ""
