@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import (
-    QMdiSubWindow, QDesktopWidget, QWidget
+    QDesktopWidget, QWidget
 )
 
 from PyQt5 import (
@@ -43,10 +43,8 @@ class EventWindow(QWidget, Ui_w_event):
     c_win_exit_reason = EXIT_REASON_NONE
     c_snooze_time_in_minutes = 0
 
-    def __init__(self, globals, use_mdi, p_mdi_window=None, parent=None):
+    def __init__(self, globals, parent=None):
         self.globals = globals
-        self.use_mdi = use_mdi
-        self.c_mdi_window = p_mdi_window
 
         super().__init__(parent)
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose)
@@ -242,53 +240,43 @@ class EventWindow(QWidget, Ui_w_event):
         self.pb_open_video_and_dismiss.clicked.connect(self.open_video_and_dismiss)
 
     def handle_window_exit(self):
-        if (isinstance(self.parent(), QMdiSubWindow) or (not self.use_mdi)):
-            # MDI mode
+        now_datetime = get_now_datetime()
 
-            now_datetime = get_now_datetime()
+        if (self.c_win_exit_reason == EXIT_REASON_NONE):
+            self.globals.events_logger.info("Event windows was closed by user - not snoozed or dismissed, for event: " + self.c_parsed_event['event_name'])
 
-            if (self.c_win_exit_reason == EXIT_REASON_NONE):
-                self.globals.events_logger.info("Event windows was closed by user - not snoozed or dismissed, for event: " + self.c_parsed_event['event_name'])
+        elif (self.c_win_exit_reason == EXIT_REASON_CHANGED):
+            self.globals.events_logger.info("Event windows was closed because there was a change in the event, for event: " + self.c_parsed_event['event_name'])
 
-            elif (self.c_win_exit_reason == EXIT_REASON_CHANGED):
-                self.globals.events_logger.info("Event windows was closed because there was a change in the event, for event: " + self.c_parsed_event['event_name'])
+        elif (self.c_win_exit_reason == EXIT_REASON_DISMISS):
+            self.globals.events_logger.info("Event dismissed by user, for event: " + self.c_parsed_event['event_name'])
 
-            elif (self.c_win_exit_reason == EXIT_REASON_DISMISS):
-                self.globals.events_logger.info("Event dismissed by user, for event: " + self.c_parsed_event['event_name'])
+            if (now_datetime < self.c_parsed_event['end_date']):
+                self.globals.events_to_dismiss.add_event(self.c_event_key_str, self.c_parsed_event)
 
-                if (now_datetime < self.c_parsed_event['end_date']):
-                    self.globals.events_to_dismiss.add_event(self.c_event_key_str, self.c_parsed_event)
-
-            elif (self.c_win_exit_reason == EXIT_REASON_SNOOZE):
-                self.globals.logger.debug("Snooze")
-                if (self.c_snooze_time_in_minutes <= 0):
-                    delta_diff = datetime.timedelta(minutes=abs(self.c_snooze_time_in_minutes))
-                    self.c_parsed_event['event_wakeup_time'] = self.c_parsed_event['start_date'] - delta_diff
-                else:
-                    delta_diff = datetime.timedelta(minutes=self.c_snooze_time_in_minutes)
-                    self.c_parsed_event['event_wakeup_time'] = now_datetime + delta_diff
-
-                self.globals.events_logger.info("Event snoozed by user, for event: " + self.c_parsed_event['event_name'] + " until " + str(self.c_parsed_event['event_wakeup_time']))
-                    
-                self.globals.events_to_snooze.add_event(self.c_event_key_str, self.c_parsed_event)
-
-            elif (self.c_win_exit_reason == EXIT_EVENT_ENDED_AND_NEED_TO_CLOSE_WINDOW):
-                self.globals.events_logger.info("Event windows was closed because the event has ended and it is set to automatically close at end, for event: " + self.c_parsed_event['event_name'])
-
+        elif (self.c_win_exit_reason == EXIT_REASON_SNOOZE):
+            self.globals.logger.debug("Snooze")
+            if (self.c_snooze_time_in_minutes <= 0):
+                delta_diff = datetime.timedelta(minutes=abs(self.c_snooze_time_in_minutes))
+                self.c_parsed_event['event_wakeup_time'] = self.c_parsed_event['start_date'] - delta_diff
             else:
-                self.globals.events_logger.error("Event windows was closed without a reason, for event: " + self.c_parsed_event['event_name'])
+                delta_diff = datetime.timedelta(minutes=self.c_snooze_time_in_minutes)
+                self.c_parsed_event['event_wakeup_time'] = now_datetime + delta_diff
 
-            # Remove the event from the presented events
-            self.globals.displayed_events.remove_event(self.c_event_key_str)
+            self.globals.events_logger.info("Event snoozed by user, for event: " + self.c_parsed_event['event_name'] + " until " + str(self.c_parsed_event['event_wakeup_time']))
+                
+            self.globals.events_to_snooze.add_event(self.c_event_key_str, self.c_parsed_event)
 
-            if (self.use_mdi):
-                self.parent().close()
-            else:
-                self.close()
+        elif (self.c_win_exit_reason == EXIT_EVENT_ENDED_AND_NEED_TO_CLOSE_WINDOW):
+            self.globals.events_logger.info("Event windows was closed because the event has ended and it is set to automatically close at end, for event: " + self.c_parsed_event['event_name'])
 
         else:
-            self.globals.logger.info("Are we supposed to get here?")
-            self.close()
+            self.globals.events_logger.error("Event windows was closed without a reason, for event: " + self.c_parsed_event['event_name'])
+
+        # Remove the event from the presented events
+        self.globals.displayed_events.remove_event(self.c_event_key_str)
+
+        self.close()
 
     def clickedDismiss(self):
         self.c_win_exit_reason = EXIT_REASON_DISMISS
@@ -307,10 +295,7 @@ class EventWindow(QWidget, Ui_w_event):
 
     def update_controls_based_on_event_time(self):
         if (self.c_window_closed):
-            if isinstance(self.parent(), QMdiSubWindow):
-                self.parent().close()
-            else:
-                self.close()
+            self.close()
 
             return
 
@@ -384,15 +369,9 @@ class EventWindow(QWidget, Ui_w_event):
             self.activateWindow()
             self.raise_()
 
-            if (self.use_mdi):
-                self.c_mdi_window.raise_()
-                self.c_mdi_window.activateWindow()
-
-            else:
-                # Show the window on the main monitor
-                monitor = QDesktopWidget().screenGeometry(0)
-                self.move(monitor.left(), monitor.top())
-
+            # Show the window on the main monitor
+            monitor = QDesktopWidget().screenGeometry(0)
+            self.move(monitor.left(), monitor.top())
 
         if (self.c_updated_label_post_end == False):
         # Not all controls that could have changed have already changed

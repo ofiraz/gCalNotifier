@@ -19,12 +19,10 @@ from pyqt_realtime_log_widget import LogWidget
 from table_window import Show_Snoozed_Events_Table_Window, Show_Dismissed_Events_Table_Window
 
 class app_system_tray(QMainWindow):
-    def __init__(self, globals, use_mdi, mdi_window, get_events_object):
+    def __init__(self, globals, get_events_object):
         super(app_system_tray, self).__init__()
 
         self.globals = globals
-        self.use_mdi = use_mdi
-        self.mdi_window = mdi_window
         self.get_events_object = get_events_object
         self.c_num_of_displayed_events = 0
 
@@ -66,15 +64,14 @@ class app_system_tray(QMainWindow):
         # Prevent the closing of the system tray when the last event window closes
         self.globals.app.setQuitOnLastWindowClosed(False) 
 
-        if (not use_mdi):
-            self.globals.displayed_events.set_add_cb(self.add_event_to_display_cb)
-            self.globals.displayed_events.set_remove_cb(self.remove_event_from_display_cb)
+        self.globals.displayed_events.set_add_cb(self.add_event_to_display_cb)
+        self.globals.displayed_events.set_remove_cb(self.remove_event_from_display_cb)
 
-            self.timer = QtCore.QTimer()
-            self.timer.timeout.connect(self.present_relevant_events_in_windows) 
-            self.timer.start(int(self.globals.config.refresh_frequency/2) * 1000)
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.present_relevant_events_in_windows) 
+        self.timer.start(int(self.globals.config.refresh_frequency/2) * 1000)
 
-            self.system_tray.show()
+        self.system_tray.show()
 
     def add_event_to_display_cb(self, parsed_event):
         self.c_num_of_displayed_events = self.c_num_of_displayed_events + 1
@@ -85,7 +82,7 @@ class app_system_tray(QMainWindow):
         self.update_app_icon()
 
     def show_window(self, event_key_str, parsed_event):
-        event_win = EventWindow(self.globals, use_mdi=False)
+        event_win = EventWindow(self.globals)
 
         event_win.init_window_from_parsed_event(event_key_str, parsed_event)
         event_win.setFixedWidth(730)
@@ -159,10 +156,6 @@ class app_system_tray(QMainWindow):
         self.globals.resest_is_needed()
 
     def quit_app(self):
-        if (self.use_mdi):
-            # Let the MDI window know that the app is closing
-            self.mdi_window.need_to_close_the_window()
-
         # Close the app
         self.globals.app.quit()
 

@@ -1,5 +1,3 @@
-from events_mdi_window import MDIWindow
-
 from get_events_thread import Get_Events
 
 from globals import app_globals
@@ -23,13 +21,6 @@ if __name__ == "__main__":
 
     get_events_object = Get_Events(g_globals, start_time, end_time)
 
-    use_mdi = False
-
-    if (use_mdi):
-        g_mdi_window = MDIWindow(g_globals)
-    else:
-        g_mdi_window = None
-
-    sys_tray = app_system_tray(g_globals, use_mdi, g_mdi_window, get_events_object)
+    sys_tray = app_system_tray(g_globals, get_events_object)
 
     g_globals.app.exec_()
