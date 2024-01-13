@@ -137,7 +137,7 @@ class app_system_tray(QMainWindow):
         self.logs_window = LogWidget(warn_before_close=False)
 
         filename = "/Users/ofir/git/personal/gCalNotifier/EventsLog.log"
-        comm = "tail -f " + filename
+        comm = "tail -n 1000 -f " + filename
 
         self.logs_window.setCommand(comm)
 
