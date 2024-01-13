@@ -13,12 +13,16 @@ if __name__ == "__main__":
     set_signal_handlers(g_globals.logger)
 
     # Start a thread to look for events to display
-    start_time = None
-    end_time = None
+    if (g_globals.config.do_debug):
+        # Need to debug a specific event
+        start_time = g_globals.config.debug_start_time
+        end_time = g_globals.config.debug_end_time
     
-    #start_time='2023-10-31T12:30:00-07:00' 
-    #end_time='2023-10-31T13:00:00-07:00'
-
+    else:
+        # Not a debug mode - monitor the coming events
+        start_time = None
+        end_time = None
+    
     get_events_object = Get_Events(g_globals, start_time, end_time)
 
     sys_tray = app_system_tray(g_globals, get_events_object)

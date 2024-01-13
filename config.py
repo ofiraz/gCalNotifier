@@ -25,3 +25,22 @@ class app_config:
         self.refresh_frequency = l_config.get("refresh frequency")
         if (not self.refresh_frequency):
             self.refresh_frequency = 30
+
+        self.do_debug = l_config.get("debug")
+        if ((not self.do_debug) or (self.do_debug == 0)):
+            self.do_debug = False
+
+        else:
+            # Need to do a debug of a specific event
+            self.do_debug = True
+
+            # Get the debug start and end time
+            self.debug_start_time = l_config.get("debug start time")
+            if (not self.debug_start_time):
+                print ("No \'debug start time\' defined while \'debug\' is set")
+                sys.exit()
+
+            self.debug_end_time = l_config.get("debug end time")
+            if (not self.debug_end_time):
+                print ("No \'debug end time\' defined while \'debug\' is set")
+                sys.exit()
