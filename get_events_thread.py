@@ -82,17 +82,24 @@ class Get_Events:
 
         new_all_events = Events_Collection(self.globals.logger, "new_all_events")
         
+        connectivity_issues = False
         for google_account in self.globals.config.google_accounts:
             for cal_for_account in google_account["calendar list"]:
                 self.globals.logger.debug(google_account["account name"] + " " + str(cal_for_account))
-                self.add_items_to_show_from_calendar(
-                    google_account["account name"], 
-                    cal_for_account['calendar name'], 
-                    cal_for_account['calendar id'],
-                    new_all_events, 
-                    is_reset_needed,
-                    start_time,
-                    end_time)
+
+                try:
+                    self.add_items_to_show_from_calendar(
+                        google_account["account name"], 
+                        cal_for_account['calendar name'], 
+                        cal_for_account['calendar id'],
+                        new_all_events, 
+                        is_reset_needed,
+                        start_time,
+                        end_time)
+
+                except ConnectivityIssue:
+                    # Having a connectivity issues - we will assume the events did not change in the g-cal
+                    connectivity_issues = True
 
         # Check if there are still items in the orig events collection - if so it means that those events do not exist in the events fetched from the calendars
         now_datetime = get_now_datetime()
@@ -102,10 +109,11 @@ class Get_Events:
             if (parsed_event == None):
                 break
 
-            if(is_reset_needed or (now_datetime < parsed_event['end_date'])):
+            if(is_reset_needed or ((not connectivity_issues) and (now_datetime < parsed_event['end_date']))):
                 # Two options here:
                 # 1. The user asked to reset all existing handling
-                # or 2. The event end time did not arrive yet, but it does not exist - i.e. got deleted
+                # or in the case there were no connection issues:
+                # 2. The event end time did not arrive yet, but it does not exist - i.e. got deleted
                 # In both cases we want to remove this event from all places and not add it again
 
                 if (parsed_event['is_dismissed']):
@@ -122,11 +130,13 @@ class Get_Events:
 
             else:
                 # The event has ended, and this is the reason we don't see it anymore - as our search is only for events from now on
-                if (parsed_event['is_dismissed']):
+                # It can also be due to connectivity issues where we could not get the events
+                if ((not connectivity_issues) and parsed_event['is_dismissed']):
                     # The event was dismissed - we don't to manage it anymore
                     self.dismissed_events.remove_event(event_key_str)
 
                 else: # If it is not dismissed - it is either snoozed or displayed, we will need to re look at it in the next loop
+                    # It can also be that due to connectivity issues we didn't get new info about the event, we will assume the item did not change
                     new_all_events.add_event(event_key_str, parsed_event)
 
                     if(parsed_event['is_snoozed']):
@@ -154,17 +164,7 @@ class Get_Events:
         self.globals.logger.debug("add_items_to_show_from_calendar for " + google_account)
 
         # Get the next coming events from the google calendar
-        try: # In progress - handling intermittent exception from the Google service
-            events = get_events_from_google_cal_with_try(self.globals.logger, google_account, cal_id, start_time, end_time)
-
-        except ConnectivityIssue:
-            # Having a connectivity issue - we will assume the event did not change in the g-cal
-            events = []
-
-        # Handled the snoozed events
-        if not events:
-            self.globals.logger.debug('No upcoming events found')
-            return
+        events = get_events_from_google_cal_with_try(self.globals.logger, google_account, cal_id, start_time, end_time)
 
         for event in events:
             self.globals.logger.debug(str(event))
@@ -187,6 +187,10 @@ class Get_Events:
 
             event_from_all_events = self.all_events[event_key_str]
             if(event_from_all_events != None):
+                if (google_account != event_from_all_events['google_account']):
+                    # This is the same event but from a different account - we will wait to see the event in the account that was used to store the event
+                    continue
+                
                 # We already handled this event in a previous run of the main loop
                 event_changed = has_raw_event_changed(
                     self.globals.logger,
@@ -227,6 +231,8 @@ class Get_Events:
                     continue
 
                 else: # The event has changed
+                    self.globals.logger.info("Event changed " + event_from_all_events['event_name'])
+
                     event_from_all_events['changed'] = True
                     
                     if (event_from_all_events['is_dismissed']):
