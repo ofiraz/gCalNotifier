@@ -106,7 +106,10 @@ def has_raw_event_changed(p_logger, orig_event, new_event):
 
             elif (key == 'iterable_item_added' or key == 'iterable_item_removed' or key == 'dictionary_item_added' or key == 'dictionary_item_removed'):
                 for key1 in diff_result[key]:
-                    if (key1 == "root['conferenceData']['signature']"):
+                    if ((key1 == "root['conferenceData']['signature']")
+                        #or (key1 == "root['organizer']['self']")
+                        #or (key1 == "root['creator']['self']")
+                        ):
                         # Not relevant changes
                         continue
                         
@@ -130,6 +133,11 @@ def has_raw_event_changed(p_logger, orig_event, new_event):
                     # Found a change
                     p_logger.info("Found a relevant change")
                     p_logger.info(key1)
+                    p_logger.info("orig_event")
+                    p_logger.info(nice_json(orig_event))
+                    p_logger.info("new_event")
+                    p_logger.info(nice_json(new_event))
+
                     return(True)
 
                 continue
