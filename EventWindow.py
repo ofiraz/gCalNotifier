@@ -89,7 +89,9 @@ class EventWindow(QWidget, Ui_w_event):
             self.handle_window_exit()
         
     # Identify the video meeting softwate via its URL
-    def identify_video_meeting_in_url(self, win_label, url, text_if_not_identified):
+    def identify_video_meeting_in_url(self, win_label, url, text_to_append_if_identified, text_if_not_identified):
+        identified_as_a_video_meeting = True
+
         if ("zoom.us" in url):
             label_text = "Zoom Link"
         elif ("webex.com" in url):
@@ -102,8 +104,15 @@ class EventWindow(QWidget, Ui_w_event):
             label_text = "AWS Chime Link"
         elif ("teams.microsoft.com" in url):
             label_text = "MS Teams Link"    
+        elif ("gather.town" in url):
+            label_text = "Gather Link"    
         else:
             label_text = text_if_not_identified
+            identified_as_a_video_meeting = False
+
+        if (identified_as_a_video_meeting):
+            # Add the text_to_append
+            label_text = label_text + " from " + text_to_append_if_identified
 
         win_label.setText("<a href=\"" + url + "\">" + label_text + "</a>")
         win_label.setOpenExternalLinks(True)
@@ -151,6 +160,7 @@ class EventWindow(QWidget, Ui_w_event):
                 self.identify_video_meeting_in_url(
                     self.l_location_or_video_link,
                     parsed_event['event_location'],
+                    "location",
                     "Link to location or to a video URL")
 
                 self.c_video_link = parsed_event['event_location']
@@ -164,6 +174,7 @@ class EventWindow(QWidget, Ui_w_event):
             self.identify_video_meeting_in_url(
                 self.l_video_link,
                 parsed_event['video_link'],
+                "description",
                 "Video Link")
 
             self.c_video_link = parsed_event['video_link']
