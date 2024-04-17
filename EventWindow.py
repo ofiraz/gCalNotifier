@@ -13,6 +13,7 @@ import validators
 import datetime
 
 import webbrowser
+import subprocess
 
 import re
 
@@ -390,7 +391,25 @@ class EventWindow(QWidget, Ui_w_event):
             self.timer.start(30 * 1000)
 
     def open_video(self):
-        webbrowser.open(self.c_video_link)
+        use_webbrowser = False
+    
+        if use_webbrowser:
+            webbrowser.open(self.c_video_link)
+
+        else:
+            # Decide on the Chrome profile to use
+            if (self.c_parsed_event['google_account'] == 'ofiraz@gmail.com'):
+                profile_name = 'Profile 1'
+            else:
+                profile_name = 'Profile 9'
+
+            browsewr_process = subprocess.Popen(
+                [
+                    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', 
+                    self.c_video_link,
+                    '--profile-directory=' + profile_name
+                ]
+            ) 
 
     def open_video_and_snooze(self):
         self.open_video()
