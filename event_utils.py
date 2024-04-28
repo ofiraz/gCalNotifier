@@ -167,6 +167,7 @@ video_links_reg_exs = [
     "(https://teams.microsoft.com/l/meetup-join/[a-zA-Z0-9-%_./?=]*)", # Teams 
     "[<>](https://[a-zA-Z0-9-]*\.webex\.com/[a-zA-Z0-9-]*/j\.php\?MTID=[a-zA-Z0-9-]*)[<>]", # Webex
     "(https://[a-zA-Z0-9-]*\.webex\.com/meet/[a-zA-Z0-9-\.]*)", # https://rbcteams.webex.com/meet/julian.sequeira
+    "(https://[a-zA-Z0-9-]*\.webex\.com/join/[a-zA-Z0-9-\.]*)", # https://rbcteams.webex.com/join/j
     "(https://chime.aws/[0-9]*)", # AWS Chimes
     "(https://meet.google.com/[a-z-]+)", # Google Meet
     "(https://app.gather.town/app/[a-zA-Z0-9-%_./?=]*)" # Gather
