@@ -18,6 +18,8 @@ from pyqt_realtime_log_widget import LogWidget
 
 from table_window import Show_Snoozed_Events_Table_Window, Show_Dismissed_Events_Table_Window
 
+from MultipleEventsWindow import *
+
 class app_system_tray(QMainWindow):
     def __init__(self, globals, get_events_object):
         super(app_system_tray, self).__init__()
@@ -25,6 +27,8 @@ class app_system_tray(QMainWindow):
         self.globals = globals
         self.get_events_object = get_events_object
         self.c_num_of_displayed_events = 0
+
+        self.multiple_events_windows = None
 
         # Create the system_tray
         self.system_tray = QSystemTrayIcon(self)
@@ -92,6 +96,15 @@ class app_system_tray(QMainWindow):
         event_win.activateWindow()
         event_win.raise_()
 
+        if (self.multiple_events_windows == None):
+            self.multiple_events_windows = MultipleEventsTable(parsed_event)
+
+        else:
+            self.multiple_events_windows.add_event(parsed_event)
+
+        self.multiple_events_windows.show()
+        self.multiple_events_windows.activateWindow()
+        self.multiple_events_windows.raise_()      
 
         self.globals.events_logger.info("Displaying event:" + parsed_event['event_name'])
 
