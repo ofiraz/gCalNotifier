@@ -92,12 +92,6 @@ if __name__ == "__main__":
     demo = TableWidgetDemo()
     demo.show()
     app.exec_()
-'''
-
-from PyQt5.QtWidgets import QApplication, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton, QLabel
-from PyQt5 import QtCore
-import subprocess
-from datetime_utils import get_now_datetime
 
 class TableWidgetDemo(QWidget):
     def __init__(self):
@@ -198,10 +192,20 @@ class TableWidgetDemo(QWidget):
         for column in range(self.table_widget.columnCount()):
             new_item = QTableWidgetItem(f"New Item {row_count},{column}")
             self.table_widget.setItem(row_count, column, new_item)
+'''
+
+from PyQt5.QtWidgets import QApplication, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton, QLabel, QComboBox
+from PyQt5 import QtCore
+import subprocess
+from datetime_utils import get_now_datetime
+from EventWindow import *
+import datetime
 
 class MultipleEventsTable(QWidget):
-    def __init__(self, parsed_event):
+    def __init__(self, globals, parsed_event):
         super().__init__()
+
+        self.globals = globals
 
         # Create QTableWidget with 1 row and 2 columns
         self.table_widget = QTableWidget(0, 2)
@@ -226,6 +230,13 @@ class MultipleEventsTable(QWidget):
         # Set the event to identify a new row selection
         self.table_widget.itemSelectionChanged.connect(self.on_selection_changed)
 
+        # Create a QComboBox for the available snooze items
+        self.snooze_times_combo_box = QComboBox()
+
+        # Create a button to snooze event
+        self.snooze_event_button = QPushButton("Snooze Event")
+        self.snooze_event_button.clicked.connect(self.on_snooze_event_clicked)
+
         # Create a button to present details on the event
         self.present_event_details_button = QPushButton("Present event details")
         self.present_event_details_button.clicked.connect(self.on_present_event_details_pressed)
@@ -236,18 +247,15 @@ class MultipleEventsTable(QWidget):
 
         self.items_added_by_add_button = 0
 
-        # Create a button to add a new event
-        self.add_event_button = QPushButton("Add Event")
-        self.add_event_button.clicked.connect(self.on_add_new_event_clicked)
-
         # Add the new event
         self.add_event(parsed_event)
         
         layout = QVBoxLayout()
         layout.addWidget(self.table_widget)
+        layout.addWidget(self.snooze_times_combo_box)
+        layout.addWidget(self.snooze_event_button)
         layout.addWidget(self.present_event_details_button)
         layout.addWidget(self.dismiss_event_button)
-        layout.addWidget(self.add_event_button)
 
         self.setLayout(layout)
 
@@ -257,12 +265,42 @@ class MultipleEventsTable(QWidget):
         # Set timer to wake up in a minute
         self.timer.start(60 * 1000)
 
+    def set_snooze_times_for_event(self):
+        snooze_times = [ 
+            ( -10, "10 minutes before start" ) ,
+            ( -5, "5 minutes before start" ) ,
+            ( -2, "2 minutes before start" ) ,
+            ( -1, "1 minute before start" ) ,
+            ( 0, "at start" ) ,
+            ( 1, "For 1 minute" ) ,
+            ( 5, "For 5 minutes" ) ,
+            ( 15, "For 15 minutes" ) ,
+            ( 30, "For 30 minutes" ) ,
+            ( 60, "For 1 hour" ) ,
+            ( 120, "For 2 hours" ) ,
+            ( 240, "For 4 hours" ) ,
+            ( 480, "For 8 hours" )
+        ]
+
+        snooze_times_strings_for_combo_box = []
+        self.snooze_times_in_minutes = []
+
+        for index in range(len(snooze_times)):
+            snooze_times_strings_for_combo_box.append(snooze_times[index][1])
+            self.snooze_times_in_minutes.append(snooze_times[index][0])
+
+        self.snooze_times_combo_box.clear()
+        self.snooze_times_combo_box.addItems(snooze_times_strings_for_combo_box)
+
     def on_selection_changed(self):
         # Get the index of the current selected row
         selected_row = self.table_widget.currentRow()
         
         if selected_row != -1:  # -1 means no row is selected
             print(f"Selected Row: {selected_row}")
+
+            self.set_snooze_times_for_event()
+
         else:
             print("Selected Row: None")
 
@@ -320,6 +358,7 @@ class MultipleEventsTable(QWidget):
 
         if (row_count == 0):
             self.select_event(0)
+            self.set_snooze_times_for_event()
 
     def select_event(self, row_number):
         self.table_widget.selectRow(row_number)
@@ -342,10 +381,20 @@ class MultipleEventsTable(QWidget):
     def on_present_event_details_pressed(self):
         # Get the index of the current selected row
         selected_row = self.table_widget.currentRow()
-        
+
         if selected_row != -1:  # -1 means no row is selected
             print(f"Presenting information about the item in row: {selected_row}")
-            self.open_event_url(self.parsed_events[selected_row])
+
+            event_win = EventWindow(self.globals)
+
+            event_win.init_window_from_parsed_event(self.parsed_events[selected_row]['event_key_str'], self.parsed_events[selected_row])
+            event_win.setFixedWidth(730)
+            event_win.setFixedHeight(650)
+
+            event_win.show()
+            event_win.activateWindow()
+            event_win.raise_()
+
         else:
             print("Selected Row: None")
 
@@ -362,13 +411,41 @@ class MultipleEventsTable(QWidget):
         else:
             print("Selected Row: None")
 
-    def on_add_new_event_clicked(self):
-        self.items_added_by_add_button = self.items_added_by_add_button + 1
+    def on_snooze_event_clicked(self):
+        # Get the index of the current selected row
+        selected_row = self.table_widget.currentRow()
 
-        event_name = "Event " + str(self.items_added_by_add_button)
-        time_left = str(self.items_added_by_add_button) + " minutes"
+        if selected_row != -1:  # -1 means no row is selected
+            print(self.snooze_times_combo_box.currentText())
 
-        self.add_event(event_name, time_left)
+            snooze_time_in_minutes = self.snooze_times_in_minutes[self.snooze_times_combo_box.currentIndex()]
+            print(snooze_time_in_minutes)
+
+            parsed_event = self.parsed_events[selected_row]
+
+            self.globals.logger.debug("Snooze")
+
+            now_datetime = get_now_datetime()
+
+            if (snooze_time_in_minutes <= 0):
+                delta_diff = datetime.timedelta(minutes=abs(snooze_time_in_minutes))
+                parsed_event['event_wakeup_time'] = parsed_event['start_date'] - delta_diff
+            else:
+                delta_diff = datetime.timedelta(minutes=snooze_time_in_minutes)
+                parsed_event['event_wakeup_time'] = now_datetime + delta_diff
+
+            self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event['event_name'] + " until " + str(parsed_event['event_wakeup_time']))
+                
+            self.globals.events_to_snooze.add_event(self.parsed_events[selected_row]['event_key_str'], parsed_event)
+
+            self.globals.displayed_events.remove_event(self.parsed_events[selected_row]['event_key_str'])
+
+            self.table_widget.removeRow(selected_row)
+
+            del self.parsed_events[selected_row]
+
+        else:
+            print("Selected Row: None")
 
     def update_display_on_timer(self):
         for row in range(self.table_widget.rowCount()):

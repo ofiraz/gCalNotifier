@@ -86,6 +86,7 @@ class app_system_tray(QMainWindow):
         self.update_app_icon()
 
     def show_window(self, event_key_str, parsed_event):
+        '''
         event_win = EventWindow(self.globals)
 
         event_win.init_window_from_parsed_event(event_key_str, parsed_event)
@@ -95,9 +96,10 @@ class app_system_tray(QMainWindow):
         event_win.show()
         event_win.activateWindow()
         event_win.raise_()
+        '''
 
         if (self.multiple_events_windows == None):
-            self.multiple_events_windows = MultipleEventsTable(parsed_event)
+            self.multiple_events_windows = MultipleEventsTable(self.globals, parsed_event)
 
         else:
             self.multiple_events_windows.add_event(parsed_event)
