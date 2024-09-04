@@ -247,6 +247,7 @@ class Get_Events:
                     self.all_events.remove_event(event_key_str)
 
             # Event not in the any other list
+            parsed_event['event_key_str'] = event_key_str
             parsed_event['raw_event'] = event
             parsed_event['event_name'] = event.get('summary', '(No title)')
             parsed_event['google_account'] = google_account
