@@ -321,12 +321,19 @@ class MultipleEventsTable(QWidget):
         self.snooze_times_combo_box.clear()
         self.snooze_times_combo_box.addItems(snooze_times_strings_for_combo_box)
 
+    def hide_event_details_if_needed(self):
+        if (self.show_event_details == True):
+            self.hide_event_details()
+
     def on_selection_changed(self):
         # Get the index of the current selected row
         selected_row = self.table_widget.currentRow()
         
         if selected_row != -1:  # -1 means no row is selected
             print(f"Selected Row: {selected_row}")
+
+            # Hiding the details of the previously selected event
+            self.hide_event_details_if_needed()
 
             self.set_snooze_times_for_event(self.parsed_events[selected_row])
 
@@ -392,21 +399,6 @@ class MultipleEventsTable(QWidget):
     def select_event(self, row_number):
         self.table_widget.selectRow(row_number)
 
-    def open_event_url(self, parsed_event):
-        # Decide on the Chrome profile to use
-        if (parsed_event['google_account'] == 'ofiraz@gmail.com'):
-            profile_name = 'Profile 1'
-        else:
-            profile_name = 'Profile 9'
-
-        subprocess.Popen(
-            [
-                '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', 
-                parsed_event['html_link'],
-                '--profile-directory=' + profile_name
-            ]
-        ) 
-    
     def on_present_event_details_pressed(self):
         # Get the index of the current selected row
         selected_row = self.table_widget.currentRow()
@@ -427,15 +419,22 @@ class MultipleEventsTable(QWidget):
         else:
             print("Selected Row: None")
 
+    def remove_event(self, selected_row):
+        # Hiding the details of the event if they were presented
+        self.hide_event_details_if_needed()
+
+        self.table_widget.removeRow(selected_row)
+
+        del self.parsed_events[selected_row]
+
     def on_clear_event_pressed(self):
         # Get the index of the current selected row
         selected_row = self.table_widget.currentRow()
 
         if selected_row != -1:  # -1 means no row is selected
             print(f"Clear event in row: {selected_row}")
-            self.table_widget.removeRow(selected_row)
 
-            del self.parsed_events[selected_row]
+            self.remove_event(selected_row)
 
         else:
             print("Selected Row: None")
@@ -469,9 +468,7 @@ class MultipleEventsTable(QWidget):
 
             self.globals.displayed_events.remove_event(self.parsed_events[selected_row]['event_key_str'])
 
-            self.table_widget.removeRow(selected_row)
-
-            del self.parsed_events[selected_row]
+            self.remove_event(selected_row)
 
         else:
             print("Selected Row: None")
@@ -492,9 +489,7 @@ class MultipleEventsTable(QWidget):
 
             self.globals.displayed_events.remove_event(parsed_event['event_key_str'])
 
-            self.table_widget.removeRow(selected_row)
-
-            del self.parsed_events[selected_row]
+            self.remove_event(selected_row)
 
         else:
             print("Selected Row: None")
@@ -652,9 +647,7 @@ class MultipleEventsTable(QWidget):
 
             self.globals.displayed_events.remove_event(self.parsed_events[selected_row]['event_key_str'])
 
-            self.table_widget.removeRow(selected_row)
-
-            del self.parsed_events[selected_row]
+            self.remove_event(selected_row)
 
         else:
             print("Selected Row: None")
@@ -722,6 +715,9 @@ class MultipleEventsTable(QWidget):
 
 
     def hide_event_details(self):
+        self.show_hide_event_details_button.setText("Show event details")
+        self.show_event_details = False
+
         layout = self.layout()  # Retrieve the layout using layout()
 
         while self.event_widgets:
@@ -752,9 +748,6 @@ class MultipleEventsTable(QWidget):
                 print("Selected Row: None")
 
         else:
-            self.show_hide_event_details_button.setText("Show event details")
-            self.show_event_details = False
-
             self.hide_event_details()
 
 if __name__ == "__main__":
