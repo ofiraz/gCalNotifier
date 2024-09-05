@@ -628,6 +628,38 @@ class MultipleEventsTable(QWidget):
         else:
             print("Selected Row: None")
 
+    def open_video_and_snooze(self):
+        # Get the index of the current selected row
+        selected_row = self.table_widget.currentRow()
+
+        if selected_row != -1:  # -1 means no row is selected
+            self.open_video()
+
+            if (self.need_to_record_meeting):
+                self.c_snooze_time_in_minutes = 1
+            else:
+                self.c_snooze_time_in_minutes = 5
+
+            parsed_event = self.parsed_events[selected_row]
+            now_datetime = get_now_datetime()
+
+            delta_diff = datetime.timedelta(minutes=self.c_snooze_time_in_minutes)
+            parsed_event['event_wakeup_time'] = now_datetime + delta_diff
+
+            self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event['event_name'] + " until " + str(parsed_event['event_wakeup_time']))
+
+            self.globals.events_to_snooze.add_event(self.parsed_events[selected_row]['event_key_str'], parsed_event)
+
+            self.globals.displayed_events.remove_event(self.parsed_events[selected_row]['event_key_str'])
+
+            self.table_widget.removeRow(selected_row)
+
+            del self.parsed_events[selected_row]
+
+        else:
+            print("Selected Row: None")
+        
+
     def present_event_details(self, parsed_event):
         self.event_widgets = []
 
@@ -677,6 +709,17 @@ class MultipleEventsTable(QWidget):
                 self.open_video
             )
 
+            if (self.need_to_record_meeting):
+                open_video_and_snooze_text = "and snooze for 1 min"
+            else:
+                open_video_and_snooze_text = "and snooze for 5 min"
+
+            self.add_button(
+                open_video_and_snooze_text,
+                self.open_video_and_snooze
+            )
+
+
 
     def hide_event_details(self):
         layout = self.layout()  # Retrieve the layout using layout()
@@ -693,26 +736,26 @@ class MultipleEventsTable(QWidget):
             self.resize(current_size.width(), new_height)  # Set the new window size
 
     def on_show_hide_event_details_pressed(self):
-        # Get the index of the current selected row
-        selected_row = self.table_widget.currentRow()
+        if (self.show_event_details == False):
+            # Get the index of the current selected row
+            selected_row = self.table_widget.currentRow()
 
-        if selected_row != -1:  # -1 means no row is selected
-            if (self.show_event_details == False):
+            if selected_row != -1:  # -1 means no row is selected
                 self.show_hide_event_details_button.setText("Hide event details")
                 self.show_event_details = True
 
                 parsed_event = self.parsed_events[selected_row]
 
-                self.present_event_details(parsed_event)
-            
-            else:
-                self.show_hide_event_details_button.setText("Show event details")
-                self.show_event_details = False
+                self.present_event_details(parsed_event)          
 
-                self.hide_event_details()
+            else:
+                print("Selected Row: None")
 
         else:
-            print("Selected Row: None")
+            self.show_hide_event_details_button.setText("Show event details")
+            self.show_event_details = False
+
+            self.hide_event_details()
 
 if __name__ == "__main__":
     app = QApplication([])
