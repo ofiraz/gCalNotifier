@@ -301,6 +301,12 @@ class MultipleEventsTable(QWidget):
         snooze_times_strings_for_combo_box = []
         self.snooze_times_in_minutes = []
 
+        default_snooze = parsed_event.get('default_snooze', False)
+        if (default_snooze):
+            # Add the default snooze as the first item
+            snooze_times_strings_for_combo_box.append("Default " + default_snooze + " minutes")
+            self.snooze_times_in_minutes.append(int(default_snooze))
+
         now_datetime = get_now_datetime()
         if (parsed_event['start_date'] > now_datetime):
             # Event start did not arrive yet - hide all before snooze buttons that are not relevant anymore

@@ -216,6 +216,12 @@ def parse_event_description(p_logger, meeting_description, parsed_event):
         if close_event_window_when_event_has_ended:
             parsed_event['close_event_window_when_event_has_ended'] = True
 
+        default_snoozed = re.search(
+            "default_snooze:([0-9]+)", 
+            meeting_description) 
+        if default_snoozed:
+            parsed_event['default_snooze'] = default_snoozed.group(1)
+    
     else:
         parsed_event['description'] = "No description"
         
