@@ -433,6 +433,10 @@ class MultipleEventsTable(QWidget):
 
         del self.parsed_events[selected_row]
 
+        # Close the windows if there are no more events presneted
+        if (self.table_widget.rowCount() == 0):
+            self.close()
+
     def on_clear_event_pressed(self):
         # Get the index of the current selected row
         selected_row = self.table_widget.currentRow()
@@ -518,9 +522,6 @@ class MultipleEventsTable(QWidget):
 
         if selected_row != -1:  # -1 means no row is selected
             self.set_snooze_times_for_event(self.parsed_events[selected_row])
-
-        else:
-            print("Selected Row: None")
 
         # Sleep for another minute
         self.timer.start(60 * 1000)
