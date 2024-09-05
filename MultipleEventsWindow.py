@@ -249,6 +249,12 @@ class MultipleEventsTable(QWidget):
         self.clear_event_button = QPushButton("Clear")
         self.clear_event_button.clicked.connect(self.on_clear_event_pressed)
 
+        # Create a button to show or hide the details on the event
+        self.show_event_details = False
+        self.show_hide_event_details_button = QPushButton("Show event details")
+        self.show_hide_event_details_button.clicked.connect(self.on_show_hide_event_details_pressed)
+
+
         self.items_added_by_add_button = 0
 
         # Add the new event
@@ -261,6 +267,7 @@ class MultipleEventsTable(QWidget):
         layout.addWidget(self.present_event_details_button)
         layout.addWidget(self.dismiss_event_button)
         layout.addWidget(self.clear_event_button)
+        layout.addWidget(self.show_hide_event_details_button)
 
         self.setLayout(layout)
 
@@ -514,6 +521,59 @@ class MultipleEventsTable(QWidget):
 
         # Sleep for another minute
         self.timer.start(60 * 1000)
+
+    def add_label(self, label_text):
+        # Increase the window height
+        current_size = self.size()  # Get the current window size
+        new_height = current_size.height() + 25  # Increase the height by 50 pixels
+        self.resize(current_size.width(), new_height)  # Set the new window size
+
+        layout = self.layout()  # Retrieve the layout using layout()
+        new_label = QLabel(label_text)  # Create a new QLabel
+        layout.addWidget(new_label)  # Add the new label to the layout
+
+        self.event_widgets.append(new_label)
+
+    def present_event_details(self, parsed_event):
+        self.event_widgets = []
+
+        self.add_label(parsed_event['cal name'] + " calendar in " + parsed_event['google_account'])
+
+    def hide_event_details(self):
+        layout = self.layout()  # Retrieve the layout using layout()
+
+        while self.event_widgets:
+            event_widget = self.event_widgets.pop()
+
+            layout.removeWidget(event_widget)
+            event_widget.deleteLater()
+
+            # Decrease the window height
+            current_size = self.size()  # Get the current window size
+            new_height = current_size.height() - 25  # Increase the height by 50 pixels
+            self.resize(current_size.width(), new_height)  # Set the new window size
+
+    def on_show_hide_event_details_pressed(self):
+        # Get the index of the current selected row
+        selected_row = self.table_widget.currentRow()
+
+        if selected_row != -1:  # -1 means no row is selected
+            if (self.show_event_details == False):
+                self.show_hide_event_details_button.setText("Hide event details")
+                self.show_event_details = True
+
+                parsed_event = self.parsed_events[selected_row]
+
+                self.present_event_details(parsed_event)
+            
+            else:
+                self.show_hide_event_details_button.setText("Show event details")
+                self.show_event_details = False
+
+                self.hide_event_details()
+
+        else:
+            print("Selected Row: None")
 
 if __name__ == "__main__":
     app = QApplication([])
