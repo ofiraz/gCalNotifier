@@ -245,6 +245,10 @@ class MultipleEventsTable(QWidget):
         self.dismiss_event_button = QPushButton("Dismiss")
         self.dismiss_event_button.clicked.connect(self.on_dismiss_event_pressed)
 
+        # Create a clear event button - when we snooze or dismiss in the event window - to be removed eventually
+        self.clear_event_button = QPushButton("Clear")
+        self.clear_event_button.clicked.connect(self.on_clear_event_pressed)
+
         self.items_added_by_add_button = 0
 
         # Add the new event
@@ -256,6 +260,7 @@ class MultipleEventsTable(QWidget):
         layout.addWidget(self.snooze_event_button)
         layout.addWidget(self.present_event_details_button)
         layout.addWidget(self.dismiss_event_button)
+        layout.addWidget(self.clear_event_button)
 
         self.setLayout(layout)
 
@@ -413,12 +418,12 @@ class MultipleEventsTable(QWidget):
         else:
             print("Selected Row: None")
 
-    def on_dismiss_event_pressed(self):
+    def on_clear_event_pressed(self):
         # Get the index of the current selected row
         selected_row = self.table_widget.currentRow()
 
         if selected_row != -1:  # -1 means no row is selected
-            print(f"Dismiss event in row: {selected_row}")
+            print(f"Clear event in row: {selected_row}")
             self.table_widget.removeRow(selected_row)
 
             del self.parsed_events[selected_row]
@@ -454,6 +459,29 @@ class MultipleEventsTable(QWidget):
             self.globals.events_to_snooze.add_event(self.parsed_events[selected_row]['event_key_str'], parsed_event)
 
             self.globals.displayed_events.remove_event(self.parsed_events[selected_row]['event_key_str'])
+
+            self.table_widget.removeRow(selected_row)
+
+            del self.parsed_events[selected_row]
+
+        else:
+            print("Selected Row: None")
+
+    def on_dismiss_event_pressed(self):
+        # Get the index of the current selected row
+        selected_row = self.table_widget.currentRow()
+
+        if selected_row != -1:  # -1 means no row is selected
+            print(f"Dismiss event in row: {selected_row}")
+
+            now_datetime = get_now_datetime()
+
+            parsed_event = self.parsed_events[selected_row]
+
+            if (now_datetime < parsed_event['end_date']):
+                self.globals.events_to_dismiss.add_event(parsed_event['event_key_str'], parsed_event)
+
+            self.globals.displayed_events.remove_event(parsed_event['event_key_str'])
 
             self.table_widget.removeRow(selected_row)
 
