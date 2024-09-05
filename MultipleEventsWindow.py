@@ -265,13 +265,15 @@ class MultipleEventsTable(QWidget):
         # Set timer to wake up in a minute
         self.timer.start(60 * 1000)
 
-    def set_snooze_times_for_event(self):
-        snooze_times = [ 
-            ( -10, "10 minutes before start" ) ,
+    def set_snooze_times_for_event(self, parsed_event):
+        snooze_times_before = [ 
             ( -5, "5 minutes before start" ) ,
             ( -2, "2 minutes before start" ) ,
             ( -1, "1 minute before start" ) ,
-            ( 0, "at start" ) ,
+            ( 0, "at start" )
+        ]
+
+        snooze_times_future = [ 
             ( 1, "For 1 minute" ) ,
             ( 5, "For 5 minutes" ) ,
             ( 15, "For 15 minutes" ) ,
@@ -285,9 +287,22 @@ class MultipleEventsTable(QWidget):
         snooze_times_strings_for_combo_box = []
         self.snooze_times_in_minutes = []
 
-        for index in range(len(snooze_times)):
-            snooze_times_strings_for_combo_box.append(snooze_times[index][1])
-            self.snooze_times_in_minutes.append(snooze_times[index][0])
+        now_datetime = get_now_datetime()
+        if (parsed_event['start_date'] > now_datetime):
+            # Event start did not arrive yet - hide all before snooze buttons that are not relevant anymore
+            time_to_event_start = parsed_event['start_date'] - now_datetime
+            time_to_event_in_minutes = int(time_to_event_start.seconds / 60)
+
+            for index in range(len(snooze_times_before)):
+                snooze_time = snooze_times_before[index][0]
+
+                if (abs(snooze_time) < time_to_event_in_minutes):
+                    snooze_times_strings_for_combo_box.append(snooze_times_before[index][1])
+                    self.snooze_times_in_minutes.append(snooze_time)
+
+        for index in range(len(snooze_times_future)):
+            snooze_times_strings_for_combo_box.append(snooze_times_future[index][1])
+            self.snooze_times_in_minutes.append(snooze_times_future[index][0])
 
         self.snooze_times_combo_box.clear()
         self.snooze_times_combo_box.addItems(snooze_times_strings_for_combo_box)
@@ -299,7 +314,7 @@ class MultipleEventsTable(QWidget):
         if selected_row != -1:  # -1 means no row is selected
             print(f"Selected Row: {selected_row}")
 
-            self.set_snooze_times_for_event()
+            self.set_snooze_times_for_event(self.parsed_events[selected_row])
 
         else:
             print("Selected Row: None")
@@ -358,7 +373,7 @@ class MultipleEventsTable(QWidget):
 
         if (row_count == 0):
             self.select_event(0)
-            self.set_snooze_times_for_event()
+            self.set_snooze_times_for_event(self.parsed_events[0])
 
     def select_event(self, row_number):
         self.table_widget.selectRow(row_number)
@@ -459,6 +474,15 @@ class MultipleEventsTable(QWidget):
 
         # Update the 2nd column width
         self.table_widget.resizeColumnToContents(1)
+
+        # Update the snooze times in the combo box for the selected row
+        selected_row = self.table_widget.currentRow()
+
+        if selected_row != -1:  # -1 means no row is selected
+            self.set_snooze_times_for_event(self.parsed_events[selected_row])
+
+        else:
+            print("Selected Row: None")
 
         # Sleep for another minute
         self.timer.start(60 * 1000)
