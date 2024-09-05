@@ -200,6 +200,8 @@ import subprocess
 from datetime_utils import get_now_datetime
 from EventWindow import *
 import datetime
+import validators
+
 
 class MultipleEventsTable(QWidget):
     def __init__(self, globals, parsed_event):
@@ -522,22 +524,159 @@ class MultipleEventsTable(QWidget):
         # Sleep for another minute
         self.timer.start(60 * 1000)
 
-    def add_label(self, label_text):
-        # Increase the window height
+    def increase_window_height(self):
         current_size = self.size()  # Get the current window size
         new_height = current_size.height() + 25  # Increase the height by 50 pixels
         self.resize(current_size.width(), new_height)  # Set the new window size
 
+    def add_label(self, label_text, highlight = False):
+        self.increase_window_height()
+
         layout = self.layout()  # Retrieve the layout using layout()
         new_label = QLabel(label_text)  # Create a new QLabel
+
+        if (highlight):
+            new_label.setAutoFillBackground(True) # This is important!!
+            color  = QtGui.QColor(233, 10, 150)
+            alpha  = 140
+            values = "{r}, {g}, {b}, {a}".format(r = color.red(),
+                                                g = color.green(),
+                                                b = color.blue(),
+                                                a = alpha
+                                                )
+            new_label.setStyleSheet("QLabel { background-color: rgba("+values+"); }")
+
         layout.addWidget(new_label)  # Add the new label to the layout
 
         self.event_widgets.append(new_label)
 
+    def add_link_label(self, label_text, tooltip_text):
+        self.increase_window_height()
+
+        layout = self.layout()  # Retrieve the layout using layout()
+        new_label = QLabel(label_text)  # Create a new QLabel
+        new_label.setToolTip(tooltip_text)
+
+        # Enable automatic opening of external links
+        new_label.setOpenExternalLinks(True)
+
+        layout.addWidget(new_label)  # Add the new label to the layout
+
+        self.event_widgets.append(new_label)
+
+    # Identify the video meeting softwate via its URL
+    def identify_video_meeting_in_url(self, url, text_to_append_if_identified, text_if_not_identified):
+        identified_as_a_video_meeting = True
+
+        if ("zoom.us" in url):
+            label_text = "Zoom Link"
+        elif ("webex.com" in url):
+            label_text = "Webex Link"
+        elif ("meet.google.com" in url):
+            label_text = "Google Meet Link"
+        elif ("bluejeans.com" in url):
+            label_text = "BlueJeans Link"
+        elif ("chime.aws" in url):
+            label_text = "AWS Chime Link"
+        elif ("teams.microsoft.com" in url):
+            label_text = "MS Teams Link"    
+        elif ("gather.town" in url):
+            label_text = "Gather Link"    
+        else:
+            label_text = text_if_not_identified
+            identified_as_a_video_meeting = False
+
+        if (identified_as_a_video_meeting):
+            # Add the text_to_append
+            label_text = label_text + " from " + text_to_append_if_identified
+
+        self.add_link_label(
+            "<a href=\"" + url + "\">" + label_text + "</a>",
+            url
+        )
+
+    def add_button(self, button_text, button_callback):
+        self.increase_window_height()
+
+        layout = self.layout()  # Retrieve the layout using layout()
+        new_button = QPushButton(button_text)  # Create a new button
+        new_button.clicked.connect(button_callback)
+
+        layout.addWidget(new_button)  # Add the new button to the layout
+
+        self.event_widgets.append(new_button)
+
+    def open_video(self):
+        # Get the index of the current selected row
+        selected_row = self.table_widget.currentRow()
+
+        if selected_row != -1:  # -1 means no row is selected
+            # Decide on the Chrome profile to use
+            if (self.parsed_events[selected_row]['google_account'] == 'ofiraz@gmail.com'):
+                profile_name = 'Profile 1'
+            else:
+                profile_name = 'Profile 9'
+
+            subprocess.Popen(
+                [
+                    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', 
+                    self.c_video_link,
+                    '--profile-directory=' + profile_name
+                ]
+            ) 
+
+        else:
+            print("Selected Row: None")
+
     def present_event_details(self, parsed_event):
         self.event_widgets = []
 
+        self.need_to_record_meeting = parsed_event.get('need_to_record_meeting', False)
+        if (self.need_to_record_meeting):
+            self.add_label("Remember to record!!!", highlight=True)
+
         self.add_label(parsed_event['cal name'] + " calendar in " + parsed_event['google_account'])
+
+        if parsed_event['all_day_event']:
+            self.add_label("An all day event")
+
+        parsed_event['start_time_in_loacal_tz'] = str(parsed_event['start_date'].astimezone(get_localzone()))
+        parsed_event['end_time_in_loacal_tz'] = str(parsed_event['end_date'].astimezone(get_localzone()))
+
+        self.add_label('Starting at ' + parsed_event['start_time_in_loacal_tz'])
+        self.add_label('Ending at ' + parsed_event['end_time_in_loacal_tz'])
+
+        self.add_link_label(
+            "<a href=\"" + parsed_event['html_link'] + "\">Link to event in GCal</a>",
+            parsed_event['html_link']
+        )
+
+        if (parsed_event['event_location'] != "No location"):
+            valid_url = validators.url(parsed_event['event_location'])
+            if (valid_url):
+                self.identify_video_meeting_in_url(
+                    parsed_event['event_location'],
+                    "location",
+                    "Link to location or to a video URL")
+
+                self.c_video_link = parsed_event['event_location']
+
+            else:
+                self.add_label('Location: ' + parsed_event['event_location'])
+
+        if (parsed_event['video_link'] != "No Video"):
+            self.identify_video_meeting_in_url(
+                parsed_event['video_link'],
+                "description",
+                "Video Link")
+
+            self.c_video_link = parsed_event['video_link']
+
+            self.add_button(
+                "Open Video",
+                self.open_video
+            )
+
 
     def hide_event_details(self):
         layout = self.layout()  # Retrieve the layout using layout()
