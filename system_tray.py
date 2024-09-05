@@ -2,7 +2,8 @@ from PyQt5.QtWidgets import (
     QSystemTrayIcon,
     QMenu,
     QAction,
-    QMainWindow
+    QMainWindow,
+    QDesktopWidget
 )
 
 from PyQt5 import QtCore
@@ -103,6 +104,12 @@ class app_system_tray(QMainWindow):
 
         else:
             self.multiple_events_windows.add_event(parsed_event)
+
+        self.multiple_events_windows.setFixedWidth(730)
+
+        # Show the window on the main monitor
+        monitor = QDesktopWidget().screenGeometry(0)
+        self.multiple_events_windows.move(monitor.left(), monitor.top())
 
         self.multiple_events_windows.show()
         self.multiple_events_windows.activateWindow()
