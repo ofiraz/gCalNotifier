@@ -706,6 +706,8 @@ class MultipleEventsTable(QWidget):
 
             self.c_video_link = parsed_event['video_link']
 
+        if (self.c_video_link != ""):
+            # There is a video link - add the needed buttons
             self.add_button(
                 "Open Video",
                 self.open_video
