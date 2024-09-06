@@ -663,6 +663,8 @@ class MultipleEventsTable(QWidget):
     def present_event_details(self, parsed_event):
         self.event_widgets = []
 
+        self.c_video_link = ""
+
         self.need_to_record_meeting = parsed_event.get('need_to_record_meeting', False)
         if (self.need_to_record_meeting):
             self.add_label("Remember to record!!!", highlight=True)
@@ -719,6 +721,18 @@ class MultipleEventsTable(QWidget):
                 self.open_video_and_snooze
             )
 
+        if ((self.c_video_link == "") and (parsed_event['num_of_attendees'] > 1)):
+        # Num of attendees > 1 and no video link
+            # We expect a video link as there are multiple attendees for this meeting
+
+            # Let's check if we have our special sign
+            is_no_video_ok = re.search(
+                'NO_VIDEO_OK',
+                parsed_event['description'])
+
+            if (not is_no_video_ok):
+                # We need to show the missing video message
+                self.add_label("There are multiple attendees in this meeting, but there is no video link!!!", highlight=True)
 
 
     def hide_event_details(self):
