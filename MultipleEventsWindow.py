@@ -194,7 +194,7 @@ class TableWidgetDemo(QWidget):
             self.table_widget.setItem(row_count, column, new_item)
 '''
 
-from PyQt5.QtWidgets import QApplication, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton, QLabel, QComboBox
+from PyQt5.QtWidgets import QApplication, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton, QLabel, QComboBox, QTabWidget, QTextBrowser
 from PyQt5 import QtCore
 import subprocess
 from datetime_utils import get_now_datetime
@@ -526,16 +526,15 @@ class MultipleEventsTable(QWidget):
         # Sleep for another minute
         self.timer.start(60 * 1000)
 
-    def increase_window_height(self):
+    def increase_window_height(self, pixels_to_add):
         current_size = self.size()  # Get the current window size
-        new_height = current_size.height() + 25  # Increase the height by 50 pixels
+        new_height = current_size.height() + pixels_to_add  # Increase the height by 50 pixels
         self.resize(current_size.width(), new_height)  # Set the new window size
 
     def add_label(self, label_text, highlight = False):
-        self.increase_window_height()
-
         layout = self.layout()  # Retrieve the layout using layout()
         new_label = QLabel(label_text)  # Create a new QLabel
+        new_label.setFixedHeight(16)
 
         if (highlight):
             new_label.setAutoFillBackground(True) # This is important!!
@@ -548,23 +547,18 @@ class MultipleEventsTable(QWidget):
                                                 )
             new_label.setStyleSheet("QLabel { background-color: rgba("+values+"); }")
 
-        layout.addWidget(new_label)  # Add the new label to the layout
-
-        self.event_widgets.append(new_label)
+        self.add_widget(layout, new_label)
 
     def add_link_label(self, label_text, tooltip_text):
-        self.increase_window_height()
-
         layout = self.layout()  # Retrieve the layout using layout()
         new_label = QLabel(label_text)  # Create a new QLabel
+        new_label.setFixedHeight(16)
         new_label.setToolTip(tooltip_text)
 
         # Enable automatic opening of external links
         new_label.setOpenExternalLinks(True)
 
-        layout.addWidget(new_label)  # Add the new label to the layout
-
-        self.event_widgets.append(new_label)
+        self.add_widget(layout, new_label)
 
     # Identify the video meeting softwate via its URL
     def identify_video_meeting_in_url(self, url, text_to_append_if_identified, text_if_not_identified):
@@ -598,15 +592,12 @@ class MultipleEventsTable(QWidget):
         )
 
     def add_button(self, button_text, button_callback):
-        self.increase_window_height()
-
         layout = self.layout()  # Retrieve the layout using layout()
         new_button = QPushButton(button_text)  # Create a new button
+        new_button.setFixedHeight(32)
         new_button.clicked.connect(button_callback)
 
-        layout.addWidget(new_button)  # Add the new button to the layout
-
-        self.event_widgets.append(new_button)
+        self.add_widget(layout, new_button)
 
     def open_video(self):
         # Get the index of the current selected row
@@ -658,8 +649,47 @@ class MultipleEventsTable(QWidget):
 
         else:
             print("Selected Row: None")
-        
 
+    def add_widget(self, layout, widget):
+        # Increase the windows's height by the hight of the widget plus some more for the spacing
+        self.increase_window_height(widget.height() + 5)
+        print(widget.height())
+        print(type(widget))
+
+        layout.addWidget(widget)  # Add the new tab widget to the layout
+
+        self.event_widgets.append(widget)
+
+    def add_tab_widget(self, parsed_event):
+        layout = self.layout()  # Retrieve the layout using layout()
+        new_tab_widget = QTabWidget()  # Create a new tab widget
+        new_tab_widget.setFixedHeight(310)
+
+        if (parsed_event['description'] != "No description"):
+            # Create a tab for the description
+            description_tab = QTextBrowser()
+            description_tab.setHtml(parsed_event['description'])
+            description_tab.setOpenExternalLinks(True)
+
+
+            # Add the tab to the tab widget
+            new_tab_widget.addTab(description_tab, "Description")
+
+        # Create the tab for the raw event
+        raw_event_tab = QTextBrowser()
+        raw_event_tab.setText(nice_json(parsed_event['raw_event']))
+
+        # Add the tab to the tab widget
+        new_tab_widget.addTab(raw_event_tab, "Raw Event")
+
+        self.add_widget(layout, new_tab_widget)
+
+        '''
+        self.event_widgets.append(raw_event_tab)
+        if (parsed_event['description'] != "No description"):
+            self.event_widgets.append(description_tab)
+        '''
+    
     def present_event_details(self, parsed_event):
         self.event_widgets = []
 
@@ -684,7 +714,7 @@ class MultipleEventsTable(QWidget):
             "<a href=\"" + parsed_event['html_link'] + "\">Link to event in GCal</a>",
             parsed_event['html_link']
         )
-
+   
         if (parsed_event['event_location'] != "No location"):
             valid_url = validators.url(parsed_event['event_location'])
             if (valid_url):
@@ -697,6 +727,7 @@ class MultipleEventsTable(QWidget):
 
             else:
                 self.add_label('Location: ' + parsed_event['event_location'])
+
 
         if (parsed_event['video_link'] != "No Video"):
             self.identify_video_meeting_in_url(
@@ -722,7 +753,7 @@ class MultipleEventsTable(QWidget):
                 open_video_and_snooze_text,
                 self.open_video_and_snooze
             )
-
+    
         if ((self.c_video_link == "") and (parsed_event['num_of_attendees'] > 1)):
         # Num of attendees > 1 and no video link
             # We expect a video link as there are multiple attendees for this meeting
@@ -736,6 +767,7 @@ class MultipleEventsTable(QWidget):
                 # We need to show the missing video message
                 self.add_label("There are multiple attendees in this meeting, but there is no video link!!!", highlight=True)
 
+        self.add_tab_widget(parsed_event)
 
     def hide_event_details(self):
         self.show_hide_event_details_button.setText("Show event details")
@@ -751,7 +783,10 @@ class MultipleEventsTable(QWidget):
 
             # Decrease the window height
             current_size = self.size()  # Get the current window size
-            new_height = current_size.height() - 25  # Increase the height by 50 pixels
+
+            # Decrease the height the widget size and by an additional delta
+            new_height = current_size.height() - event_widget.height() - 5  
+
             self.resize(current_size.width(), new_height)  # Set the new window size
 
     def on_show_hide_event_details_pressed(self):
