@@ -39,9 +39,13 @@ class EventDisplayDetails():
         return identified_as_a_video_meeting, label_text
 
     def __init__(self, parsed_event):
+        indicate_issues_with_the_event = False
+
         self.c_video_link = ""
 
         self.need_to_record_meeting = parsed_event.get('need_to_record_meeting', False)
+        if (self.need_to_record_meeting):
+            indicate_issues_with_the_event = True
 
         self.cal_and_account_label_text = parsed_event['cal name'] + " calendar in " + parsed_event['google_account']
 
@@ -108,6 +112,12 @@ class EventDisplayDetails():
             if (not is_no_video_ok):
                 # We need to show the missing video message
                 self.mulitple_attendees_and_video_link_missing = True
+                indicate_issues_with_the_event = True
+
+        if indicate_issues_with_the_event:
+            self.event_name = "*** " + parsed_event['event_name']
+        else:
+            self.event_name = parsed_event['event_name']
 
 class MultipleEventsTable(QWidget):
     def __init__(self, globals, parsed_event):
@@ -115,13 +125,13 @@ class MultipleEventsTable(QWidget):
 
         self.globals = globals
 
-
         self.events_lock = threading.Lock()
 
         # Create QTableWidget with 1 row and 2 columns
         self.table_widget = QTableWidget(0, 2)
 
         self.parsed_events = []
+        self.events_display_details = []
 
         # Make the QTableWidget read-only
         self.table_widget.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -224,7 +234,7 @@ class MultipleEventsTable(QWidget):
         selected_row = self.table_widget.currentRow()
         
         if selected_row != -1:  # -1 means no row is selected
-            self.add_event_details_widgets(self.parsed_events[selected_row])
+            self.add_event_details_widgets(selected_row)
 
     def get_time_diff_in_string(self, time_diff):
         total_minutes = time_diff.total_seconds() / 60
@@ -270,17 +280,20 @@ class MultipleEventsTable(QWidget):
             # Insert a new row at the end of the table
             self.table_widget.insertRow(row_count)
 
-            self.table_widget.setItem(row_count, 0, QTableWidgetItem(parsed_event['event_name']))
+            event_display_details = EventDisplayDetails(parsed_event)
+
+            self.table_widget.setItem(row_count, 0, QTableWidgetItem(event_display_details.event_name))
             self.table_widget.setItem(row_count, 1, QTableWidgetItem(self.get_time_until_event_start(parsed_event)))
 
             self.table_widget.resizeColumnToContents(0)
             self.table_widget.resizeColumnToContents(1)
 
             self.parsed_events.append(parsed_event)
+            self.events_display_details.append(event_display_details)
 
             if (row_count == 0):
                 self.select_event(0)
-                self.add_event_details_widgets(self.parsed_events[0])
+                self.add_event_details_widgets(0)
 
     def select_event(self, row_number):
         self.table_widget.selectRow(row_number)
@@ -291,6 +304,7 @@ class MultipleEventsTable(QWidget):
         self.table_widget.removeRow(row)
 
         del self.parsed_events[row]
+        del self.events_display_details[row]
 
         # Close the windows if there are no more events presneted
         if (self.table_widget.rowCount() == 0):
@@ -371,7 +385,7 @@ class MultipleEventsTable(QWidget):
             selected_row = self.table_widget.currentRow()
 
             if selected_row != -1:  # -1 means no row is selected
-                self.add_event_details_widgets(self.parsed_events[selected_row])
+                self.add_event_details_widgets(selected_row)
 
             # Sleep for another minute
             self.timer.start(30 * 1000)
@@ -493,47 +507,48 @@ class MultipleEventsTable(QWidget):
 
         self.add_widget(layout, new_tab_widget)
     
-    def add_event_details_widgets(self, parsed_event):
+    def add_event_details_widgets(self, row):
         # Clear the previous details presented
         self.clear_event_details_widgets()
 
-        self.event_display_details = EventDisplayDetails(parsed_event)
+        parsed_event = self.parsed_events[row]
+        event_display_details = self.events_display_details[row]
 
-        if (self.event_display_details.mulitple_attendees_and_video_link_missing):
+        if (event_display_details.mulitple_attendees_and_video_link_missing):
             # We need to show the missing video message
             self.add_label("There are multiple attendees in this meeting, but there is no video link!!!", highlight=True)
 
-        if (self.event_display_details.need_to_record_meeting):
+        if (event_display_details.need_to_record_meeting):
             self.add_label("Remember to record!!!", highlight=True)
 
         self.set_snooze_times_for_event(parsed_event)
 
-        self.c_video_link = self.event_display_details.c_video_link
+        self.c_video_link = event_display_details.c_video_link
 
-        self.add_label(self.event_display_details.cal_and_account_label_text)
+        self.add_label(event_display_details.cal_and_account_label_text)
 
-        if self.event_display_details.all_day_event:
+        if event_display_details.all_day_event:
             self.add_label("An all day event")
 
-        self.add_label(self.event_display_details.start_time_label_text)
-        self.add_label(self.event_display_details.end_time_label_text)
+        self.add_label(event_display_details.start_time_label_text)
+        self.add_label(event_display_details.end_time_label_text)
 
         self.add_link_label(
-            self.event_display_details.gcal_event_link_label_text,
-            self.event_display_details.gcal_event_link_label_tooltip
+            event_display_details.gcal_event_link_label_text,
+            event_display_details.gcal_event_link_label_tooltip
         )
 
-        if (self.event_display_details.location_label_exits):
-            self.add_label(self.event_display_details.location_label_text)
-        elif (self.event_display_details.location_link_label_exists):
+        if (event_display_details.location_label_exits):
+            self.add_label(event_display_details.location_label_text)
+        elif (event_display_details.location_link_label_exists):
             self.add_link_label(
-                self.event_display_details.location_link_label_text,
-                self.event_display_details.location_link_label_tooltip)
+                event_display_details.location_link_label_text,
+                event_display_details.location_link_label_tooltip)
             
-        if (self.event_display_details.video_label_exists):
+        if (event_display_details.video_label_exists):
             self.add_link_label(
-                self.event_display_details.video_link_label_text,
-                self.event_display_details.video_link_label_tooltip)
+                event_display_details.video_link_label_text,
+                event_display_details.video_link_label_tooltip)
 
         if (self.c_video_link != ""):
             # There is a video link - add the needed buttons
@@ -543,7 +558,7 @@ class MultipleEventsTable(QWidget):
             )
 
             self.add_button(
-                self.event_display_details.open_video_and_snooze_text,
+                event_display_details.open_video_and_snooze_text,
                 self.open_video_and_snooze
             )
     
@@ -574,7 +589,10 @@ class MultipleEventsTable(QWidget):
                     # Found the event - update all of its fields
                     self.parsed_events[row] = parsed_event
 
-                    self.update_table_cell(row, 0, parsed_event['event_name'])
+                    event_display_details = EventDisplayDetails(parsed_event)
+                    self.events_display_details[row] = event_display_details
+
+                    self.update_table_cell(row, 0, event_display_details.event_name)
                     self.update_table_cell(row, 1, self.get_time_until_event_start(parsed_event))
 
                     self.table_widget.resizeColumnToContents(0)
@@ -584,8 +602,7 @@ class MultipleEventsTable(QWidget):
                     selected_row = self.table_widget.currentRow()
 
                     if (selected_row == row):  # -1 means no row is selected
-                        self.add_event_details_widgets(self.parsed_events[row])
-
+                        self.add_event_details_widgets(row)
 
                     return
 
