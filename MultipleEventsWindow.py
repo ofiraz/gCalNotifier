@@ -119,6 +119,8 @@ class EventDisplayDetails():
         else:
             self.event_name = parsed_event['event_name']
 
+WAKEUP_INTERVAL = 15
+
 class MultipleEventsTable(QWidget):
     def __init__(self, globals, parsed_event):
         super().__init__()
@@ -179,7 +181,7 @@ class MultipleEventsTable(QWidget):
         self.timer.timeout.connect(self.update_display_on_timer)
 
         # Set timer to wake up in a minute
-        self.timer.start(30 * 1000)
+        self.timer.start(WAKEUP_INTERVAL * 1000)
 
     def set_snooze_times_for_event(self, parsed_event):
         snooze_times_before = [ 
@@ -374,7 +376,7 @@ class MultipleEventsTable(QWidget):
                 time_until_event_start = self.get_time_until_event_start(self.parsed_events[index])
                 self.update_table_cell(index, 1, time_until_event_start)
 
-                if (self.parsed_events[index]['deleted']):
+                if (self.parsed_events[index]['deleted'] or self.parsed_events[index]['changed']):
                     self.remove_event_safe(index)
                     num_of_deleted_rows = num_of_deleted_rows + 1
 
@@ -388,7 +390,7 @@ class MultipleEventsTable(QWidget):
                 self.add_event_details_widgets(selected_row)
 
             # Sleep for another minute
-            self.timer.start(30 * 1000)
+            self.timer.start(WAKEUP_INTERVAL * 1000)
 
     def increase_window_height(self, pixels_to_add):
         current_size = self.size()  # Get the current window size
@@ -581,7 +583,7 @@ class MultipleEventsTable(QWidget):
 
             self.resize(current_size.width(), new_height)  # Set the new window size
 
-    def update_event(self, parsed_event):
+    def update_event(self, parsed_event):       
         with self.events_lock:
             # Find the modified event in the current list of events
             for row in range(self.table_widget.rowCount()):
@@ -606,5 +608,6 @@ class MultipleEventsTable(QWidget):
 
                     return
 
-        # If we got here the event could not be found
-        print("Couldnt find the event to change")
+        # If we got here the event could not be found - could be a race condition in the case it was removed due to the change marking in the refresh event
+        print("Couldnt find the event to change, handling it as new")
+        self.add_event(parsed_event)

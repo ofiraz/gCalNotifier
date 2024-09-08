@@ -242,6 +242,9 @@ class Get_Events:
                     # Removing from the old all_events, the next steps will add it to the new all_events
                     self.all_events.remove_event(event_key_str)
 
+                    # Marking for the displayed event to remove it, as it will be added as a new one, when the time comes
+                    event_from_all_events['changed'] = True
+
             # Event not in the any other list
             parsed_event['event_key_str'] = event_key_str
             parsed_event['raw_event'] = event
@@ -249,6 +252,7 @@ class Get_Events:
             parsed_event['google_account'] = google_account
             parsed_event['cal name'] = cal_name
             parsed_event['cal id'] = cal_id
+            parsed_event['changed'] = False
             parsed_event['deleted'] = False
             parsed_event['is_dismissed'] = False
             parsed_event['is_snoozed'] = False
