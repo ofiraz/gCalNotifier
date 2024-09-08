@@ -169,8 +169,6 @@ class Get_Events:
         for event in events:
             self.globals.logger.debug(str(event))
             parsed_event = {}
-            now_datetime = get_now_datetime()
-            a_snoozed_event_to_wakeup = False
 
             event_id = event['id']
             event_key = {          
@@ -233,8 +231,6 @@ class Get_Events:
                 else: # The event has changed
                     self.globals.logger.info("Event changed " + event_from_all_events['event_name'])
 
-                    event_from_all_events['changed'] = True
-                    
                     if (event_from_all_events['is_dismissed']):
                         # Remove the changed event from the dismissed events, so it will get parsed from scratch
                         self.dismissed_events.remove_event(event_key_str)
@@ -254,7 +250,6 @@ class Get_Events:
             parsed_event['cal name'] = cal_name
             parsed_event['cal id'] = cal_id
             parsed_event['deleted'] = False
-            parsed_event['changed'] = False
             parsed_event['is_dismissed'] = False
             parsed_event['is_snoozed'] = False
 

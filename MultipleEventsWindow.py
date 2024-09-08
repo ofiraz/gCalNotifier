@@ -68,7 +68,7 @@ class MultipleEventsTable(QWidget):
         self.timer.timeout.connect(self.update_display_on_timer)
 
         # Set timer to wake up in a minute
-        self.timer.start(60 * 1000)
+        self.timer.start(30 * 1000)
 
     def set_snooze_times_for_event(self, parsed_event):
         snooze_times_before = [ 
@@ -184,25 +184,23 @@ class MultipleEventsTable(QWidget):
     def select_event(self, row_number):
         self.table_widget.selectRow(row_number)
 
-    def remove_event(self, selected_row):
+    def remove_event_safe(self, row):
+        self.globals.displayed_events.remove_event(self.parsed_events[row]['event_key_str'])
+
+        self.table_widget.removeRow(row)
+
+        del self.parsed_events[row]
+
+        # Close the windows if there are no more events presneted
+        if (self.table_widget.rowCount() == 0):
+            self.close()
+
+    def remove_event(self, row):
         with self.events_lock:
             # Hiding the details of the event if they were presented
             self.clear_event_details_widgets()
 
-            self.table_widget.removeRow(selected_row)
-
-            del self.parsed_events[selected_row]
-
-            # Close the windows if there are no more events presneted
-            if (self.table_widget.rowCount() == 0):
-                self.close()
-
-    def on_clear_event_pressed(self):
-        # Get the index of the current selected row
-        selected_row = self.table_widget.currentRow()
-
-        if selected_row != -1:  # -1 means no row is selected
-            self.remove_event(selected_row)
+            self.remove_event_safe(row)
 
     def on_snooze_event_clicked(self):
         # Get the index of the current selected row
@@ -228,8 +226,6 @@ class MultipleEventsTable(QWidget):
                 
             self.globals.events_to_snooze.add_event(self.parsed_events[selected_row]['event_key_str'], parsed_event)
 
-            self.globals.displayed_events.remove_event(self.parsed_events[selected_row]['event_key_str'])
-
             self.remove_event(selected_row)
 
     def on_dismiss_event_pressed(self):
@@ -243,8 +239,6 @@ class MultipleEventsTable(QWidget):
 
             if (now_datetime < parsed_event['end_date']):
                 self.globals.events_to_dismiss.add_event(parsed_event['event_key_str'], parsed_event)
-
-            self.globals.displayed_events.remove_event(parsed_event['event_key_str'])
 
             self.remove_event(selected_row)
 
@@ -261,6 +255,9 @@ class MultipleEventsTable(QWidget):
                 time_until_event_start = self.get_time_until_event_start(self.parsed_events[row])
                 self.update_table_cell(row, 1, time_until_event_start)
 
+                if (self.parsed_events[row]['deleted']):
+                    self.remove_event_safe(row)
+
             # Update the 2nd column width
             self.table_widget.resizeColumnToContents(1)
 
@@ -271,7 +268,7 @@ class MultipleEventsTable(QWidget):
                 self.add_event_details_widgets(self.parsed_events[selected_row])
 
             # Sleep for another minute
-            self.timer.start(60 * 1000)
+            self.timer.start(30 * 1000)
 
     def increase_window_height(self, pixels_to_add):
         current_size = self.size()  # Get the current window size
@@ -386,8 +383,6 @@ class MultipleEventsTable(QWidget):
             self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event['event_name'] + " until " + str(parsed_event['event_wakeup_time']))
 
             self.globals.events_to_snooze.add_event(self.parsed_events[selected_row]['event_key_str'], parsed_event)
-
-            self.globals.displayed_events.remove_event(self.parsed_events[selected_row]['event_key_str'])
 
             self.remove_event(selected_row)
 
