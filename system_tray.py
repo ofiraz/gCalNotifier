@@ -126,8 +126,9 @@ class app_system_tray(QMainWindow):
                 break
             
             if(self.globals.displayed_events.is_event_in(event_key_str)):
-                # The event is already displayed with older data, switch it to show the new data
-                self.globals.displayed_events[event_key_str]['event_window'].init_window_from_parsed_event(event_key_str, parsed_event)
+                # The event is already displayed with older data, mark it so the new data will be reflected for the event
+                if (self.multiple_events_windows):
+                    self.multiple_events_windows.update_event(parsed_event)
 
             else: # A totaly new event
                 # Add the new event to the displayed events list    

@@ -1,17 +1,21 @@
-from PyQt5.QtWidgets import QApplication, QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton, QLabel, QComboBox, QTabWidget, QTextBrowser
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton, QLabel, QComboBox, QTabWidget, QTextBrowser
 from PyQt5 import QtCore
 import subprocess
 from datetime_utils import get_now_datetime
-from EventWindow import *
 import datetime
 import validators
-
+from tzlocal import get_localzone
+from json_utils import nice_json
+import threading
 
 class MultipleEventsTable(QWidget):
     def __init__(self, globals, parsed_event):
         super().__init__()
 
         self.globals = globals
+
+
+        self.events_lock = threading.Lock()
 
         # Create QTableWidget with 1 row and 2 columns
         self.table_widget = QTableWidget(0, 2)
@@ -40,17 +44,9 @@ class MultipleEventsTable(QWidget):
         self.snooze_event_button = QPushButton("Snooze Event")
         self.snooze_event_button.clicked.connect(self.on_snooze_event_clicked)
 
-        # Create a button to present details on the event
-        #self.add_event_details_widgets_button = QPushButton("Present event details")
-        #self.add_event_details_widgets_button.clicked.connect(self.on_add_event_details_widgets_pressed)
-
         # Create a button to dismiss an event
         self.dismiss_event_button = QPushButton("Dismiss")
         self.dismiss_event_button.clicked.connect(self.on_dismiss_event_pressed)
-
-        # Create a clear event button - when we snooze or dismiss in the event window - to be removed eventually
-        #self.clear_event_button = QPushButton("Clear")
-        #self.clear_event_button.clicked.connect(self.on_clear_event_pressed)
 
         self.event_widgets = []
 
@@ -60,9 +56,7 @@ class MultipleEventsTable(QWidget):
         layout.addWidget(self.table_widget)
         layout.addWidget(self.snooze_times_combo_box)
         layout.addWidget(self.snooze_event_button)
-        #layout.addWidget(self.add_event_details_widgets_button)
         layout.addWidget(self.dismiss_event_button)
-        #layout.addWidget(self.clear_event_button)
 
         # Add the new event
         self.add_event(parsed_event)
@@ -169,37 +163,39 @@ class MultipleEventsTable(QWidget):
         return(time_string)
 
     def add_event(self, parsed_event):
-        row_count = self.table_widget.rowCount()
+        with self.events_lock:
+            row_count = self.table_widget.rowCount()
 
-        # Insert a new row at the end of the table
-        self.table_widget.insertRow(row_count)
+            # Insert a new row at the end of the table
+            self.table_widget.insertRow(row_count)
 
-        self.table_widget.setItem(row_count, 0, QTableWidgetItem(parsed_event['event_name']))
-        self.table_widget.setItem(row_count, 1, QTableWidgetItem(self.get_time_until_event_start(parsed_event)))
+            self.table_widget.setItem(row_count, 0, QTableWidgetItem(parsed_event['event_name']))
+            self.table_widget.setItem(row_count, 1, QTableWidgetItem(self.get_time_until_event_start(parsed_event)))
 
-        self.table_widget.resizeColumnToContents(0)
-        self.table_widget.resizeColumnToContents(1)
+            self.table_widget.resizeColumnToContents(0)
+            self.table_widget.resizeColumnToContents(1)
 
-        self.parsed_events.append(parsed_event)
+            self.parsed_events.append(parsed_event)
 
-        if (row_count == 0):
-            self.select_event(0)
-            self.add_event_details_widgets(self.parsed_events[0])
+            if (row_count == 0):
+                self.select_event(0)
+                self.add_event_details_widgets(self.parsed_events[0])
 
     def select_event(self, row_number):
         self.table_widget.selectRow(row_number)
 
     def remove_event(self, selected_row):
-        # Hiding the details of the event if they were presented
-        self.clear_event_details_widgets()
+        with self.events_lock:
+            # Hiding the details of the event if they were presented
+            self.clear_event_details_widgets()
 
-        self.table_widget.removeRow(selected_row)
+            self.table_widget.removeRow(selected_row)
 
-        del self.parsed_events[selected_row]
+            del self.parsed_events[selected_row]
 
-        # Close the windows if there are no more events presneted
-        if (self.table_widget.rowCount() == 0):
-            self.close()
+            # Close the windows if there are no more events presneted
+            if (self.table_widget.rowCount() == 0):
+                self.close()
 
     def on_clear_event_pressed(self):
         # Get the index of the current selected row
@@ -252,27 +248,30 @@ class MultipleEventsTable(QWidget):
 
             self.remove_event(selected_row)
 
+    def update_table_cell(self, row, column, new_value):
+        item = self.table_widget.item(row, column)
+        if item:
+            # Change the text of the item
+            item.setText(new_value)
+
     def update_display_on_timer(self):
-        for row in range(self.table_widget.rowCount()):
-            time_until_event_start = self.get_time_until_event_start(self.parsed_events[row])
+        with self.events_lock:
+            for row in range(self.table_widget.rowCount()):
+                # Get the new time until the event, and update the row
+                time_until_event_start = self.get_time_until_event_start(self.parsed_events[row])
+                self.update_table_cell(row, 1, time_until_event_start)
 
-            # Access the item at the specified position
-            item = self.table_widget.item(row, 1)
-            if item:
-                # Change the text of the item
-                item.setText(time_until_event_start)
+            # Update the 2nd column width
+            self.table_widget.resizeColumnToContents(1)
 
-        # Update the 2nd column width
-        self.table_widget.resizeColumnToContents(1)
+            # Update the displayed information for the selected row
+            selected_row = self.table_widget.currentRow()
 
-        # Update the snooze times in the combo box for the selected row
-        selected_row = self.table_widget.currentRow()
+            if selected_row != -1:  # -1 means no row is selected
+                self.add_event_details_widgets(self.parsed_events[selected_row])
 
-        if selected_row != -1:  # -1 means no row is selected
-            self.add_event_details_widgets(self.parsed_events[selected_row])
-
-        # Sleep for another minute
-        self.timer.start(60 * 1000)
+            # Sleep for another minute
+            self.timer.start(60 * 1000)
 
     def increase_window_height(self, pixels_to_add):
         current_size = self.size()  # Get the current window size
@@ -522,3 +521,29 @@ class MultipleEventsTable(QWidget):
             new_height = current_size.height() - event_widget.height() - 5  
 
             self.resize(current_size.width(), new_height)  # Set the new window size
+
+    def update_event(self, parsed_event):
+        with self.events_lock:
+            # Find the modified event in the current list of events
+            for row in range(self.table_widget.rowCount()):
+                if (self.parsed_events[row]['event_key_str'] == parsed_event['event_key_str']):
+                    # Found the event - update all of its fields
+                    self.parsed_events[row] = parsed_event
+
+                    self.update_table_cell(row, 0, parsed_event['event_name'])
+                    self.update_table_cell(row, 1, self.get_time_until_event_start(parsed_event))
+
+                    self.table_widget.resizeColumnToContents(0)
+                    self.table_widget.resizeColumnToContents(1)
+
+                    # Update the displayed information for the selected row
+                    selected_row = self.table_widget.currentRow()
+
+                    if (selected_row == row):  # -1 means no row is selected
+                        self.add_event_details_widgets(self.parsed_events[row])
+
+
+                    return
+
+        # If we got here the event could not be found
+        print("Couldnt find the event to change")
