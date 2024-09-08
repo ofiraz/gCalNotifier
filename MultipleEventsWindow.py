@@ -1,5 +1,5 @@
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton, QLabel, QComboBox, QTabWidget, QTextBrowser
-from PyQt5 import QtCore
+from PyQt5 import (QtCore, QtGui)
 import subprocess
 from datetime_utils import get_now_datetime
 import datetime
@@ -7,6 +7,107 @@ import validators
 from tzlocal import get_localzone
 from json_utils import nice_json
 import threading
+import re
+
+class EventDisplayDetails():
+    # Identify the video meeting softwate via its URL
+    def identify_video_meeting_in_url(self, url, text_to_append_if_identified, text_if_not_identified):
+        identified_as_a_video_meeting = True
+
+        if ("zoom.us" in url):
+            label_text = "Zoom Link"
+        elif ("webex.com" in url):
+            label_text = "Webex Link"
+        elif ("meet.google.com" in url):
+            label_text = "Google Meet Link"
+        elif ("bluejeans.com" in url):
+            label_text = "BlueJeans Link"
+        elif ("chime.aws" in url):
+            label_text = "AWS Chime Link"
+        elif ("teams.microsoft.com" in url):
+            label_text = "MS Teams Link"    
+        elif ("gather.town" in url):
+            label_text = "Gather Link"    
+        else:
+            label_text = text_if_not_identified
+            identified_as_a_video_meeting = False
+
+        if (identified_as_a_video_meeting):
+            # Add the text_to_append
+            label_text = label_text + " from " + text_to_append_if_identified
+
+        return identified_as_a_video_meeting, label_text
+
+    def __init__(self, parsed_event):
+        self.c_video_link = ""
+
+        self.need_to_record_meeting = parsed_event.get('need_to_record_meeting', False)
+
+        self.cal_and_account_label_text = parsed_event['cal name'] + " calendar in " + parsed_event['google_account']
+
+        self.all_day_event = parsed_event['all_day_event']
+
+        self.start_time_label_text = 'Starting at ' + str(parsed_event['start_date'].astimezone(get_localzone()))
+        self.end_time_label_text = 'Ending at ' + str(parsed_event['end_date'].astimezone(get_localzone()))
+
+        self.gcal_event_link_label_text = "<a href=\"" + parsed_event['html_link'] + "\">Link to event in GCal</a>"
+        self.gcal_event_link_label_tooltip = parsed_event['html_link']
+   
+        self.location_label_exits = False
+        self.location_link_label_exists = False
+        if (parsed_event['event_location'] != "No location"):
+            valid_url = validators.url(parsed_event['event_location'])
+            if (valid_url):
+                self.location_link_label_exists = True
+                self.location_link_label_tooltip = parsed_event['event_location']
+
+                identified_as_a_video_meeting, self.location_link_label_text = self.identify_video_meeting_in_url(
+                    parsed_event['event_location'],
+                    "location",
+                    "Link to location or to a video URL")
+                
+                if(identified_as_a_video_meeting):
+                    self.c_video_link = parsed_event['event_location']
+
+            else:
+                self.location_label_exits = True
+
+                self.location_label_text = 'Location: ' + parsed_event['event_location']
+
+        self.video_label_exists = False
+        if (parsed_event['video_link'] != "No Video"):
+            self.video_label_exists = True
+
+            identified_as_a_video_meeting, self.video_link_label_text = self.identify_video_meeting_in_url(
+                parsed_event['video_link'],
+                "description",
+                "Video Link")
+            
+            self.video_link_label_tooltip = parsed_event['video_link']
+            
+            self.c_video_link = parsed_event['video_link']
+
+        if (self.c_video_link != ""):
+            # There is a video link
+
+            if (self.need_to_record_meeting):
+                self.open_video_and_snooze_text = "and snooze for 1 min"
+            else:
+                self.open_video_and_snooze_text = "and snooze for 5 min"
+    
+        self.mulitple_attendees_and_video_link_missing = False
+        if ((self.c_video_link == "") and (parsed_event['num_of_attendees'] > 1)):
+        # Num of attendees > 1 and no video link
+            # We expect a video link as there are multiple attendees for this meeting
+
+            # Let's check if we have our special sign
+            is_no_video_ok = re.search(
+                'NO_VIDEO_OK',
+                parsed_event['description'])
+
+            if (not is_no_video_ok):
+                # We need to show the missing video message
+                self.mulitple_attendees_and_video_link_missing = True
 
 class MultipleEventsTable(QWidget):
     def __init__(self, globals, parsed_event):
@@ -249,14 +350,19 @@ class MultipleEventsTable(QWidget):
             item.setText(new_value)
 
     def update_display_on_timer(self):
+        num_of_deleted_rows = 0
+
         with self.events_lock:
             for row in range(self.table_widget.rowCount()):
-                # Get the new time until the event, and update the row
-                time_until_event_start = self.get_time_until_event_start(self.parsed_events[row])
-                self.update_table_cell(row, 1, time_until_event_start)
+                index = row - num_of_deleted_rows
 
-                if (self.parsed_events[row]['deleted']):
-                    self.remove_event_safe(row)
+                # Get the new time until the event, and update the row
+                time_until_event_start = self.get_time_until_event_start(self.parsed_events[index])
+                self.update_table_cell(index, 1, time_until_event_start)
+
+                if (self.parsed_events[index]['deleted']):
+                    self.remove_event_safe(index)
+                    num_of_deleted_rows = num_of_deleted_rows + 1
 
             # Update the 2nd column width
             self.table_widget.resizeColumnToContents(1)
@@ -303,37 +409,6 @@ class MultipleEventsTable(QWidget):
         new_label.setOpenExternalLinks(True)
 
         self.add_widget(layout, new_label)
-
-    # Identify the video meeting softwate via its URL
-    def identify_video_meeting_in_url(self, url, text_to_append_if_identified, text_if_not_identified):
-        identified_as_a_video_meeting = True
-
-        if ("zoom.us" in url):
-            label_text = "Zoom Link"
-        elif ("webex.com" in url):
-            label_text = "Webex Link"
-        elif ("meet.google.com" in url):
-            label_text = "Google Meet Link"
-        elif ("bluejeans.com" in url):
-            label_text = "BlueJeans Link"
-        elif ("chime.aws" in url):
-            label_text = "AWS Chime Link"
-        elif ("teams.microsoft.com" in url):
-            label_text = "MS Teams Link"    
-        elif ("gather.town" in url):
-            label_text = "Gather Link"    
-        else:
-            label_text = text_if_not_identified
-            identified_as_a_video_meeting = False
-
-        if (identified_as_a_video_meeting):
-            # Add the text_to_append
-            label_text = label_text + " from " + text_to_append_if_identified
-
-        self.add_link_label(
-            "<a href=\"" + url + "\">" + label_text + "</a>",
-            url
-        )
 
     def add_button(self, button_text, button_callback):
         layout = self.layout()  # Retrieve the layout using layout()
@@ -422,51 +497,43 @@ class MultipleEventsTable(QWidget):
         # Clear the previous details presented
         self.clear_event_details_widgets()
 
-        self.set_snooze_times_for_event(parsed_event)
+        self.event_display_details = EventDisplayDetails(parsed_event)
 
-        self.c_video_link = ""
+        if (self.event_display_details.mulitple_attendees_and_video_link_missing):
+            # We need to show the missing video message
+            self.add_label("There are multiple attendees in this meeting, but there is no video link!!!", highlight=True)
 
-        self.need_to_record_meeting = parsed_event.get('need_to_record_meeting', False)
-        if (self.need_to_record_meeting):
+        if (self.event_display_details.need_to_record_meeting):
             self.add_label("Remember to record!!!", highlight=True)
 
-        self.add_label(parsed_event['cal name'] + " calendar in " + parsed_event['google_account'])
+        self.set_snooze_times_for_event(parsed_event)
 
-        if parsed_event['all_day_event']:
+        self.c_video_link = self.event_display_details.c_video_link
+
+        self.add_label(self.event_display_details.cal_and_account_label_text)
+
+        if self.event_display_details.all_day_event:
             self.add_label("An all day event")
 
-        parsed_event['start_time_in_loacal_tz'] = str(parsed_event['start_date'].astimezone(get_localzone()))
-        parsed_event['end_time_in_loacal_tz'] = str(parsed_event['end_date'].astimezone(get_localzone()))
-
-        self.add_label('Starting at ' + parsed_event['start_time_in_loacal_tz'])
-        self.add_label('Ending at ' + parsed_event['end_time_in_loacal_tz'])
+        self.add_label(self.event_display_details.start_time_label_text)
+        self.add_label(self.event_display_details.end_time_label_text)
 
         self.add_link_label(
-            "<a href=\"" + parsed_event['html_link'] + "\">Link to event in GCal</a>",
-            parsed_event['html_link']
+            self.event_display_details.gcal_event_link_label_text,
+            self.event_display_details.gcal_event_link_label_tooltip
         )
-   
-        if (parsed_event['event_location'] != "No location"):
-            valid_url = validators.url(parsed_event['event_location'])
-            if (valid_url):
-                self.identify_video_meeting_in_url(
-                    parsed_event['event_location'],
-                    "location",
-                    "Link to location or to a video URL")
 
-                self.c_video_link = parsed_event['event_location']
-
-            else:
-                self.add_label('Location: ' + parsed_event['event_location'])
-
-
-        if (parsed_event['video_link'] != "No Video"):
-            self.identify_video_meeting_in_url(
-                parsed_event['video_link'],
-                "description",
-                "Video Link")
-
-            self.c_video_link = parsed_event['video_link']
+        if (self.event_display_details.location_label_exits):
+            self.add_label(self.event_display_details.location_label_text)
+        elif (self.event_display_details.location_link_label_exists):
+            self.add_link_label(
+                self.event_display_details.location_link_label_text,
+                self.event_display_details.location_link_label_tooltip)
+            
+        if (self.event_display_details.video_label_exists):
+            self.add_link_label(
+                self.event_display_details.video_link_label_text,
+                self.event_display_details.video_link_label_tooltip)
 
         if (self.c_video_link != ""):
             # There is a video link - add the needed buttons
@@ -475,29 +542,11 @@ class MultipleEventsTable(QWidget):
                 self.open_video
             )
 
-            if (self.need_to_record_meeting):
-                open_video_and_snooze_text = "and snooze for 1 min"
-            else:
-                open_video_and_snooze_text = "and snooze for 5 min"
-
             self.add_button(
-                open_video_and_snooze_text,
+                self.event_display_details.open_video_and_snooze_text,
                 self.open_video_and_snooze
             )
     
-        if ((self.c_video_link == "") and (parsed_event['num_of_attendees'] > 1)):
-        # Num of attendees > 1 and no video link
-            # We expect a video link as there are multiple attendees for this meeting
-
-            # Let's check if we have our special sign
-            is_no_video_ok = re.search(
-                'NO_VIDEO_OK',
-                parsed_event['description'])
-
-            if (not is_no_video_ok):
-                # We need to show the missing video message
-                self.add_label("There are multiple attendees in this meeting, but there is no video link!!!", highlight=True)
-
         self.add_tab_widget(parsed_event)
 
     def clear_event_details_widgets(self):
