@@ -46,6 +46,11 @@ class EventDisplayDetails():
         self.need_to_record_meeting = parsed_event.get('need_to_record_meeting', False)
         if (self.need_to_record_meeting):
             indicate_issues_with_the_event = True
+            self.snooze_time_in_minutes_for_open_video_and_snooze = 1
+
+        else:
+            self.snooze_time_in_minutes_for_open_video_and_snooze = 5
+
 
         self.cal_and_account_label_text = parsed_event['cal name'] + " calendar in " + parsed_event['google_account']
 
@@ -460,15 +465,12 @@ class MultipleEventsTable(QWidget):
         if selected_row != -1:  # -1 means no row is selected
             self.open_video()
 
-            if (self.need_to_record_meeting):
-                self.c_snooze_time_in_minutes = 1
-            else:
-                self.c_snooze_time_in_minutes = 5
-
             parsed_event = self.parsed_events[selected_row]
+            event_display_details = self.events_display_details[selected_row]
+
             now_datetime = get_now_datetime()
 
-            delta_diff = datetime.timedelta(minutes=self.c_snooze_time_in_minutes)
+            delta_diff = datetime.timedelta(minutes=event_display_details.snooze_time_in_minutes_for_open_video_and_snooze)
             parsed_event['event_wakeup_time'] = now_datetime + delta_diff
 
             self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event['event_name'] + " until " + str(parsed_event['event_wakeup_time']))
