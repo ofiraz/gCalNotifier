@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton, QLabel, QComboBox, QTabWidget, QTextBrowser
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QComboBox, QTabWidget, QTextBrowser
 from PyQt5 import (QtCore, QtGui)
 import subprocess
 from datetime_utils import get_now_datetime
@@ -10,6 +10,53 @@ import threading
 import re
 
 class EventDisplayDetails():
+    def update_snooze_times_for_event(self):
+        parsed_event = self.parsed_event
+        self.snooze_times_before = [ 
+            ( -5, "-5m" ) ,
+            ( -2, "-2m" ) ,
+            ( -1, "-1m" ) ,
+            ( 0, "0" )
+        ]
+
+        self.snooze_times_future = [ 
+            ( 1, "1m" ) ,
+            ( 5, "5m" ) ,
+            ( 15, "15m" ) ,
+            ( 30, "30m" ) ,
+            ( 60, "1h" ) ,
+            ( 120, "2h" ) ,
+            ( 240, "4h" ) ,
+            ( 480, "8h" )
+        ]
+
+        self.snooze_times_strings_for_combo_box = []
+        self.snooze_times_in_minutes = []
+
+        self.default_snooze = parsed_event.get('default_snooze', False)
+        if (self.default_snooze):
+            # Add the default snooze as the first item
+            self.snooze_times_strings_for_combo_box.append("Default " + self.default_snooze + " minutes")
+            self.snooze_times_in_minutes.append(int(self.default_snooze))
+
+        now_datetime = get_now_datetime()
+        if (parsed_event['start_date'] > now_datetime):
+            # Event start did not arrive yet - hide all before snooze buttons that are not relevant anymore
+            time_to_event_start = parsed_event['start_date'] - now_datetime
+            time_to_event_in_minutes = int(time_to_event_start.seconds / 60)
+
+            for index in range(len(self.snooze_times_before)):
+                snooze_time = self.snooze_times_before[index][0]
+
+                if (abs(snooze_time) < time_to_event_in_minutes):
+                    self.snooze_times_strings_for_combo_box.append(self.snooze_times_before[index][1])
+                    self.snooze_times_in_minutes.append(snooze_time)
+            
+        for index in range(len(self.snooze_times_future)):
+            self.snooze_times_strings_for_combo_box.append(self.snooze_times_future[index][1])
+            self.snooze_times_in_minutes.append(self.snooze_times_future[index][0])
+
+    
     # Identify the video meeting softwate via its URL
     def identify_video_meeting_in_url(self, url, text_to_append_if_identified, text_if_not_identified):
         identified_as_a_video_meeting = True
@@ -39,6 +86,8 @@ class EventDisplayDetails():
         return identified_as_a_video_meeting, label_text
 
     def __init__(self, parsed_event):
+        self.parsed_event = parsed_event
+
         indicate_issues_with_the_event = False
 
         self.c_video_link = ""
@@ -83,6 +132,8 @@ class EventDisplayDetails():
 
                 self.location_label_text = 'Location: ' + parsed_event['event_location']
 
+        self.update_snooze_times_for_event()
+
         self.video_label_exists = False
         if (parsed_event['video_link'] != "No Video"):
             self.video_label_exists = True
@@ -126,6 +177,12 @@ class EventDisplayDetails():
 
 WAKEUP_INTERVAL = 15
 
+class DynamicWidgetDetails():
+    def __init__(self, layout, widget, height):
+        self.layout = layout
+        self.widget = widget
+        self.height = height
+
 class MultipleEventsTable(QWidget):
     def __init__(self, globals, parsed_event):
         super().__init__()
@@ -155,13 +212,6 @@ class MultipleEventsTable(QWidget):
         # Hide the row headers (vertical headers)
         self.table_widget.verticalHeader().setVisible(False)
 
-        # Create a QComboBox for the available snooze items
-        self.snooze_times_combo_box = QComboBox()
-
-        # Create a button to snooze event
-        self.snooze_event_button = QPushButton("Snooze Event")
-        self.snooze_event_button.clicked.connect(self.on_snooze_event_clicked)
-
         # Create a button to dismiss an event
         self.dismiss_event_button = QPushButton("Dismiss")
         self.dismiss_event_button.clicked.connect(self.on_dismiss_event_pressed)
@@ -170,10 +220,12 @@ class MultipleEventsTable(QWidget):
 
         layout = QVBoxLayout()
         self.setLayout(layout)
-        
+
+        # Add a horizontal layout to the snooze buttons
+        self.h_layout = QHBoxLayout()
+                
         layout.addWidget(self.table_widget)
-        layout.addWidget(self.snooze_times_combo_box)
-        layout.addWidget(self.snooze_event_button)
+        layout.addLayout(self.h_layout)
         layout.addWidget(self.dismiss_event_button)
 
         # Add the new event
@@ -187,54 +239,6 @@ class MultipleEventsTable(QWidget):
 
         # Set timer to wake up in a minute
         self.timer.start(WAKEUP_INTERVAL * 1000)
-
-    def set_snooze_times_for_event(self, parsed_event):
-        snooze_times_before = [ 
-            ( -5, "5 minutes before start" ) ,
-            ( -2, "2 minutes before start" ) ,
-            ( -1, "1 minute before start" ) ,
-            ( 0, "at start" )
-        ]
-
-        snooze_times_future = [ 
-            ( 1, "For 1 minute" ) ,
-            ( 5, "For 5 minutes" ) ,
-            ( 15, "For 15 minutes" ) ,
-            ( 30, "For 30 minutes" ) ,
-            ( 60, "For 1 hour" ) ,
-            ( 120, "For 2 hours" ) ,
-            ( 240, "For 4 hours" ) ,
-            ( 480, "For 8 hours" )
-        ]
-
-        snooze_times_strings_for_combo_box = []
-        self.snooze_times_in_minutes = []
-
-        default_snooze = parsed_event.get('default_snooze', False)
-        if (default_snooze):
-            # Add the default snooze as the first item
-            snooze_times_strings_for_combo_box.append("Default " + default_snooze + " minutes")
-            self.snooze_times_in_minutes.append(int(default_snooze))
-
-        now_datetime = get_now_datetime()
-        if (parsed_event['start_date'] > now_datetime):
-            # Event start did not arrive yet - hide all before snooze buttons that are not relevant anymore
-            time_to_event_start = parsed_event['start_date'] - now_datetime
-            time_to_event_in_minutes = int(time_to_event_start.seconds / 60)
-
-            for index in range(len(snooze_times_before)):
-                snooze_time = snooze_times_before[index][0]
-
-                if (abs(snooze_time) < time_to_event_in_minutes):
-                    snooze_times_strings_for_combo_box.append(snooze_times_before[index][1])
-                    self.snooze_times_in_minutes.append(snooze_time)
-
-        for index in range(len(snooze_times_future)):
-            snooze_times_strings_for_combo_box.append(snooze_times_future[index][1])
-            self.snooze_times_in_minutes.append(snooze_times_future[index][0])
-
-        self.snooze_times_combo_box.clear()
-        self.snooze_times_combo_box.addItems(snooze_times_strings_for_combo_box)
 
     def on_selection_changed(self):
         # Get the index of the current selected row
@@ -324,13 +328,11 @@ class MultipleEventsTable(QWidget):
 
             self.remove_event_safe(row)
 
-    def on_snooze_event_clicked(self):
+    def snooze_event(self, snooze_time_in_minutes):
         # Get the index of the current selected row
         selected_row = self.table_widget.currentRow()
 
         if selected_row != -1:  # -1 means no row is selected
-            snooze_time_in_minutes = self.snooze_times_in_minutes[self.snooze_times_combo_box.currentIndex()]
-
             parsed_event = self.parsed_events[selected_row]
 
             self.globals.logger.debug("Snooze")
@@ -402,8 +404,7 @@ class MultipleEventsTable(QWidget):
         new_height = current_size.height() + pixels_to_add  # Increase the height by 50 pixels
         self.resize(current_size.width(), new_height)  # Set the new window size
 
-    def add_label(self, label_text, highlight = False):
-        layout = self.layout()  # Retrieve the layout using layout()
+    def add_label(self, layout, label_text, highlight = False):
         new_label = QLabel(label_text)  # Create a new QLabel
         new_label.setFixedHeight(16)
 
@@ -420,8 +421,7 @@ class MultipleEventsTable(QWidget):
 
         self.add_widget(layout, new_label)
 
-    def add_link_label(self, label_text, tooltip_text):
-        layout = self.layout()  # Retrieve the layout using layout()
+    def add_link_label(self, layout, label_text, tooltip_text):
         new_label = QLabel(label_text)  # Create a new QLabel
         new_label.setFixedHeight(16)
         new_label.setToolTip(tooltip_text)
@@ -431,13 +431,31 @@ class MultipleEventsTable(QWidget):
 
         self.add_widget(layout, new_label)
 
-    def add_button(self, button_text, button_callback):
-        layout = self.layout()  # Retrieve the layout using layout()
+    def add_button(self, layout, button_text, button_callback, additional_data = None, pass_button_to_cb = False, increase_window_height = True):
         new_button = QPushButton(button_text)  # Create a new button
-        new_button.setFixedHeight(32)
-        new_button.clicked.connect(button_callback)
 
-        self.add_widget(layout, new_button)
+        if (additional_data):
+            new_button.setProperty("customData", str(additional_data))
+
+        #new_button.setFixedWidth(button_width)
+        new_button.setFixedHeight(32)
+        #new_button.adjustSize()
+
+        # Calculate the width needed to fit the text
+        font_metrics = new_button.fontMetrics()
+        text_width = font_metrics.width(new_button.text())
+
+        # Add some padding to make it look better
+        padding = 30
+        new_button.setFixedWidth(text_width + padding)
+
+        if (pass_button_to_cb):
+            new_button.clicked.connect(lambda: button_callback(new_button))
+
+        else:
+            new_button.clicked.connect(button_callback)
+
+        self.add_widget(layout, new_button, increase_window_height)
 
     def open_video(self):
         # Get the index of the current selected row
@@ -479,16 +497,18 @@ class MultipleEventsTable(QWidget):
 
             self.remove_event(selected_row)
 
-    def add_widget(self, layout, widget):
-        # Increase the windows's height by the hight of the widget plus some more for the spacing
-        self.increase_window_height(widget.height() + 5)
+    def add_widget(self, layout, widget, increase_height=True):
+        height_to_add = 0
+        if (increase_height):
+            # Increase the windows's height by the hight of the widget plus some more for the spacing
+            height_to_add = widget.height() + 5
+            self.increase_window_height(height_to_add)
 
         layout.addWidget(widget)  # Add the new tab widget to the layout
 
-        self.event_widgets.append(widget)
+        self.event_widgets.append(DynamicWidgetDetails(layout, widget,height_to_add))
 
-    def add_tab_widget(self, parsed_event):
-        layout = self.layout()  # Retrieve the layout using layout()
+    def add_tab_widget(self, layout, parsed_event):
         new_tab_widget = QTabWidget()  # Create a new tab widget
         new_tab_widget.setFixedHeight(310)
 
@@ -510,7 +530,26 @@ class MultipleEventsTable(QWidget):
         new_tab_widget.addTab(raw_event_tab, "Raw Event")
 
         self.add_widget(layout, new_tab_widget)
-    
+
+    def on_snooze_general(self, button):
+        minutes_to_snooze = int(button.property("customData"))
+
+        self.snooze_event(minutes_to_snooze)
+
+    def add_snooze_buttons(self, event_display_details):
+        event_display_details.update_snooze_times_for_event()
+
+        for index in range(len(event_display_details.snooze_times_strings_for_combo_box)):
+            button_text = event_display_details.snooze_times_strings_for_combo_box[index]
+            button_minutes = event_display_details.snooze_times_in_minutes[index]
+            self.add_button(
+                self.h_layout,
+                button_text,
+                self.on_snooze_general,
+                additional_data=button_minutes,
+                pass_button_to_cb=True,
+                increase_window_height=(index == 0)) # We count the hight of the first button only, as the rest will be to the right of it
+
     def add_event_details_widgets(self, row):
         # Clear the previous details presented
         self.clear_event_details_widgets()
@@ -518,72 +557,97 @@ class MultipleEventsTable(QWidget):
         parsed_event = self.parsed_events[row]
         event_display_details = self.events_display_details[row]
 
+        layout = self.layout()  # Retrieve the layout using layout()
+
         if (event_display_details.mulitple_attendees_and_video_link_missing):
             # We need to show the missing video message
-            self.add_label("There are multiple attendees in this meeting, but there is no video link!!!", highlight=True)
+            self.add_label(
+                layout,
+                "There are multiple attendees in this meeting, but there is no video link!!!", 
+                highlight=True)
 
         if (event_display_details.need_to_record_meeting):
-            self.add_label("Remember to record!!!", highlight=True)
+            self.add_label(
+                layout,
+                "Remember to record!!!", 
+                highlight=True)
 
-        self.set_snooze_times_for_event(parsed_event)
+        self.add_snooze_buttons(event_display_details)
 
         self.c_video_link = event_display_details.c_video_link
 
-        self.add_label(event_display_details.cal_and_account_label_text)
+        self.add_label(
+            layout,
+            event_display_details.cal_and_account_label_text)
 
         if event_display_details.all_day_event:
-            self.add_label("An all day event")
+            self.add_label(
+                layout,
+                "An all day event")
 
-        self.add_label(event_display_details.start_time_label_text)
-        self.add_label(event_display_details.end_time_label_text)
+        self.add_label(
+            layout,
+            event_display_details.start_time_label_text)
+        
+        self.add_label(
+            layout,
+            event_display_details.end_time_label_text)
 
         self.add_link_label(
+            layout,
             event_display_details.gcal_event_link_label_text,
             event_display_details.gcal_event_link_label_tooltip
         )
 
         if (event_display_details.location_label_exits):
-            self.add_label(event_display_details.location_label_text)
+            self.add_label(
+                layout,
+                event_display_details.location_label_text)
+            
         elif (event_display_details.location_link_label_exists):
             self.add_link_label(
+                layout,
                 event_display_details.location_link_label_text,
                 event_display_details.location_link_label_tooltip)
             
         if (event_display_details.video_label_exists):
             self.add_link_label(
+                layout,
                 event_display_details.video_link_label_text,
                 event_display_details.video_link_label_tooltip)
 
         if (self.c_video_link != ""):
             # There is a video link - add the needed buttons
             self.add_button(
+                layout,
                 "Open Video",
                 self.open_video
             )
 
             self.add_button(
+                layout,
                 event_display_details.open_video_and_snooze_text,
                 self.open_video_and_snooze
             )
     
-        self.add_tab_widget(parsed_event)
+        self.add_tab_widget(layout, parsed_event)
 
     def clear_event_details_widgets(self):
-        layout = self.layout()  # Retrieve the layout using layout()
-
         while self.event_widgets:
             event_widget = self.event_widgets.pop()
 
-            layout.removeWidget(event_widget)
-            event_widget.deleteLater()
+            event_widget.layout.removeWidget(event_widget.widget)
 
-            # Decrease the window height
-            current_size = self.size()  # Get the current window size
+            # Decrease the window height if needed
+            if (event_widget.height > 0):
+                current_size = self.size()  # Get the current window size
 
-            # Decrease the height the widget size and by an additional delta
-            new_height = current_size.height() - event_widget.height() - 5  
+                # Decrease the height the widget size and by an additional delta
+                new_height = current_size.height() - event_widget.height  
 
-            self.resize(current_size.width(), new_height)  # Set the new window size
+                self.resize(current_size.width(), new_height)  # Set the new window size
+
+            event_widget.widget.deleteLater()
 
     def update_event(self, parsed_event):       
         with self.events_lock:
