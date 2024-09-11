@@ -178,10 +178,9 @@ class EventDisplayDetails():
 WAKEUP_INTERVAL = 15
 
 class DynamicWidgetDetails():
-    def __init__(self, layout, widget, height):
+    def __init__(self, layout, widget):
         self.layout = layout
         self.widget = widget
-        self.height = height
 
 class MultipleEventsTable(QWidget):
     def __init__(self, globals, parsed_event):
@@ -193,6 +192,8 @@ class MultipleEventsTable(QWidget):
 
         # Create QTableWidget with 1 row and 2 columns
         self.table_widget = QTableWidget(0, 2)
+        
+        self.table_widget.setFixedHeight(310)
 
         self.parsed_events = []
         self.events_display_details = []
@@ -399,11 +400,6 @@ class MultipleEventsTable(QWidget):
             # Sleep for another minute
             self.timer.start(WAKEUP_INTERVAL * 1000)
 
-    def increase_window_height(self, pixels_to_add):
-        current_size = self.size()  # Get the current window size
-        new_height = current_size.height() + pixels_to_add  # Increase the height by 50 pixels
-        self.resize(current_size.width(), new_height)  # Set the new window size
-
     def add_label(self, layout, label_text, highlight = False):
         new_label = QLabel(label_text)  # Create a new QLabel
         new_label.setFixedHeight(16)
@@ -431,7 +427,7 @@ class MultipleEventsTable(QWidget):
 
         self.add_widget(layout, new_label)
 
-    def add_button(self, layout, button_text, button_callback, additional_data = None, pass_button_to_cb = False, increase_window_height = True):
+    def add_button(self, layout, button_text, button_callback, additional_data = None, pass_button_to_cb = False):
         new_button = QPushButton(button_text)  # Create a new button
 
         if (additional_data):
@@ -455,7 +451,7 @@ class MultipleEventsTable(QWidget):
         else:
             new_button.clicked.connect(button_callback)
 
-        self.add_widget(layout, new_button, increase_window_height)
+        self.add_widget(layout, new_button)
 
     def open_video(self):
         # Get the index of the current selected row
@@ -497,16 +493,10 @@ class MultipleEventsTable(QWidget):
 
             self.remove_event(selected_row)
 
-    def add_widget(self, layout, widget, increase_height=True):
-        height_to_add = 0
-        if (increase_height):
-            # Increase the windows's height by the hight of the widget plus some more for the spacing
-            height_to_add = widget.height() + 5
-            self.increase_window_height(height_to_add)
-
+    def add_widget(self, layout, widget):
         layout.addWidget(widget)  # Add the new tab widget to the layout
 
-        self.event_widgets.append(DynamicWidgetDetails(layout, widget,height_to_add))
+        self.event_widgets.append(DynamicWidgetDetails(layout, widget))
 
     def add_tab_widget(self, layout, parsed_event):
         new_tab_widget = QTabWidget()  # Create a new tab widget
@@ -547,8 +537,7 @@ class MultipleEventsTable(QWidget):
                 button_text,
                 self.on_snooze_general,
                 additional_data=button_minutes,
-                pass_button_to_cb=True,
-                increase_window_height=(index == 0)) # We count the hight of the first button only, as the rest will be to the right of it
+                pass_button_to_cb=True)
 
     def add_event_details_widgets(self, row):
         # Clear the previous details presented
@@ -637,15 +626,6 @@ class MultipleEventsTable(QWidget):
             event_widget = self.event_widgets.pop()
 
             event_widget.layout.removeWidget(event_widget.widget)
-
-            # Decrease the window height if needed
-            if (event_widget.height > 0):
-                current_size = self.size()  # Get the current window size
-
-                # Decrease the height the widget size and by an additional delta
-                new_height = current_size.height() - event_widget.height  
-
-                self.resize(current_size.width(), new_height)  # Set the new window size
 
             event_widget.widget.deleteLater()
 
