@@ -213,21 +213,14 @@ class MultipleEventsTable(QWidget):
         # Hide the row headers (vertical headers)
         self.table_widget.verticalHeader().setVisible(False)
 
-        # Create a button to dismiss an event
-        self.dismiss_event_button = QPushButton("Dismiss")
-        self.dismiss_event_button.clicked.connect(self.on_dismiss_event_pressed)
-
         self.event_widgets = []
 
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        # Add a horizontal layout to the snooze buttons
-        self.h_layout = QHBoxLayout()
+        self.h_layout = None
                 
         layout.addWidget(self.table_widget)
-        layout.addLayout(self.h_layout)
-        layout.addWidget(self.dismiss_event_button)
 
         # Add the new event
         self.add_event(parsed_event)
@@ -427,7 +420,7 @@ class MultipleEventsTable(QWidget):
 
         self.add_widget(layout, new_label)
 
-    def add_button(self, layout, button_text, button_callback, additional_data = None, pass_button_to_cb = False):
+    def add_button(self, layout, button_text, button_callback, additional_data = None, pass_button_to_cb = False, size_button_according_to_text = True):
         new_button = QPushButton(button_text)  # Create a new button
 
         if (additional_data):
@@ -437,13 +430,14 @@ class MultipleEventsTable(QWidget):
         new_button.setFixedHeight(32)
         #new_button.adjustSize()
 
-        # Calculate the width needed to fit the text
-        font_metrics = new_button.fontMetrics()
-        text_width = font_metrics.width(new_button.text())
+        if (size_button_according_to_text):
+            # Calculate the width needed to fit the text
+            font_metrics = new_button.fontMetrics()
+            text_width = font_metrics.width(new_button.text())
 
-        # Add some padding to make it look better
-        padding = 30
-        new_button.setFixedWidth(text_width + padding)
+            # Add some padding to make it look better
+            padding = 30
+            new_button.setFixedWidth(text_width + padding)
 
         if (pass_button_to_cb):
             new_button.clicked.connect(lambda: button_callback(new_button))
@@ -526,10 +520,25 @@ class MultipleEventsTable(QWidget):
 
         self.snooze_event(minutes_to_snooze)
 
-    def add_snooze_buttons(self, event_display_details):
+    def add_snooze_buttons(self, layout, event_display_details):
         event_display_details.update_snooze_times_for_event()
 
-        for index in range(len(event_display_details.snooze_times_strings_for_combo_box)):
+        # Add the first snooze button as a long button with the width of the window itself
+        button_text = event_display_details.snooze_times_strings_for_combo_box[0]
+        button_minutes = event_display_details.snooze_times_in_minutes[0]
+        self.add_button(
+            layout,
+            button_text,
+            self.on_snooze_general,
+            additional_data=button_minutes,
+            pass_button_to_cb=True,
+            size_button_according_to_text=False)
+        
+        # Crate the horizontal box layout for the rest of the snooze buttons
+        self.h_layout = QHBoxLayout()
+        layout.addLayout(self.h_layout)
+
+        for index in range(1, len(event_display_details.snooze_times_strings_for_combo_box)):
             button_text = event_display_details.snooze_times_strings_for_combo_box[index]
             button_minutes = event_display_details.snooze_times_in_minutes[index]
             self.add_button(
@@ -561,7 +570,16 @@ class MultipleEventsTable(QWidget):
                 "Remember to record!!!", 
                 highlight=True)
 
-        self.add_snooze_buttons(event_display_details)
+        self.add_snooze_buttons(
+            layout,
+            event_display_details)
+
+        # Add the dismiss button
+        self.add_button(
+            layout,
+            "Dismiss",
+            self.on_dismiss_event_pressed,
+            size_button_according_to_text=False)
 
         self.c_video_link = event_display_details.c_video_link
 
@@ -628,6 +646,10 @@ class MultipleEventsTable(QWidget):
             event_widget.layout.removeWidget(event_widget.widget)
 
             event_widget.widget.deleteLater()
+
+        # Clear the horizontal box layout
+        if (self.h_layout):
+            self.h_layout.deleteLater()
 
     def update_event(self, parsed_event):       
         with self.events_lock:
