@@ -424,7 +424,7 @@ class MultipleEventsTable(QWidget):
         new_button = QPushButton(button_text)  # Create a new button
 
         if (additional_data):
-            new_button.setProperty("customData", str(additional_data))
+            new_button.setProperty("customData", additional_data)
 
         #new_button.setFixedWidth(button_width)
         new_button.setFixedHeight(32)
@@ -530,7 +530,7 @@ class MultipleEventsTable(QWidget):
             layout,
             button_text,
             self.on_snooze_general,
-            additional_data=button_minutes,
+            additional_data=str(button_minutes),
             pass_button_to_cb=True,
             size_button_according_to_text=False)
         
@@ -545,7 +545,7 @@ class MultipleEventsTable(QWidget):
                 self.h_layout,
                 button_text,
                 self.on_snooze_general,
-                additional_data=button_minutes,
+                additional_data=str(button_minutes),
                 pass_button_to_cb=True)
 
     def add_event_details_widgets(self, row):
