@@ -610,6 +610,11 @@ class MultipleEventsTable(QWidget):
             button_text,
             str(button_minutes))
         
+        # Clear the current dynamic snooze buttons
+        # We are doing it here as well for the case this is called from the update on timer event, 
+        # that does not need to update all of the dyanimc widgets
+        self.delete_widgets_in_layout(self.additional_snooze_buttons_layout)
+        
         for index in range(1, len(event_display_details.snooze_times_strings_for_combo_box)):
             button_text = event_display_details.snooze_times_strings_for_combo_box[index]
             button_minutes = event_display_details.snooze_times_in_minutes[index]
@@ -694,61 +699,9 @@ class MultipleEventsTable(QWidget):
         self.update_tab_widget(parsed_event)
 
     def update_event_details_widgets_on_timer(self, row):
-        parsed_event = self.parsed_events[row]
         event_display_details = self.events_display_details[row]
 
         self.add_snooze_buttons(event_display_details)
-
-        self.c_video_link = event_display_details.c_video_link
-        if (self.c_video_link != ""):
-            # There is a video link - add the needed buttons
-            self.add_button(
-                self.open_video_and_snooze_layout,
-                event_display_details.open_video_and_snooze_text,
-                self.open_video_and_snooze,
-                size_button_according_to_text=False)
-
-        self.update_label(
-            self.account_label,
-            event_display_details.cal_and_account_label_text)
-
-        if event_display_details.all_day_event:
-            self.add_label(
-            self.all_day_event_layout,
-                "An all day event")
-
-        self.update_label(
-            self.start_time_label,
-            event_display_details.start_time_label_text)
-        
-        self.update_label(
-            self.end_time_label,
-            event_display_details.end_time_label_text)
-
-        if (event_display_details.location_label_exits):
-            self.add_label(
-                self.potential_links_layout,
-                event_display_details.location_label_text)
-            
-        elif (event_display_details.location_link_label_exists):
-            self.add_link_label(
-                self.potential_links_layout,
-                event_display_details.location_link_label_text,
-                event_display_details.location_link_label_tooltip)
-            
-        if (event_display_details.video_label_exists):
-            self.add_link_label(
-                self.potential_links_layout,
-                event_display_details.video_link_label_text,
-                event_display_details.video_link_label_tooltip)
-            
-        self.update_label(
-            self.event_link_label,
-            event_display_details.gcal_event_link_label_text,
-            event_display_details.gcal_event_link_label_tooltip
-        )
-
-        self.update_tab_widget(parsed_event)
 
     def delete_widgets_in_layout(self, layout):
         # Remove all widgets in the layout
