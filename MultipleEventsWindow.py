@@ -83,6 +83,8 @@ class EventDisplayDetails():
             # Add the text_to_append
             label_text = label_text + " from " + text_to_append_if_identified
 
+        label_text = "<a href=\"" + url + "\">" + label_text + "</a>"
+
         return identified_as_a_video_meeting, label_text
 
     def __init__(self, parsed_event):
@@ -151,9 +153,9 @@ class EventDisplayDetails():
             # There is a video link
 
             if (self.need_to_record_meeting):
-                self.open_video_and_snooze_text = "and snooze for 1 min"
+                self.open_video_and_snooze_text = "Open video link and snooze for 1 min"
             else:
-                self.open_video_and_snooze_text = "and snooze for 5 min"
+                self.open_video_and_snooze_text = "Open video link and snooze for 5 min"
     
         self.mulitple_attendees_and_video_link_missing = False
         if ((self.c_video_link == "") and (parsed_event['num_of_attendees'] > 1)):
@@ -215,13 +217,69 @@ class MultipleEventsTable(QWidget):
 
         self.event_widgets = []
 
-        layout = QVBoxLayout()
-        self.setLayout(layout)
+        self.main_layout = QVBoxLayout()
+        self.setLayout(self.main_layout)
 
         self.h_layout = None
                 
-        layout.addWidget(self.table_widget)
+        self.main_layout.addWidget(self.table_widget)
 
+        self.warnings_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.warnings_layout)
+
+        # Add the default snooze button
+        self.default_snooze_button = self.add_button(
+            self.main_layout,
+            "Default Snooze", # Will change later on per the specific event
+            self.on_snooze_general,
+            pass_button_to_cb=True,
+            size_button_according_to_text=False,
+            add_to_dynamic_objects=False)
+
+        self.open_video_and_snooze_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.open_video_and_snooze_layout)
+
+        # Crate the horizontal box layout for the rest of the snooze buttons
+        self.additional_snooze_buttons_layout = QHBoxLayout()
+        self.main_layout.addLayout(self.additional_snooze_buttons_layout)
+
+        # Add the dismiss button
+        self.add_button(
+            self.main_layout,
+            "Dismiss",
+            self.on_dismiss_event_pressed,
+            size_button_according_to_text=False,
+            add_to_dynamic_objects=False)
+        
+        self.account_label = self.add_label(
+            self.main_layout,
+            "Initial text - to replaced with the initial event text",
+            add_to_dynamic_objects=False)
+
+        self.all_day_event_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.all_day_event_layout)
+
+        self.start_time_label = self.add_label(
+            self.main_layout,
+            "Initial text - to replaced with the initial event text",
+            add_to_dynamic_objects=False)
+        
+        self.end_time_label = self.add_label(
+            self.main_layout,
+            "Initial text - to replaced with the initial event text",
+            add_to_dynamic_objects=False)
+        
+        self.potential_links_layout = QVBoxLayout()
+        self.main_layout.addLayout(self.potential_links_layout)
+
+        self.event_link_label = self.add_link_label(
+            self.main_layout,
+            "Initial text - to replaced with the initial event text",
+            "Initial text - to replaced with the initial event text",
+            add_to_dynamic_objects=False)
+        
+        self.tab_widget = self.add_empty_tab_widget(self.main_layout)
+        
         # Add the new event
         self.add_event(parsed_event)
 
@@ -393,7 +451,7 @@ class MultipleEventsTable(QWidget):
             # Sleep for another minute
             self.timer.start(WAKEUP_INTERVAL * 1000)
 
-    def add_label(self, layout, label_text, highlight = False):
+    def add_label(self, layout, label_text, highlight = False, add_to_dynamic_objects=True):
         new_label = QLabel(label_text)  # Create a new QLabel
         new_label.setFixedHeight(16)
 
@@ -408,9 +466,17 @@ class MultipleEventsTable(QWidget):
                                                 )
             new_label.setStyleSheet("QLabel { background-color: rgba("+values+"); }")
 
-        self.add_widget(layout, new_label)
+        self.add_widget(layout, new_label, add_to_dynamic_objects)
 
-    def add_link_label(self, layout, label_text, tooltip_text):
+        return new_label
+
+    def update_label(self, label, new_label_text, new_tooltip_text=None):
+        label.setText(new_label_text)
+
+        if (new_tooltip_text):
+            label.setToolTip(new_tooltip_text)
+
+    def add_link_label(self, layout, label_text, tooltip_text, add_to_dynamic_objects=True):
         new_label = QLabel(label_text)  # Create a new QLabel
         new_label.setFixedHeight(16)
         new_label.setToolTip(tooltip_text)
@@ -418,9 +484,24 @@ class MultipleEventsTable(QWidget):
         # Enable automatic opening of external links
         new_label.setOpenExternalLinks(True)
 
-        self.add_widget(layout, new_label)
+        self.add_widget(layout, new_label, add_to_dynamic_objects)
 
-    def add_button(self, layout, button_text, button_callback, additional_data = None, pass_button_to_cb = False, size_button_according_to_text = True):
+        return new_label
+
+    def update_button(self, button, new_button_text, additional_data):
+        button.setText(new_button_text)
+
+        button.setProperty("customData", additional_data)
+        
+    def add_button(
+            self, 
+            layout, 
+            button_text, 
+            button_callback, 
+            additional_data = None, 
+            pass_button_to_cb = False, 
+            size_button_according_to_text = True,
+            add_to_dynamic_objects = True):
         new_button = QPushButton(button_text)  # Create a new button
 
         if (additional_data):
@@ -445,7 +526,9 @@ class MultipleEventsTable(QWidget):
         else:
             new_button.clicked.connect(button_callback)
 
-        self.add_widget(layout, new_button)
+        self.add_widget(layout, new_button, add_to_dynamic_objects)
+
+        return new_button
 
     def open_video(self):
         # Get the index of the current selected row
@@ -487,62 +570,65 @@ class MultipleEventsTable(QWidget):
 
             self.remove_event(selected_row)
 
-    def add_widget(self, layout, widget):
+    def add_widget(self, layout, widget, add_to_dynamic_objects = True):
         layout.addWidget(widget)  # Add the new tab widget to the layout
 
-        self.event_widgets.append(DynamicWidgetDetails(layout, widget))
+        if (add_to_dynamic_objects):
+            self.event_widgets.append(DynamicWidgetDetails(layout, widget))
 
-    def add_tab_widget(self, layout, parsed_event):
+    def add_empty_tab_widget(self, layout):
         new_tab_widget = QTabWidget()  # Create a new tab widget
         new_tab_widget.setFixedHeight(310)
 
-        if (parsed_event['description'] != "No description"):
-            # Create a tab for the description
-            description_tab = QTextBrowser()
-            description_tab.setHtml(parsed_event['description'])
-            description_tab.setOpenExternalLinks(True)
+        # Create a tab for the description
+        self.description_tab = QTextBrowser()
+        self.description_tab.setOpenExternalLinks(True)
 
-
-            # Add the tab to the tab widget
-            new_tab_widget.addTab(description_tab, "Description")
-
-        # Create the tab for the raw event
-        raw_event_tab = QTextBrowser()
-        raw_event_tab.setText(nice_json(parsed_event['raw_event']))
 
         # Add the tab to the tab widget
-        new_tab_widget.addTab(raw_event_tab, "Raw Event")
+        new_tab_widget.addTab(self.description_tab, "Description")
 
-        self.add_widget(layout, new_tab_widget)
+        # Create the tab for the raw event
+        self.raw_event_tab = QTextBrowser()
+
+        # Add the tab to the tab widget
+        new_tab_widget.addTab(self.raw_event_tab, "Raw Event")
+
+        self.add_widget(
+            layout, 
+            new_tab_widget,
+            add_to_dynamic_objects=False)
+        
+        return new_tab_widget
+
+    def update_tab_widget(self, parsed_event):
+        # Update the content of the description tab
+        self.description_tab.setHtml(parsed_event['description'])
+
+        # Update the content of the raw event tab
+        self.raw_event_tab.setText(nice_json(parsed_event['raw_event']))
 
     def on_snooze_general(self, button):
         minutes_to_snooze = int(button.property("customData"))
 
         self.snooze_event(minutes_to_snooze)
 
-    def add_snooze_buttons(self, layout, event_display_details):
+    def add_snooze_buttons(self, event_display_details):
         event_display_details.update_snooze_times_for_event()
 
-        # Add the first snooze button as a long button with the width of the window itself
+        # Update the default snooze button to with the correct text and snooze time
         button_text = event_display_details.snooze_times_strings_for_combo_box[0]
         button_minutes = event_display_details.snooze_times_in_minutes[0]
-        self.add_button(
-            layout,
+        self.update_button(
+            self.default_snooze_button,
             button_text,
-            self.on_snooze_general,
-            additional_data=str(button_minutes),
-            pass_button_to_cb=True,
-            size_button_according_to_text=False)
+            str(button_minutes))
         
-        # Crate the horizontal box layout for the rest of the snooze buttons
-        self.h_layout = QHBoxLayout()
-        layout.addLayout(self.h_layout)
-
         for index in range(1, len(event_display_details.snooze_times_strings_for_combo_box)):
             button_text = event_display_details.snooze_times_strings_for_combo_box[index]
             button_minutes = event_display_details.snooze_times_in_minutes[index]
             self.add_button(
-                self.h_layout,
+                self.additional_snooze_buttons_layout,
                 button_text,
                 self.on_snooze_general,
                 additional_data=str(button_minutes),
@@ -560,84 +646,68 @@ class MultipleEventsTable(QWidget):
         if (event_display_details.mulitple_attendees_and_video_link_missing):
             # We need to show the missing video message
             self.add_label(
-                layout,
+                self.warnings_layout,
                 "There are multiple attendees in this meeting, but there is no video link!!!", 
                 highlight=True)
 
         if (event_display_details.need_to_record_meeting):
             self.add_label(
-                layout,
+                self.warnings_layout,
                 "Remember to record!!!", 
                 highlight=True)
 
-        self.add_snooze_buttons(
-            layout,
-            event_display_details)
-
-        # Add the dismiss button
-        self.add_button(
-            layout,
-            "Dismiss",
-            self.on_dismiss_event_pressed,
-            size_button_according_to_text=False)
+        self.add_snooze_buttons(event_display_details)
 
         self.c_video_link = event_display_details.c_video_link
+        if (self.c_video_link != ""):
+            # There is a video link - add the needed buttons
+            self.add_button(
+                self.open_video_and_snooze_layout,
+                event_display_details.open_video_and_snooze_text,
+                self.open_video_and_snooze,
+                size_button_according_to_text=False)
 
-        self.add_label(
-            layout,
+        self.update_label(
+            self.account_label,
             event_display_details.cal_and_account_label_text)
 
         if event_display_details.all_day_event:
             self.add_label(
-                layout,
+            self.all_day_event_layout,
                 "An all day event")
 
-        self.add_label(
-            layout,
+        self.update_label(
+            self.start_time_label,
             event_display_details.start_time_label_text)
         
-        self.add_label(
-            layout,
+        self.update_label(
+            self.end_time_label,
             event_display_details.end_time_label_text)
-
-        self.add_link_label(
-            layout,
-            event_display_details.gcal_event_link_label_text,
-            event_display_details.gcal_event_link_label_tooltip
-        )
 
         if (event_display_details.location_label_exits):
             self.add_label(
-                layout,
+                self.potential_links_layout,
                 event_display_details.location_label_text)
             
         elif (event_display_details.location_link_label_exists):
             self.add_link_label(
-                layout,
+                self.potential_links_layout,
                 event_display_details.location_link_label_text,
                 event_display_details.location_link_label_tooltip)
             
         if (event_display_details.video_label_exists):
             self.add_link_label(
-                layout,
+                self.potential_links_layout,
                 event_display_details.video_link_label_text,
                 event_display_details.video_link_label_tooltip)
+            
+        self.update_label(
+            self.event_link_label,
+            event_display_details.gcal_event_link_label_text,
+            event_display_details.gcal_event_link_label_tooltip
+        )
 
-        if (self.c_video_link != ""):
-            # There is a video link - add the needed buttons
-            self.add_button(
-                layout,
-                "Open Video",
-                self.open_video
-            )
-
-            self.add_button(
-                layout,
-                event_display_details.open_video_and_snooze_text,
-                self.open_video_and_snooze
-            )
-    
-        self.add_tab_widget(layout, parsed_event)
+        self.update_tab_widget(parsed_event)
 
     def clear_event_details_widgets(self):
         while self.event_widgets:
