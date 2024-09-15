@@ -2,12 +2,11 @@ from PyQt5.QtWidgets import (
     QSystemTrayIcon,
     QMenu,
     QAction,
-    QMainWindow
+    QMainWindow,
+    QDesktopWidget
 )
 
 from PyQt5 import QtCore
-
-from EventWindow import EventWindow
 
 from set_icon_with_number import set_icon_with_number
 
@@ -18,6 +17,8 @@ from pyqt_realtime_log_widget import LogWidget
 
 from table_window import Show_Snoozed_Events_Table_Window, Show_Dismissed_Events_Table_Window
 
+from MultipleEventsWindow import *
+
 class app_system_tray(QMainWindow):
     def __init__(self, globals, get_events_object):
         super(app_system_tray, self).__init__()
@@ -25,6 +26,8 @@ class app_system_tray(QMainWindow):
         self.globals = globals
         self.get_events_object = get_events_object
         self.c_num_of_displayed_events = 0
+
+        self.multiple_events_windows = None
 
         # Create the system_tray
         self.system_tray = QSystemTrayIcon(self)
@@ -82,16 +85,21 @@ class app_system_tray(QMainWindow):
         self.update_app_icon()
 
     def show_window(self, event_key_str, parsed_event):
-        event_win = EventWindow(self.globals)
+        if (self.multiple_events_windows == None):
+            self.multiple_events_windows = MultipleEventsTable(self.globals, parsed_event)
 
-        event_win.init_window_from_parsed_event(event_key_str, parsed_event)
-        event_win.setFixedWidth(730)
-        event_win.setFixedHeight(650)
+        else:
+            self.multiple_events_windows.add_event(parsed_event)
 
-        event_win.show()
-        event_win.activateWindow()
-        event_win.raise_()
+        self.multiple_events_windows.setFixedWidth(730)
 
+        # Show the window on the main monitor
+        monitor = QDesktopWidget().screenGeometry(0)
+        self.multiple_events_windows.move(monitor.left(), monitor.top())
+
+        self.multiple_events_windows.show()
+        self.multiple_events_windows.activateWindow()
+        self.multiple_events_windows.raise_()      
 
         self.globals.events_logger.info("Displaying event:" + parsed_event['event_name'])
 
@@ -104,8 +112,9 @@ class app_system_tray(QMainWindow):
                 break
             
             if(self.globals.displayed_events.is_event_in(event_key_str)):
-                # The event is already displayed with older data, switch it to show the new data
-                self.globals.displayed_events[event_key_str]['event_window'].init_window_from_parsed_event(event_key_str, parsed_event)
+                # The event is already displayed with older data, mark it so the new data will be reflected for the event
+                if (self.multiple_events_windows):
+                    self.multiple_events_windows.update_event(parsed_event)
 
             else: # A totaly new event
                 # Add the new event to the displayed events list    
