@@ -11,6 +11,8 @@ import re
 
 class EventDisplayDetails():
     def update_snooze_times_for_event(self):
+        self.event_has_snooze_before_items = False
+        
         parsed_event = self.parsed_event
         self.snooze_times_before = [ 
             ( -5, "-5m" ) ,
@@ -41,7 +43,7 @@ class EventDisplayDetails():
 
         now_datetime = get_now_datetime()
         if (parsed_event['start_date'] > now_datetime):
-            # Event start did not arrive yet - hide all before snooze buttons that are not relevant anymore
+            # Event start did not arrive yet - add all needed before snooze buttons
             time_to_event_start = parsed_event['start_date'] - now_datetime
             time_to_event_in_minutes = int(time_to_event_start.seconds / 60)
 
@@ -49,6 +51,10 @@ class EventDisplayDetails():
                 snooze_time = self.snooze_times_before[index][0]
 
                 if (abs(snooze_time) < time_to_event_in_minutes):
+                    if  (self.event_has_snooze_before_items == False):
+                        self.event_has_snooze_before_items = True
+                        self.next_time_to_update_buttons = parsed_event['start_date'] + datetime.timedelta(minutes=snooze_time)
+
                     self.snooze_times_strings_for_combo_box.append(self.snooze_times_before[index][1])
                     self.snooze_times_in_minutes.append(snooze_time)
             
@@ -442,7 +448,7 @@ class MultipleEventsTable(QWidget):
             selected_row = self.table_widget.currentRow()
 
             if selected_row != -1:  # -1 means no row is selected
-                self.add_event_details_widgets(selected_row)
+                self.update_event_details_widgets_on_timer(selected_row)
 
             # Sleep for another minute
             self.timer.start(WAKEUP_INTERVAL * 1000)
@@ -610,11 +616,6 @@ class MultipleEventsTable(QWidget):
             button_text,
             str(button_minutes))
         
-        # Clear the current dynamic snooze buttons
-        # We are doing it here as well for the case this is called from the update on timer event, 
-        # that does not need to update all of the dyanimc widgets
-        self.delete_widgets_in_layout(self.additional_snooze_buttons_layout)
-        
         for index in range(1, len(event_display_details.snooze_times_strings_for_combo_box)):
             button_text = event_display_details.snooze_times_strings_for_combo_box[index]
             button_minutes = event_display_details.snooze_times_in_minutes[index]
@@ -624,6 +625,15 @@ class MultipleEventsTable(QWidget):
                 self.on_snooze_general,
                 additional_data=str(button_minutes),
                 pass_button_to_cb=True)
+
+    def update_snooze_buttons(self, event_display_details):
+        if (event_display_details.event_has_snooze_before_items):
+            now_datetime = get_now_datetime()
+            if (now_datetime >= event_display_details.next_time_to_update_buttons):
+                # Clear the current dynamic snooze buttons
+                self.delete_widgets_in_layout(self.additional_snooze_buttons_layout)
+
+                self.add_snooze_buttons(event_display_details)         
 
     def add_event_details_widgets(self, row):
         # Clear the previous dynamic details presented
@@ -701,7 +711,7 @@ class MultipleEventsTable(QWidget):
     def update_event_details_widgets_on_timer(self, row):
         event_display_details = self.events_display_details[row]
 
-        self.add_snooze_buttons(event_display_details)
+        self.update_snooze_buttons(event_display_details)
 
     def delete_widgets_in_layout(self, layout):
         # Remove all widgets in the layout
