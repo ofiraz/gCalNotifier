@@ -8,8 +8,6 @@ from PyQt5.QtWidgets import (
 
 from PyQt5 import QtCore
 
-from EventWindow import EventWindow
-
 from set_icon_with_number import set_icon_with_number
 
 import sys
@@ -87,18 +85,6 @@ class app_system_tray(QMainWindow):
         self.update_app_icon()
 
     def show_window(self, event_key_str, parsed_event):
-        '''
-        event_win = EventWindow(self.globals)
-
-        event_win.init_window_from_parsed_event(event_key_str, parsed_event)
-        event_win.setFixedWidth(730)
-        event_win.setFixedHeight(650)
-
-        event_win.show()
-        event_win.activateWindow()
-        event_win.raise_()
-        '''
-
         if (self.multiple_events_windows == None):
             self.multiple_events_windows = MultipleEventsTable(self.globals, parsed_event)
 
