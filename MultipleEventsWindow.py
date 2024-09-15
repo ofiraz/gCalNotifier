@@ -429,6 +429,8 @@ class MultipleEventsTable(QWidget):
     def update_display_on_timer(self):
         num_of_deleted_rows = 0
 
+        now_datetime = get_now_datetime()
+
         with self.events_lock:
             for row in range(self.table_widget.rowCount()):
                 index = row - num_of_deleted_rows
@@ -437,7 +439,8 @@ class MultipleEventsTable(QWidget):
                 time_until_event_start = self.get_time_until_event_start(self.parsed_events[index])
                 self.update_table_cell(index, 1, time_until_event_start)
 
-                if (self.parsed_events[index]['deleted'] or self.parsed_events[index]['changed']):
+                if (self.parsed_events[index]['deleted'] or self.parsed_events[index]['changed']
+                    or ((now_datetime > self.parsed_events[index]['end_date']) and self.parsed_events[index]['close_event_window_when_event_has_ended'])):
                     self.remove_event_safe(index)
                     num_of_deleted_rows = num_of_deleted_rows + 1
 
