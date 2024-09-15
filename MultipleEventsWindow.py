@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QComboBox, QTabWidget, QTextBrowser
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QTabWidget, QTextBrowser
 from PyQt5 import (QtCore, QtGui)
 import subprocess
 from datetime_utils import get_now_datetime
