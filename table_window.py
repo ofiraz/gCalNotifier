@@ -1,6 +1,7 @@
 # Following https://www.pythonguis.com/tutorials/qtableview-modelviews-numpy-pandas/
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore
+from PyQt5.QtWidgets import QMainWindow, QTableView, QHeaderView, QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QTabWidget, QTextBrowser
 from PyQt5.QtCore import Qt
 
 class TableModel(QtCore.QAbstractTableModel):
@@ -24,19 +25,51 @@ class TableModel(QtCore.QAbstractTableModel):
         # the length (only works if all rows are an equal length)
         return len(self._data[0])
 
-class TableWindow(QtWidgets.QMainWindow):
-    def __init__(self, show_events_table_object):
+class TableWindow(QWidget):
+    def __init__(self, show_events_table_object, use_table_view = True):
         super().__init__()
 
         self.show_events_table_object = show_events_table_object
+        self.use_table_view = use_table_view
 
-        self.table = QtWidgets.QTableView(self)
+        if (use_table_view):
+            self.table = QTableView(self)
 
-        self.refresh_button = QtWidgets.QPushButton('Refresh',self)
+            self.refresh_button = QPushButton('Refresh',self)
 
-        self.refresh_button.move(0, 0)
+            self.refresh_button.move(0, 0)
 
-        self.refresh_button.clicked.connect(self.update_table_data)
+            self.refresh_button.clicked.connect(self.update_table_data)
+
+        else:
+            self.main_layout = QVBoxLayout()
+            self.setLayout(self.main_layout)
+
+            self.number_of_columns_in_table = len(self.show_events_table_object.table_header)
+            self.table_widget = QTableWidget(0, self.number_of_columns_in_table)
+
+            # Make the QTableWidget read-only
+            self.table_widget.setEditTriggers(QTableWidget.NoEditTriggers)
+
+            # Set the selection behavior to select entire rows
+            self.table_widget.setSelectionBehavior(QTableWidget.SelectRows)
+
+            # Prevent muliple selection
+            self.table_widget.setSelectionMode(QTableWidget.SingleSelection)
+
+            # Set the table headers
+            self.table_widget.setHorizontalHeaderLabels(self.show_events_table_object.table_header)
+
+            # Hide the row headers (vertical headers)
+            self.table_widget.verticalHeader().setVisible(False)
+
+            self.main_layout.addWidget(self.table_widget)
+
+            self.refresh_button = QPushButton('Refresh')
+            self.main_layout.addWidget(self.refresh_button)
+
+            self.refresh_button.clicked.connect(self.update_table_data)
+
 
         self.update_table_data()
 
@@ -46,21 +79,42 @@ class TableWindow(QtWidgets.QMainWindow):
         total_column_width = 0
 
         for col in range(self.model.columnCount(0)):
-            header.setSectionResizeMode(col, QtWidgets.QHeaderView.ResizeToContents)
+            header.setSectionResizeMode(col, QHeaderView.ResizeToContents)
             total_column_width += self.table.columnWidth(col)
 
         return(total_column_width)
     
     def update_table_data(self):
         data = self.show_events_table_object.get_data_into_table()
-        self.model = TableModel(data)
-        self.table.setModel(self.model)
 
-        total_column_width = self.resize_table_columns_to_contents()
+        if (self.use_table_view):
+            self.model = TableModel(data)
+            self.table.setModel(self.model)
 
-        self.setFixedWidth(total_column_width + 50)
+            total_column_width = self.resize_table_columns_to_contents()
 
-        self.setCentralWidget(self.table)
+            self.setFixedWidth(total_column_width + 50)
+
+            self.setCentralWidget(self.table)
+
+        else:
+            # Clear old data
+            while (self.table_widget.rowCount() > 0):
+                self.table_widget.removeRow(0)
+            
+            for row in range(len(data)):
+                self.table_widget.insertRow(row)
+
+                for col in range(len(data[row])):
+                    self.table_widget.setItem(row, col, QTableWidgetItem(data[row][col]))
+
+            total_columns_width = 0
+            for col in range(len(data[0])):
+                self.table_widget.resizeColumnToContents(col)
+                total_columns_width = total_columns_width + self.table_widget.columnWidth(col)
+
+            # Set the window width to match the table's width and keep the height flexible
+            self.resize(total_columns_width + 45, self.height())  # Set window width to table's width, keep current height
     
 class Show_Events_Table_Window():
     def __init__(self, get_events_object):
@@ -81,7 +135,7 @@ class Show_Events_Table_Window():
         return None
         
     def open_window_with_events(self):        
-        self.table_window = TableWindow(self)
+        self.table_window = TableWindow(self, use_table_view=False)
         self.table_window.show()
         self.table_window.setWindowTitle(self.window_title)
         self.table_window.activateWindow()
@@ -97,7 +151,7 @@ class Show_Events_Table_Window():
 
         data_for_table_widget = []
         
-        data_for_table_widget.append(self.table_header)
+        #data_for_table_widget.append(self.table_header)
         
         for event_item in events_list:
             row_data = self.get_row_data(event_item)
