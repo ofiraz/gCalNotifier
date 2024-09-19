@@ -37,22 +37,22 @@ class TableWindow(QWidget):
         self.update_table_data()
 
     def update_table_data(self):
-        data = self.show_events_table_object.get_data_into_table()
+        self.data = self.show_events_table_object.get_data_into_table()
 
         # Clear old data
         while (self.table_widget.rowCount() > 0):
             self.table_widget.removeRow(0)
         
-        for row in range(len(data)):
+        for row in range(len(self.data)):
             self.table_widget.insertRow(row)
 
-            for col in range(len(data[row])):
-                self.table_widget.setItem(row, col, QTableWidgetItem(data[row][col]))
+            for col in range(1, len(self.data[row])): # Skipping the event key value
+                self.table_widget.setItem(row, col - 1, QTableWidgetItem(str(self.data[row][col])))
 
         total_columns_width = 0
-        for col in range(len(data[0])):
-            self.table_widget.resizeColumnToContents(col)
-            total_columns_width = total_columns_width + self.table_widget.columnWidth(col)
+        for col in range(1, len(self.data[0])): # Skipping the event key value
+            self.table_widget.resizeColumnToContents(col - 1)
+            total_columns_width = total_columns_width + self.table_widget.columnWidth(col - 1)
 
         # Set the window width to match the table's width and keep the height flexible
         self.resize(total_columns_width + 45, self.height())  # Set window width to table's width, keep current height
@@ -68,9 +68,6 @@ class Show_Events_Table_Window():
 
     def handle_event_to_display(self, event_key_str, parsed_event, events_list):
         return
-    
-    def get_row_data(self, event_item):
-        return []
     
     def get_sort_value(self, item):
         return None
@@ -90,16 +87,7 @@ class Show_Events_Table_Window():
         # Sort by the event time
         events_list.sort(key=self.get_sort_value)
 
-        data_for_table_widget = []
-        
-        #data_for_table_widget.append(self.table_header)
-        
-        for event_item in events_list:
-            row_data = self.get_row_data(event_item)
-
-            data_for_table_widget.append(row_data)
-        
-        return(data_for_table_widget)
+        return(events_list)
 
 class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
     def __init__(self, get_events_object):
@@ -111,6 +99,7 @@ class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
         
     def handle_event_to_display(self, event_key_str, parsed_event, events_list):
         snoozed_item = [
+            event_key_str,
             parsed_event['google_account'],
             parsed_event['cal name'],
             parsed_event['event_name'],
@@ -120,18 +109,8 @@ class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
         events_list.append(snoozed_item)
 
     def get_sort_value(self, item):
-        return(item[3]) # The event wakeup time
+        return(item[4]) # The event wakeup time
 
-    def get_row_data(self, event_item):
-        row_data = [
-            event_item[0],
-            event_item[1],
-            event_item[2],
-            str(event_item[3])
-        ]
-
-        return row_data
-    
 class Show_Dismissed_Events_Table_Window(Show_Events_Table_Window):
     def __init__(self, get_events_object):
         super().__init__(get_events_object)
@@ -142,6 +121,7 @@ class Show_Dismissed_Events_Table_Window(Show_Events_Table_Window):
         
     def handle_event_to_display(self, event_key_str, parsed_event, events_list):
         dismissed_item = [
+            event_key_str,
             parsed_event['google_account'],
             parsed_event['cal name'],
             parsed_event['event_name'],
@@ -151,15 +131,4 @@ class Show_Dismissed_Events_Table_Window(Show_Events_Table_Window):
         events_list.append(dismissed_item)
 
     def get_sort_value(self, item):
-        return(item[3]) # End date
-    
-    def get_row_data(self, event_item):
-        row_data = [
-            event_item[0],
-            event_item[1],
-            event_item[2],
-            str(event_item[3])
-        ]
-
-        return row_data  
-    
+        return(item[4]) # End date
