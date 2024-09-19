@@ -1,8 +1,10 @@
 from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton
 
 class TableWindow(QWidget):
-    def __init__(self, show_events_table_object):
+    def __init__(self, globals, show_events_table_object):
         super().__init__()
+
+        self.globals = globals
 
         self.show_events_table_object = show_events_table_object
 
@@ -29,12 +31,33 @@ class TableWindow(QWidget):
 
         self.main_layout.addWidget(self.table_widget)
 
+        self.action_button = QPushButton(self.show_events_table_object.act_button_text)
+        self.main_layout.addWidget(self.action_button)
+
+        self.action_button.clicked.connect(self.act_on_event)
+
         self.refresh_button = QPushButton('Refresh')
         self.main_layout.addWidget(self.refresh_button)
 
         self.refresh_button.clicked.connect(self.update_table_data)
 
         self.update_table_data()
+
+    def act_on_event(self):
+        # Get the index of the current selected row
+        selected_row = self.table_widget.currentRow()
+
+        if ((selected_row != -1) and (self.table_widget.item(selected_row, 0).isSelected())):
+            event_key_str = self.data[selected_row][0]
+
+            print("Act on event " + str(selected_row) + " with key " + event_key_str)
+
+            self.show_events_table_object.act_on_event_cb(event_key_str)
+
+            self.table_widget.removeRow(selected_row)
+       
+        else:
+            print("No row selected")
 
     def update_table_data(self):
         self.data = self.show_events_table_object.get_data_into_table()
@@ -58,13 +81,16 @@ class TableWindow(QWidget):
         self.resize(total_columns_width + 45, self.height())  # Set window width to table's width, keep current height
     
 class Show_Events_Table_Window():
-    def __init__(self, get_events_object):
+    def __init__(self, globals, get_events_object):
+        self.globals = globals
         self.get_events_object = get_events_object
 
         # The rest should be provided by child classes
         self.get_events_into_list_function = None
         self.table_header = []
         self.window_title = ""
+        self.act_button_text = ""
+        self.act_on_event_cb = None
 
     def handle_event_to_display(self, event_key_str, parsed_event, events_list):
         return
@@ -73,7 +99,7 @@ class Show_Events_Table_Window():
         return None
         
     def open_window_with_events(self):        
-        self.table_window = TableWindow(self)
+        self.table_window = TableWindow(self.globals, self)
         self.table_window.show()
         self.table_window.setWindowTitle(self.window_title)
         self.table_window.activateWindow()
@@ -90,12 +116,15 @@ class Show_Events_Table_Window():
         return(events_list)
 
 class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
-    def __init__(self, get_events_object):
-        super().__init__(get_events_object)
+    def __init__(self, globals, get_events_object):
+        super().__init__(globals, get_events_object)
 
         self.get_events_into_list_function = self.get_events_object.get_snoozed_events_into_list
         self.table_header = ["Google Account", "Calendar Name", "Event Name", "Snoozed Until"]
         self.window_title = "Snoozed Events"
+        self.act_button_text = "Unsnooze"
+        self.act_on_event_cb = self.globals.snoozed_events.unsnooze_or_undismiss_event
+
         
     def handle_event_to_display(self, event_key_str, parsed_event, events_list):
         snoozed_item = [
@@ -112,12 +141,15 @@ class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
         return(item[4]) # The event wakeup time
 
 class Show_Dismissed_Events_Table_Window(Show_Events_Table_Window):
-    def __init__(self, get_events_object):
-        super().__init__(get_events_object)
+    def __init__(self, globals, get_events_object):
+        super().__init__(globals, get_events_object)
 
         self.get_events_into_list_function = self.get_events_object.get_dismissed_events_into_list
         self.table_header = ["Google Account", "Calendar Name", "Event Name", "End Time"]
         self.window_title = "Dismissed Events"
+        self.act_button_text = "Undismiss"
+        self.act_on_event_cb = self.globals.dismissed_events.unsnooze_or_undismiss_event
+
         
     def handle_event_to_display(self, event_key_str, parsed_event, events_list):
         dismissed_item = [

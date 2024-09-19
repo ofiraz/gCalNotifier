@@ -191,7 +191,6 @@ class DynamicWidgetDetails():
         self.widget = widget
 
 class MultipleEventsTable(QWidget):
-
     def add_dynamic_layout(self, layout):
         self.main_layout.addLayout(layout)
         self.dynamic_layouts.append(layout)

@@ -133,12 +133,12 @@ class app_system_tray(QMainWindow):
         self.timer.start(int(self.globals.config.refresh_frequency/2) * 1000)
 
     def display_snoozed_events(self):
-        self.show_snoozed_events_window = Show_Snoozed_Events_Table_Window(self.get_events_object)
+        self.show_snoozed_events_window = Show_Snoozed_Events_Table_Window(self.globals, self.get_events_object)
 
         self.show_snoozed_events_window.open_window_with_events()
 
     def display_dismissed_events(self):
-        self.show_dismissed_events_window = Show_Dismissed_Events_Table_Window(self.get_events_object)
+        self.show_dismissed_events_window = Show_Dismissed_Events_Table_Window(self.globals, self.get_events_object)
 
         self.show_dismissed_events_window.open_window_with_events()
 

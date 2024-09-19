@@ -29,11 +29,13 @@ class Get_Events:
         self.dismissed_events = Events_Collection(self.globals.logger, "dismissed_events", use_rw_lock=True)
         self.dismissed_events.set_add_cb(self.add_event_to_dismissed_cb)
         self.dismissed_events.set_remove_cb(self.remove_event_from_dismissed_cb)
+        self.globals.dismissed_events = self.dismissed_events
 
         self.snoozed_events = Events_Collection(self.globals.logger, "snoozed_events", use_rw_lock=True)
         self.snoozed_events.set_add_cb(self.add_event_to_snoozed_cb)
         self.snoozed_events.set_remove_cb(self.remove_event_from_snoozed_cb)
- 
+        self.globals.snoozed_events = self.snoozed_events
+
         main_loop_thread = threading.Thread(
             target = self.get_events_to_display_main_loop,
             args = (start_time, end_time, ),
@@ -200,8 +202,8 @@ class Get_Events:
                     new_all_events.add_event(event_key_str, event_from_all_events)
                     self.all_events.remove_event(event_key_str)
 
-                    if (is_reset_needed):
-                        # There is a need to reset
+                    if (is_reset_needed or event_from_all_events['is_unsnoozed_or_undismissed']):
+                        # There is a need to reset - either all of the events or this specific one
 
                         if (event_from_all_events['is_dismissed']):
                             # Remove the changed event from the dismissed events, so it will get parsed from scratch
@@ -214,6 +216,9 @@ class Get_Events:
                         else:
                             # The event is diaplyed and has not changed. Nothing needs to be done
                             continue
+
+                        # Unset the event flag in the case it was unsnoozed or undismissed
+                        event_from_all_events['is_unsnoozed_or_undismissed'] = False
 
                         # Re compute the needed action for the event that was dismissed or snoozed before
                         event_action = get_action_for_parsed_event(self.globals.events_logger, event_from_all_events)
@@ -256,6 +261,7 @@ class Get_Events:
             parsed_event['deleted'] = False
             parsed_event['is_dismissed'] = False
             parsed_event['is_snoozed'] = False
+            parsed_event['is_unsnoozed_or_undismissed'] = False
 
             self.globals.logger.debug("Event Name " + parsed_event['event_name'])
 
