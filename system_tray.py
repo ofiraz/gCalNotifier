@@ -84,7 +84,7 @@ class app_system_tray(QMainWindow):
 
         self.update_app_icon()
 
-    def show_window(self, event_key_str, parsed_event):
+    def show_window(self, parsed_event):
         if (self.multiple_events_windows == None):
             self.multiple_events_windows = MultipleEventsTable(self.globals, parsed_event)
 
@@ -95,7 +95,7 @@ class app_system_tray(QMainWindow):
 
         # Show the window on the main monitor
         monitor = QDesktopWidget().screenGeometry(0)
-        self.multiple_events_windows.move(monitor.left(), monitor.top())
+        self.multiple_events_windows.move(0,0)
 
         self.multiple_events_windows.show()
         self.multiple_events_windows.activateWindow()
@@ -120,7 +120,7 @@ class app_system_tray(QMainWindow):
                 # Add the new event to the displayed events list    
                 at_list_one_event_presented = True       
                 self.globals.displayed_events.add_event(event_key_str, parsed_event)
-                self.show_window(event_key_str, parsed_event)
+                self.show_window(parsed_event)
 
         if (at_list_one_event_presented):
             self.update_app_icon()
