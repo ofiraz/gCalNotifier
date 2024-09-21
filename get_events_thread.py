@@ -262,7 +262,6 @@ class Get_Events:
                 google_account = google_account,
                 event_key_str = event_key_str,
                 raw_event = event,
-                event_name = event.get('summary', '(No title)'),
                 cal_name = cal_name)
 
             self.globals.logger.debug("Event Name " + parsed_event.event_name)
