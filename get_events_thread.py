@@ -66,10 +66,15 @@ class Get_Events:
         # It is a snoozed event, let's see if it needs to be woken
         now_datetime = get_now_datetime()
 
-        if (now_datetime >= parsed_event['event_wakeup_time']):
+        if ((now_datetime >= parsed_event['event_wakeup_time']) 
+            or parsed_event['is_unsnoozed_or_undismissed']):
             # Event needs to be woke up
             self.globals.events_to_present.add_event(event_key_str, parsed_event)
             self.snoozed_events.remove_event(event_key_str)
+
+            # Unset the event flag in the case it was unsnoozed or undismissed
+            parsed_event['is_unsnoozed_or_undismissed'] = False
+
 
     def set_events_to_be_displayed(self, start_time, end_time):
         is_reset_needed = self.globals.is_reset_needed()
