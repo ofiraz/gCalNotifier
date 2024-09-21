@@ -197,24 +197,21 @@ def get_number_of_attendees(event):
     return(num_of_attendees)
 
 def parse_event_description(p_logger, meeting_description, parsed_event):
-    parsed_event['need_to_record_meeting'] = False
-    parsed_event['close_event_window_when_event_has_ended'] = False
-
     if (meeting_description):
-        parsed_event['description'] = meeting_description
+        parsed_event['parsed_event_struct'].description = meeting_description
 
         # Check if the event has gCalNotifier config
         need_to_record_meeting = re.search(
             "record:yes", 
             meeting_description) 
         if need_to_record_meeting:
-            parsed_event['need_to_record_meeting'] = True
+            parsed_event['parsed_event_struct'].need_to_record_meeting = True
 
         close_event_window_when_event_has_ended = re.search(
             "close_event_window_when_event_has_ended:yes", 
             meeting_description) 
         if close_event_window_when_event_has_ended:
-            parsed_event['close_event_window_when_event_has_ended'] = True
+            parsed_event['parsed_event_struct'].close_event_window_when_event_has_ended = True
 
         default_snoozed = re.search(
             "default_snooze:([0-9]+)", 
@@ -223,7 +220,7 @@ def parse_event_description(p_logger, meeting_description, parsed_event):
             parsed_event['default_snooze'] = default_snoozed.group(1)
     
     else:
-        parsed_event['description'] = "No description"
+        parsed_event['parsed_event_struct'].description = "No description"
         
 ACTION_DISPLAY_EVENT = 1
 ACTION_SNOOOZE_EVENT = 2

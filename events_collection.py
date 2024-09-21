@@ -120,7 +120,7 @@ class Events_Collection:
         if (event_key_str in self.c_events):
             parsed_event = self.c_events[event_key_str]
             
-            parsed_event['is_unsnoozed_or_undismissed'] = True
+            parsed_event['parsed_event_struct'].is_unsnoozed_or_undismissed = True
 
         else:
             print(event_key_str + " not in collection")

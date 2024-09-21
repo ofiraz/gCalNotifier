@@ -100,7 +100,7 @@ class EventDisplayDetails():
 
         self.c_video_link = ""
 
-        self.need_to_record_meeting = parsed_event.get('need_to_record_meeting', False)
+        self.need_to_record_meeting = parsed_event['parsed_event_struct'].need_to_record_meeting
         if (self.need_to_record_meeting):
             indicate_issues_with_the_event = True
             self.snooze_time_in_minutes_for_open_video_and_snooze = 1
@@ -109,7 +109,7 @@ class EventDisplayDetails():
             self.snooze_time_in_minutes_for_open_video_and_snooze = 5
 
 
-        self.cal_and_account_label_text = parsed_event['cal name'] + " calendar in " + parsed_event['parsed_event_struct'].google_account
+        self.cal_and_account_label_text = parsed_event['parsed_event_struct'].cal_name + " calendar in " + parsed_event['parsed_event_struct'].google_account
 
         self.all_day_event = parsed_event['all_day_event']
 
@@ -171,7 +171,7 @@ class EventDisplayDetails():
             # Let's check if we have our special sign
             is_no_video_ok = re.search(
                 'NO_VIDEO_OK',
-                parsed_event['description'])
+                parsed_event['parsed_event_struct'].description)
 
             if (not is_no_video_ok):
                 # We need to show the missing video message
@@ -438,8 +438,8 @@ class MultipleEventsTable(QWidget):
                 time_until_event_start = self.get_time_until_event_start(self.parsed_events[index])
                 self.update_table_cell(index, 1, time_until_event_start)
 
-                if (self.parsed_events[index]['deleted'] or self.parsed_events[index]['changed']
-                    or ((now_datetime > self.parsed_events[index]['end_date']) and self.parsed_events[index]['close_event_window_when_event_has_ended'])):
+                if (self.parsed_events[index]['parsed_event_struct'].deleted or self.parsed_events[index]['parsed_event_struct'].changed
+                    or ((now_datetime > self.parsed_events[index]['end_date']) and self.parsed_events[index]['parsed_event_struct'].close_event_window_when_event_has_ended)):
                     self.remove_event_safe(index)
                     num_of_deleted_rows = num_of_deleted_rows + 1
 
@@ -597,7 +597,7 @@ class MultipleEventsTable(QWidget):
 
     def update_tab_widget(self, parsed_event):
         # Update the content of the description tab
-        self.description_tab.setHtml(parsed_event['description'])
+        self.description_tab.setHtml(parsed_event['parsed_event_struct'].description)
 
         # Update the content of the raw event tab
         self.raw_event_tab.setText(nice_json(parsed_event['parsed_event_struct'].raw_event))
