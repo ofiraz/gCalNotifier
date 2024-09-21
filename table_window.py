@@ -129,10 +129,10 @@ class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
     def handle_event_to_display(self, event_key_str, parsed_event, events_list):
         snoozed_item = [
             event_key_str,
-            parsed_event['parsed_event_struct'].google_account,
-            parsed_event['parsed_event_struct'].cal_name,
-            parsed_event['parsed_event_struct'].event_name,
-            parsed_event['parsed_event_struct'].event_wakeup_time
+            parsed_event.google_account,
+            parsed_event.cal_name,
+            parsed_event.event_name,
+            parsed_event.event_wakeup_time
         ]
 
         events_list.append(snoozed_item)
@@ -154,10 +154,10 @@ class Show_Dismissed_Events_Table_Window(Show_Events_Table_Window):
     def handle_event_to_display(self, event_key_str, parsed_event, events_list):
         dismissed_item = [
             event_key_str,
-            parsed_event['parsed_event_struct'].google_account,
-            parsed_event['parsed_event_struct'].cal_name,
-            parsed_event['parsed_event_struct'].event_name,
-            parsed_event['parsed_event_struct'].end_date
+            parsed_event.google_account,
+            parsed_event.cal_name,
+            parsed_event.event_name,
+            parsed_event.end_date
         ]
 
         events_list.append(dismissed_item)

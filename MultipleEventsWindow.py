@@ -35,16 +35,16 @@ class EventDisplayDetails():
         self.snooze_times_strings_for_combo_box = []
         self.snooze_times_in_minutes = []
 
-        self.default_snooze = parsed_event['parsed_event_struct'].default_snooze
+        self.default_snooze = parsed_event.default_snooze
         if (self.default_snooze):
             # Add the default snooze as the first item
             self.snooze_times_strings_for_combo_box.append("Default " + self.default_snooze + " minutes")
             self.snooze_times_in_minutes.append(int(self.default_snooze))
 
         now_datetime = get_now_datetime()
-        if (parsed_event['parsed_event_struct'].start_date > now_datetime):
+        if (parsed_event.start_date > now_datetime):
             # Event start did not arrive yet - add all needed before snooze buttons
-            time_to_event_start = parsed_event['parsed_event_struct'].start_date - now_datetime
+            time_to_event_start = parsed_event.start_date - now_datetime
             time_to_event_in_minutes = int(time_to_event_start.seconds / 60)
 
             for index in range(len(self.snooze_times_before)):
@@ -53,7 +53,7 @@ class EventDisplayDetails():
                 if (abs(snooze_time) < time_to_event_in_minutes):
                     if  (self.event_has_snooze_before_items == False):
                         self.event_has_snooze_before_items = True
-                        self.next_time_to_update_buttons = parsed_event['parsed_event_struct'].start_date + datetime.timedelta(minutes=snooze_time)
+                        self.next_time_to_update_buttons = parsed_event.start_date + datetime.timedelta(minutes=snooze_time)
 
                     self.snooze_times_strings_for_combo_box.append(self.snooze_times_before[index][1])
                     self.snooze_times_in_minutes.append(snooze_time)
@@ -100,7 +100,7 @@ class EventDisplayDetails():
 
         self.c_video_link = ""
 
-        self.need_to_record_meeting = parsed_event['parsed_event_struct'].need_to_record_meeting
+        self.need_to_record_meeting = parsed_event.need_to_record_meeting
         if (self.need_to_record_meeting):
             indicate_issues_with_the_event = True
             self.snooze_time_in_minutes_for_open_video_and_snooze = 1
@@ -109,51 +109,51 @@ class EventDisplayDetails():
             self.snooze_time_in_minutes_for_open_video_and_snooze = 5
 
 
-        self.cal_and_account_label_text = parsed_event['parsed_event_struct'].cal_name + " calendar in " + parsed_event['parsed_event_struct'].google_account
+        self.cal_and_account_label_text = parsed_event.cal_name + " calendar in " + parsed_event.google_account
 
-        self.all_day_event = parsed_event['parsed_event_struct'].all_day_event
+        self.all_day_event = parsed_event.all_day_event
 
-        self.start_time_label_text = 'Starting at ' + str(parsed_event['parsed_event_struct'].start_date.astimezone(get_localzone()))
-        self.end_time_label_text = 'Ending at ' + str(parsed_event['parsed_event_struct'].end_date.astimezone(get_localzone()))
+        self.start_time_label_text = 'Starting at ' + str(parsed_event.start_date.astimezone(get_localzone()))
+        self.end_time_label_text = 'Ending at ' + str(parsed_event.end_date.astimezone(get_localzone()))
 
-        self.gcal_event_link_label_text = "<a href=\"" + parsed_event['parsed_event_struct'].html_link + "\">Link to event in GCal</a>"
-        self.gcal_event_link_label_tooltip = parsed_event['parsed_event_struct'].html_link
+        self.gcal_event_link_label_text = "<a href=\"" + parsed_event.html_link + "\">Link to event in GCal</a>"
+        self.gcal_event_link_label_tooltip = parsed_event.html_link
    
         self.location_label_exits = False
         self.location_link_label_exists = False
-        if (parsed_event['parsed_event_struct'].event_location != "No location"):
-            valid_url = validators.url(parsed_event['parsed_event_struct'].event_location)
+        if (parsed_event.event_location != "No location"):
+            valid_url = validators.url(parsed_event.event_location)
             if (valid_url):
                 self.location_link_label_exists = True
-                self.location_link_label_tooltip = parsed_event['parsed_event_struct'].event_location
+                self.location_link_label_tooltip = parsed_event.event_location
 
                 identified_as_a_video_meeting, self.location_link_label_text = self.identify_video_meeting_in_url(
-                    parsed_event['parsed_event_struct'].event_location,
+                    parsed_event.event_location,
                     "location",
                     "Link to location or to a video URL")
                 
                 if(identified_as_a_video_meeting):
-                    self.c_video_link = parsed_event['parsed_event_struct'].event_location
+                    self.c_video_link = parsed_event.event_location
 
             else:
                 self.location_label_exits = True
 
-                self.location_label_text = 'Location: ' + parsed_event['parsed_event_struct'].event_location
+                self.location_label_text = 'Location: ' + parsed_event.event_location
 
         self.update_snooze_times_for_event()
 
         self.video_label_exists = False
-        if (parsed_event['parsed_event_struct'].video_link != "No Video"):
+        if (parsed_event.video_link != "No Video"):
             self.video_label_exists = True
 
             identified_as_a_video_meeting, self.video_link_label_text = self.identify_video_meeting_in_url(
-                parsed_event['parsed_event_struct'].video_link,
+                parsed_event.video_link,
                 "description",
                 "Video Link")
             
-            self.video_link_label_tooltip = parsed_event['parsed_event_struct'].video_link
+            self.video_link_label_tooltip = parsed_event.video_link
             
-            self.c_video_link = parsed_event['parsed_event_struct'].video_link
+            self.c_video_link = parsed_event.video_link
 
         if (self.c_video_link != ""):
             # There is a video link
@@ -164,14 +164,14 @@ class EventDisplayDetails():
                 self.open_video_and_snooze_text = "Open video link and snooze for 5 min"
     
         self.mulitple_attendees_and_video_link_missing = False
-        if ((self.c_video_link == "") and (parsed_event['parsed_event_struct'].num_of_attendees > 1)):
+        if ((self.c_video_link == "") and (parsed_event.num_of_attendees > 1)):
         # Num of attendees > 1 and no video link
             # We expect a video link as there are multiple attendees for this meeting
 
             # Let's check if we have our special sign
             is_no_video_ok = re.search(
                 'NO_VIDEO_OK',
-                parsed_event['parsed_event_struct'].description)
+                parsed_event.description)
 
             if (not is_no_video_ok):
                 # We need to show the missing video message
@@ -179,9 +179,9 @@ class EventDisplayDetails():
                 indicate_issues_with_the_event = True
 
         if indicate_issues_with_the_event:
-            self.event_name = "*** " + parsed_event['parsed_event_struct'].event_name
+            self.event_name = "*** " + parsed_event.event_name
         else:
-            self.event_name = parsed_event['parsed_event_struct'].event_name
+            self.event_name = parsed_event.event_name
 
 WAKEUP_INTERVAL = 15
 
@@ -318,21 +318,21 @@ class MultipleEventsTable(QWidget):
 
         now_datetime = get_now_datetime()
 
-        if (parsed_event['parsed_event_struct'].start_date > now_datetime):
+        if (parsed_event.start_date > now_datetime):
             # Event start did not arrive yet
-            time_to_event_start = parsed_event['parsed_event_struct'].start_date - now_datetime
+            time_to_event_start = parsed_event.start_date - now_datetime
 
             time_string = self.get_time_diff_in_string(time_to_event_start) + " until start"
 
-        elif (parsed_event['parsed_event_struct'].end_date <= now_datetime):
+        elif (parsed_event.end_date <= now_datetime):
             # Event has ended
-            time_since_event_ended = now_datetime - parsed_event['parsed_event_struct'].end_date
+            time_since_event_ended = now_datetime - parsed_event.end_date
             
             time_string = self.get_time_diff_in_string(time_since_event_ended) + " since event ended"
 
         else:
             # Event started but did not end yet
-            time_since_event_started = now_datetime - parsed_event['parsed_event_struct'].start_date
+            time_since_event_started = now_datetime - parsed_event.start_date
            
             time_string = self.get_time_diff_in_string(time_since_event_started) + " since event started"
 
@@ -364,7 +364,7 @@ class MultipleEventsTable(QWidget):
         self.table_widget.selectRow(row_number)
 
     def remove_event_safe(self, row):
-        self.globals.displayed_events.remove_event(self.parsed_events[row]['parsed_event_struct'].event_key_str)
+        self.globals.displayed_events.remove_event(self.parsed_events[row].event_key_str)
 
         self.table_widget.removeRow(row)
 
@@ -394,14 +394,14 @@ class MultipleEventsTable(QWidget):
 
             if (snooze_time_in_minutes <= 0):
                 delta_diff = datetime.timedelta(minutes=abs(snooze_time_in_minutes))
-                parsed_event['parsed_event_struct'].event_wakeup_time = parsed_event['parsed_event_struct'].start_date - delta_diff
+                parsed_event.event_wakeup_time = parsed_event.start_date - delta_diff
             else:
                 delta_diff = datetime.timedelta(minutes=snooze_time_in_minutes)
-                parsed_event['parsed_event_struct'].event_wakeup_time = now_datetime + delta_diff
+                parsed_event.event_wakeup_time = now_datetime + delta_diff
 
-            self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event['parsed_event_struct'].event_name + " until " + str(parsed_event['parsed_event_struct'].event_wakeup_time))
+            self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event.event_name + " until " + str(parsed_event.event_wakeup_time))
                 
-            self.globals.events_to_snooze.add_event(self.parsed_events[selected_row]['parsed_event_struct'].event_key_str, parsed_event)
+            self.globals.events_to_snooze.add_event(self.parsed_events[selected_row].event_key_str, parsed_event)
 
             self.remove_event(selected_row)
 
@@ -414,8 +414,8 @@ class MultipleEventsTable(QWidget):
 
             parsed_event = self.parsed_events[selected_row]
 
-            if (now_datetime < parsed_event['parsed_event_struct'].end_date):
-                self.globals.events_to_dismiss.add_event(parsed_event['parsed_event_struct'].event_key_str, parsed_event)
+            if (now_datetime < parsed_event.end_date):
+                self.globals.events_to_dismiss.add_event(parsed_event.event_key_str, parsed_event)
 
             self.remove_event(selected_row)
 
@@ -438,8 +438,8 @@ class MultipleEventsTable(QWidget):
                 time_until_event_start = self.get_time_until_event_start(self.parsed_events[index])
                 self.update_table_cell(index, 1, time_until_event_start)
 
-                if (self.parsed_events[index]['parsed_event_struct'].deleted or self.parsed_events[index]['parsed_event_struct'].changed
-                    or ((now_datetime > self.parsed_events[index]['parsed_event_struct'].end_date) and self.parsed_events[index]['parsed_event_struct'].close_event_window_when_event_has_ended)):
+                if (self.parsed_events[index].deleted or self.parsed_events[index].changed
+                    or ((now_datetime > self.parsed_events[index].end_date) and self.parsed_events[index].close_event_window_when_event_has_ended)):
                     self.remove_event_safe(index)
                     num_of_deleted_rows = num_of_deleted_rows + 1
 
@@ -539,7 +539,7 @@ class MultipleEventsTable(QWidget):
 
         if selected_row != -1:  # -1 means no row is selected
             # Decide on the Chrome profile to use
-            if (self.parsed_events[selected_row]['parsed_event_struct'].google_account == 'ofiraz@gmail.com'):
+            if (self.parsed_events[selected_row].google_account == 'ofiraz@gmail.com'):
                 profile_name = 'Profile 1'
             else:
                 profile_name = 'Profile 9'
@@ -565,11 +565,11 @@ class MultipleEventsTable(QWidget):
             now_datetime = get_now_datetime()
 
             delta_diff = datetime.timedelta(minutes=event_display_details.snooze_time_in_minutes_for_open_video_and_snooze)
-            parsed_event['parsed_event_struct'].event_wakeup_time = now_datetime + delta_diff
+            parsed_event.event_wakeup_time = now_datetime + delta_diff
 
-            self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event['parsed_event_struct'].event_name + " until " + str(parsed_event['parsed_event_struct'].event_wakeup_time))
+            self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event.event_name + " until " + str(parsed_event.event_wakeup_time))
 
-            self.globals.events_to_snooze.add_event(self.parsed_events[selected_row]['parsed_event_struct'].event_key_str, parsed_event)
+            self.globals.events_to_snooze.add_event(self.parsed_events[selected_row].event_key_str, parsed_event)
 
             self.remove_event(selected_row)
 
@@ -597,10 +597,10 @@ class MultipleEventsTable(QWidget):
 
     def update_tab_widget(self, parsed_event):
         # Update the content of the description tab
-        self.description_tab.setHtml(parsed_event['parsed_event_struct'].description)
+        self.description_tab.setHtml(parsed_event.description)
 
         # Update the content of the raw event tab
-        self.raw_event_tab.setText(nice_json(parsed_event['parsed_event_struct'].raw_event))
+        self.raw_event_tab.setText(nice_json(parsed_event.raw_event))
 
     def on_snooze_general(self, button):
         minutes_to_snooze = int(button.property("customData"))
@@ -733,7 +733,7 @@ class MultipleEventsTable(QWidget):
         with self.events_lock:
             # Find the modified event in the current list of events
             for row in range(self.table_widget.rowCount()):
-                if (self.parsed_events[row]['parsed_event_struct'].event_key_str == parsed_event['parsed_event_struct'].event_key_str):
+                if (self.parsed_events[row].event_key_str == parsed_event.event_key_str):
                     # Found the event - update all of its fields
                     self.parsed_events[row] = parsed_event
 

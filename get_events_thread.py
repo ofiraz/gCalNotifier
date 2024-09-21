@@ -46,16 +46,16 @@ class Get_Events:
         main_loop_thread.start()
 
     def add_event_to_dismissed_cb(self, parsed_event):
-        parsed_event['parsed_event_struct'].is_dismissed = True
+        parsed_event.is_dismissed = True
 
     def remove_event_from_dismissed_cb(self, parsed_event):
-        parsed_event['parsed_event_struct'].is_dismissed = False
+        parsed_event.is_dismissed = False
     
     def add_event_to_snoozed_cb(self, parsed_event):
-        parsed_event['parsed_event_struct'].is_snoozed = True
+        parsed_event.is_snoozed = True
 
     def remove_event_from_snoozed_cb(self, parsed_event):
-        parsed_event['parsed_event_struct'].is_snoozed = False
+        parsed_event.is_snoozed = False
     
     def get_events_to_display_main_loop(self, start_time, end_time):           
         while True:
@@ -68,14 +68,14 @@ class Get_Events:
         # It is a snoozed event, let's see if it needs to be woken
         now_datetime = get_now_datetime()
 
-        if ((now_datetime >= parsed_event['parsed_event_struct'].event_wakeup_time) 
-            or parsed_event['parsed_event_struct'].is_unsnoozed_or_undismissed):
+        if ((now_datetime >= parsed_event.event_wakeup_time) 
+            or parsed_event.is_unsnoozed_or_undismissed):
             # Event needs to be woke up
             self.globals.events_to_present.add_event(event_key_str, parsed_event)
             self.snoozed_events.remove_event(event_key_str)
 
             # Unset the event flag in the case it was unsnoozed or undismissed
-            parsed_event['parsed_event_struct'].is_unsnoozed_or_undismissed = False
+            parsed_event.is_unsnoozed_or_undismissed = False
 
 
     def set_events_to_be_displayed(self, start_time, end_time):
@@ -118,29 +118,29 @@ class Get_Events:
             if (parsed_event == None):
                 break
 
-            if(is_reset_needed or ((not connectivity_issues) and (now_datetime < parsed_event['parsed_event_struct'].end_date))):
+            if(is_reset_needed or ((not connectivity_issues) and (now_datetime < parsed_event.end_date))):
                 # Two options here:
                 # 1. The user asked to reset all existing handling
                 # or in the case there were no connection issues:
                 # 2. The event end time did not arrive yet, but it does not exist - i.e. got deleted
                 # In both cases we want to remove this event from all places and not add it again
 
-                if (parsed_event['parsed_event_struct'].is_dismissed):
+                if (parsed_event.is_dismissed):
                     # Unmarking all disimmsed events
                     self.dismissed_events.remove_event(event_key_str)
                 
-                elif(parsed_event['parsed_event_struct'].is_snoozed):
+                elif(parsed_event.is_snoozed):
                     # Unmarking all snoozed events
                     self.snoozed_events.remove_event(event_key_str)
 
                 else:
                     # Marking all other events as deleted for the case they are being displayed, and then we want the window to close
-                    parsed_event['parsed_event_struct'].deleted = True
+                    parsed_event.deleted = True
 
             else:
                 # The event has ended, and this is the reason we don't see it anymore - as our search is only for events from now on
                 # It can also be due to connectivity issues where we could not get the events
-                if ((not connectivity_issues) and parsed_event['parsed_event_struct'].is_dismissed):
+                if ((not connectivity_issues) and parsed_event.is_dismissed):
                     # The event was dismissed - we don't to manage it anymore
                     self.dismissed_events.remove_event(event_key_str)
 
@@ -148,7 +148,7 @@ class Get_Events:
                     # It can also be that due to connectivity issues we didn't get new info about the event, we will assume the item did not change
                     new_all_events.add_event(event_key_str, parsed_event)
 
-                    if(parsed_event['parsed_event_struct'].is_snoozed):
+                    if(parsed_event.is_snoozed):
                         # The event is snoozed, if needed wake it up
                         self.wakeup_event_if_needed(event_key_str, parsed_event)
                                        
@@ -194,14 +194,14 @@ class Get_Events:
 
             event_from_all_events = self.all_events[event_key_str]
             if(event_from_all_events != None):
-                if (google_account != event_from_all_events['parsed_event_struct'].google_account):
+                if (google_account != event_from_all_events.google_account):
                     # This is the same event but from a different account - we will wait to see the event in the account that was used to store the event
                     continue
                 
                 # We already handled this event in a previous run of the main loop
                 event_changed = has_raw_event_changed(
                     self.globals.logger,
-                    event_from_all_events['parsed_event_struct'].raw_event,
+                    event_from_all_events.raw_event,
                     event)
                 
                 if (event_changed == False):
@@ -209,14 +209,14 @@ class Get_Events:
                     new_all_events.add_event(event_key_str, event_from_all_events)
                     self.all_events.remove_event(event_key_str)
 
-                    if (is_reset_needed or event_from_all_events['parsed_event_struct'].is_unsnoozed_or_undismissed):
+                    if (is_reset_needed or event_from_all_events.is_unsnoozed_or_undismissed):
                         # There is a need to reset - either all of the events or this specific one
 
-                        if (event_from_all_events['parsed_event_struct'].is_dismissed):
+                        if (event_from_all_events.is_dismissed):
                             # Remove the changed event from the dismissed events, so it will get parsed from scratch
                             self.dismissed_events.remove_event(event_key_str)
 
-                        elif(event_from_all_events['parsed_event_struct'].is_snoozed):
+                        elif(event_from_all_events.is_snoozed):
                             # Remove the changed event from the snoozed events, so it will get parsed from scratch
                             self.snoozed_events.remove_event(event_key_str)
 
@@ -225,7 +225,7 @@ class Get_Events:
                             continue
 
                         # Unset the event flag in the case it was unsnoozed or undismissed
-                        event_from_all_events['parsed_event_struct'].is_unsnoozed_or_undismissed = False
+                        event_from_all_events.is_unsnoozed_or_undismissed = False
 
                         # Re compute the needed action for the event that was dismissed or snoozed before
                         event_action = get_action_for_parsed_event(self.globals.events_logger, event_from_all_events)
@@ -235,19 +235,19 @@ class Get_Events:
                             event_key_str,
                             event_from_all_events)
 
-                    elif(event_from_all_events['parsed_event_struct'].is_snoozed):
+                    elif(event_from_all_events.is_snoozed):
                         self.wakeup_event_if_needed(event_key_str, event_from_all_events)
                         
                     continue
 
                 else: # The event has changed
-                    self.globals.logger.info("Event changed " + event_from_all_events['parsed_event_struct'].event_name)
+                    self.globals.logger.info("Event changed " + event_from_all_events.event_name)
 
-                    if (event_from_all_events['parsed_event_struct'].is_dismissed):
+                    if (event_from_all_events.is_dismissed):
                         # Remove the changed event from the dismissed events, so it will get parsed from scratch
                         self.dismissed_events.remove_event(event_key_str)
 
-                    elif(event_from_all_events['parsed_event_struct'].is_snoozed):
+                    elif(event_from_all_events.is_snoozed):
                         # Remove the changed event from the snoozed events, so it will get parsed from scratch
                         self.snoozed_events.remove_event(event_key_str)
 
@@ -255,17 +255,17 @@ class Get_Events:
                     self.all_events.remove_event(event_key_str)
 
                     # Marking for the displayed event to remove it, as it will be added as a new one, when the time comes
-                    event_from_all_events['parsed_event_struct'].changed = True
+                    event_from_all_events.changed = True
 
             # Event not in the any other list
-            parsed_event['parsed_event_struct'] = ParsedEvent(
+            parsed_event = ParsedEvent(
                 google_account = google_account,
                 event_key_str = event_key_str,
                 raw_event = event,
                 event_name = event.get('summary', '(No title)'),
                 cal_name = cal_name)
 
-            self.globals.logger.debug("Event Name " + parsed_event['parsed_event_struct'].event_name)
+            self.globals.logger.debug("Event Name " + parsed_event.event_name)
 
             event_action = parse_event(self.globals.logger, self.globals.events_logger, event, parsed_event)
 
@@ -284,9 +284,9 @@ class Get_Events:
 
             self.globals.logger.debug(
                 "Event to be presented - "
-                + " " + parsed_event['parsed_event_struct'].event_name 
-                + " " + parsed_event['parsed_event_struct'].google_account 
-                + " " + parsed_event['parsed_event_struct'].raw_event['id'])
+                + " " + parsed_event.event_name 
+                + " " + parsed_event.google_account 
+                + " " + parsed_event.raw_event['id'])
 
         elif (event_action == ACTION_DISMISS_EVENT):
             # No need to present the event - add it to the dismissed events
