@@ -19,3 +19,15 @@ class ParsedEvent:
         self.need_to_record_meeting = False
         self.close_event_window_when_event_has_ended = False
         self.description = ''
+        self.default_snooze = False
+        self.start_date = ''
+        self.end_date = ''
+        self.event_wakeup_time = ''
+        self.has_self_declined = False
+        self.no_popup_reminder = False
+        self.all_day_event = False
+        self.minutes_before_to_notify = ''
+        self.html_link = ''
+        self.event_location = ''
+        self.video_link = ''
+        self.num_of_attendees = 0

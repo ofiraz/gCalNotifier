@@ -68,7 +68,7 @@ class Get_Events:
         # It is a snoozed event, let's see if it needs to be woken
         now_datetime = get_now_datetime()
 
-        if ((now_datetime >= parsed_event['event_wakeup_time']) 
+        if ((now_datetime >= parsed_event['parsed_event_struct'].event_wakeup_time) 
             or parsed_event['parsed_event_struct'].is_unsnoozed_or_undismissed):
             # Event needs to be woke up
             self.globals.events_to_present.add_event(event_key_str, parsed_event)
@@ -118,7 +118,7 @@ class Get_Events:
             if (parsed_event == None):
                 break
 
-            if(is_reset_needed or ((not connectivity_issues) and (now_datetime < parsed_event['end_date']))):
+            if(is_reset_needed or ((not connectivity_issues) and (now_datetime < parsed_event['parsed_event_struct'].end_date))):
                 # Two options here:
                 # 1. The user asked to reset all existing handling
                 # or in the case there were no connection issues:

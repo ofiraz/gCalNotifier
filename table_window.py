@@ -132,7 +132,7 @@ class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
             parsed_event['parsed_event_struct'].google_account,
             parsed_event['parsed_event_struct'].cal_name,
             parsed_event['parsed_event_struct'].event_name,
-            parsed_event['event_wakeup_time']
+            parsed_event['parsed_event_struct'].event_wakeup_time
         ]
 
         events_list.append(snoozed_item)
@@ -157,7 +157,7 @@ class Show_Dismissed_Events_Table_Window(Show_Events_Table_Window):
             parsed_event['parsed_event_struct'].google_account,
             parsed_event['parsed_event_struct'].cal_name,
             parsed_event['parsed_event_struct'].event_name,
-            parsed_event['end_date']
+            parsed_event['parsed_event_struct'].end_date
         ]
 
         events_list.append(dismissed_item)
