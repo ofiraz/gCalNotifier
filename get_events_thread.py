@@ -201,7 +201,7 @@ class Get_Events:
                 # We already handled this event in a previous run of the main loop
                 event_changed = has_raw_event_changed(
                     self.globals.logger,
-                    event_from_all_events['raw_event'],
+                    event_from_all_events['parsed_event_struct'].raw_event,
                     event)
                 
                 if (event_changed == False):
@@ -241,7 +241,7 @@ class Get_Events:
                     continue
 
                 else: # The event has changed
-                    self.globals.logger.info("Event changed " + event_from_all_events['event_name'])
+                    self.globals.logger.info("Event changed " + event_from_all_events['parsed_event_struct'].event_name)
 
                     if (event_from_all_events['is_dismissed']):
                         # Remove the changed event from the dismissed events, so it will get parsed from scratch
@@ -260,9 +260,11 @@ class Get_Events:
             # Event not in the any other list
             parsed_event['parsed_event_struct'] = ParsedEvent()
             parsed_event['parsed_event_struct'].google_account = google_account
-            parsed_event['event_key_str'] = event_key_str
-            parsed_event['raw_event'] = event
-            parsed_event['event_name'] = event.get('summary', '(No title)')
+            parsed_event['parsed_event_struct'].event_key_str = event_key_str
+            parsed_event['parsed_event_struct'].raw_event = event
+            parsed_event['parsed_event_struct'].event_name = event.get('summary', '(No title)')
+
+            #parsed_event['event_name'] = event.get('summary', '(No title)')
             parsed_event['cal name'] = cal_name
             parsed_event['cal id'] = cal_id
             parsed_event['changed'] = False
@@ -271,7 +273,7 @@ class Get_Events:
             parsed_event['is_snoozed'] = False
             parsed_event['is_unsnoozed_or_undismissed'] = False
 
-            self.globals.logger.debug("Event Name " + parsed_event['event_name'])
+            self.globals.logger.debug("Event Name " + parsed_event['parsed_event_struct'].event_name)
 
             event_action = parse_event(self.globals.logger, self.globals.events_logger, event, parsed_event)
 
@@ -290,10 +292,10 @@ class Get_Events:
 
             self.globals.logger.debug(
                 "Event to be presented - "
-                + " " + parsed_event['event_name'] 
+                + " " + parsed_event['parsed_event_struct'].event_name 
                 + " " + parsed_event['parsed_event_struct'].google_account 
                 + " " + parsed_event['cal id']
-                + " " + parsed_event['raw_event']['id'])
+                + " " + parsed_event['parsed_event_struct'].raw_event['id'])
 
         elif (event_action == ACTION_DISMISS_EVENT):
             # No need to present the event - add it to the dismissed events

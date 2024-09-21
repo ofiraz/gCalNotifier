@@ -179,9 +179,9 @@ class EventDisplayDetails():
                 indicate_issues_with_the_event = True
 
         if indicate_issues_with_the_event:
-            self.event_name = "*** " + parsed_event['event_name']
+            self.event_name = "*** " + parsed_event['parsed_event_struct'].event_name
         else:
-            self.event_name = parsed_event['event_name']
+            self.event_name = parsed_event['parsed_event_struct'].event_name
 
 WAKEUP_INTERVAL = 15
 
@@ -364,7 +364,7 @@ class MultipleEventsTable(QWidget):
         self.table_widget.selectRow(row_number)
 
     def remove_event_safe(self, row):
-        self.globals.displayed_events.remove_event(self.parsed_events[row]['event_key_str'])
+        self.globals.displayed_events.remove_event(self.parsed_events[row]['parsed_event_struct'].event_key_str)
 
         self.table_widget.removeRow(row)
 
@@ -399,9 +399,9 @@ class MultipleEventsTable(QWidget):
                 delta_diff = datetime.timedelta(minutes=snooze_time_in_minutes)
                 parsed_event['event_wakeup_time'] = now_datetime + delta_diff
 
-            self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event['event_name'] + " until " + str(parsed_event['event_wakeup_time']))
+            self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event['parsed_event_struct'].event_name + " until " + str(parsed_event['event_wakeup_time']))
                 
-            self.globals.events_to_snooze.add_event(self.parsed_events[selected_row]['event_key_str'], parsed_event)
+            self.globals.events_to_snooze.add_event(self.parsed_events[selected_row]['parsed_event_struct'].event_key_str, parsed_event)
 
             self.remove_event(selected_row)
 
@@ -415,7 +415,7 @@ class MultipleEventsTable(QWidget):
             parsed_event = self.parsed_events[selected_row]
 
             if (now_datetime < parsed_event['end_date']):
-                self.globals.events_to_dismiss.add_event(parsed_event['event_key_str'], parsed_event)
+                self.globals.events_to_dismiss.add_event(parsed_event['parsed_event_struct'].event_key_str, parsed_event)
 
             self.remove_event(selected_row)
 
@@ -567,9 +567,9 @@ class MultipleEventsTable(QWidget):
             delta_diff = datetime.timedelta(minutes=event_display_details.snooze_time_in_minutes_for_open_video_and_snooze)
             parsed_event['event_wakeup_time'] = now_datetime + delta_diff
 
-            self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event['event_name'] + " until " + str(parsed_event['event_wakeup_time']))
+            self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event['parsed_event_struct'].event_name + " until " + str(parsed_event['event_wakeup_time']))
 
-            self.globals.events_to_snooze.add_event(self.parsed_events[selected_row]['event_key_str'], parsed_event)
+            self.globals.events_to_snooze.add_event(self.parsed_events[selected_row]['parsed_event_struct'].event_key_str, parsed_event)
 
             self.remove_event(selected_row)
 
@@ -600,7 +600,7 @@ class MultipleEventsTable(QWidget):
         self.description_tab.setHtml(parsed_event['description'])
 
         # Update the content of the raw event tab
-        self.raw_event_tab.setText(nice_json(parsed_event['raw_event']))
+        self.raw_event_tab.setText(nice_json(parsed_event['parsed_event_struct'].raw_event))
 
     def on_snooze_general(self, button):
         minutes_to_snooze = int(button.property("customData"))
@@ -733,7 +733,7 @@ class MultipleEventsTable(QWidget):
         with self.events_lock:
             # Find the modified event in the current list of events
             for row in range(self.table_widget.rowCount()):
-                if (self.parsed_events[row]['event_key_str'] == parsed_event['event_key_str']):
+                if (self.parsed_events[row]['parsed_event_struct'].event_key_str == parsed_event['parsed_event_struct'].event_key_str):
                     # Found the event - update all of its fields
                     self.parsed_events[row] = parsed_event
 

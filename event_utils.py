@@ -237,7 +237,7 @@ def get_snoozed_or_display_action_for_parsed_event_based_on_current_time(events_
         # Not the time to remind yet
         parsed_event['event_wakeup_time'] = reminder_time
 
-        events_logger.info("Event automatically snoozed as there is time until it should be notified for the first time. For event: " + parsed_event['event_name'] + " until " + str(parsed_event['event_wakeup_time']))
+        events_logger.info("Event automatically snoozed as there is time until it should be notified for the first time. For event: " + parsed_event['parsed_event_struct'].event_name + " until " + str(parsed_event['event_wakeup_time']))
 
         return(ACTION_SNOOOZE_EVENT)
 
@@ -246,13 +246,13 @@ def get_snoozed_or_display_action_for_parsed_event_based_on_current_time(events_
 
 def get_action_for_parsed_event(events_logger, parsed_event):
     if (parsed_event['has_self_declined']):
-        events_logger.info("Event dismissed automatically as it was declined by me. For event: " + parsed_event['event_name'])
+        events_logger.info("Event dismissed automatically as it was declined by me. For event: " + parsed_event['parsed_event_struct'].event_name)
 
         return(ACTION_DISMISS_EVENT)
     
     if (parsed_event['no_popup_reminder']):
         # No notification reminders
-        events_logger.info("Event dismissed automatically as it does not have any reminders set. For event: " + parsed_event['event_name'])
+        events_logger.info("Event dismissed automatically as it does not have any reminders set. For event: " + parsed_event['parsed_event_struct'].event_name)
 
         return(ACTION_DISMISS_EVENT)
 
@@ -282,7 +282,7 @@ def parse_event(p_logger, events_logger, event, parsed_event):
 
     # Check if the event was not declined by the current user
     if has_self_declined(event):
-        events_logger.info("Event dismissed automatically as it was declined by me. For event: " + parsed_event['event_name'])
+        events_logger.info("Event dismissed automatically as it was declined by me. For event: " + parsed_event['parsed_event_struct'].event_name)
 
         parsed_event['has_self_declined'] = True
 
@@ -294,7 +294,7 @@ def parse_event(p_logger, events_logger, event, parsed_event):
     parsed_event['minutes_before_to_notify'] = minutes_before_to_notify
     if (minutes_before_to_notify == NO_POPUP_REMINDER):
         # No notification reminders
-        events_logger.info("Event dismissed automatically as it does not have any reminders set. For event: " + parsed_event['event_name'])
+        events_logger.info("Event dismissed automatically as it does not have any reminders set. For event: " + parsed_event['parsed_event_struct'].event_name)
 
         parsed_event['no_popup_reminder'] = True
 
@@ -313,7 +313,7 @@ def parse_event(p_logger, events_logger, event, parsed_event):
 
     if (has_self_tentative(event)):
         # The current user is Tentative fot this event
-        parsed_event['event_name'] = "Tentative - " + parsed_event['event_name']
+        parsed_event['parsed_event_struct'].event_name = "Tentative - " + parsed_event['parsed_event_struct'].event_name
 
     # Get the video conf data
     parsed_event['video_link'] = "No Video"
