@@ -129,7 +129,7 @@ class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
     def handle_event_to_display(self, event_key_str, parsed_event, events_list):
         snoozed_item = [
             event_key_str,
-            parsed_event['google_account'],
+            parsed_event['parsed_event_struct'].google_account,
             parsed_event['cal name'],
             parsed_event['event_name'],
             parsed_event['event_wakeup_time']
@@ -154,7 +154,7 @@ class Show_Dismissed_Events_Table_Window(Show_Events_Table_Window):
     def handle_event_to_display(self, event_key_str, parsed_event, events_list):
         dismissed_item = [
             event_key_str,
-            parsed_event['google_account'],
+            parsed_event['parsed_event_struct'].google_account,
             parsed_event['cal name'],
             parsed_event['event_name'],
             parsed_event['end_date']

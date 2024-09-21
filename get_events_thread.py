@@ -2,6 +2,8 @@ import threading
 import time
 import json
 
+from parsed_event import ParsedEvent
+
 from events_collection import Events_Collection
 
 from google_calendar_utilities import (
@@ -192,7 +194,7 @@ class Get_Events:
 
             event_from_all_events = self.all_events[event_key_str]
             if(event_from_all_events != None):
-                if (google_account != event_from_all_events['google_account']):
+                if (google_account != event_from_all_events['parsed_event_struct'].google_account):
                     # This is the same event but from a different account - we will wait to see the event in the account that was used to store the event
                     continue
                 
@@ -256,10 +258,11 @@ class Get_Events:
                     event_from_all_events['changed'] = True
 
             # Event not in the any other list
+            parsed_event['parsed_event_struct'] = ParsedEvent()
+            parsed_event['parsed_event_struct'].google_account = google_account
             parsed_event['event_key_str'] = event_key_str
             parsed_event['raw_event'] = event
             parsed_event['event_name'] = event.get('summary', '(No title)')
-            parsed_event['google_account'] = google_account
             parsed_event['cal name'] = cal_name
             parsed_event['cal id'] = cal_id
             parsed_event['changed'] = False
@@ -288,7 +291,7 @@ class Get_Events:
             self.globals.logger.debug(
                 "Event to be presented - "
                 + " " + parsed_event['event_name'] 
-                + " " + parsed_event['google_account'] 
+                + " " + parsed_event['parsed_event_struct'].google_account 
                 + " " + parsed_event['cal id']
                 + " " + parsed_event['raw_event']['id'])
 

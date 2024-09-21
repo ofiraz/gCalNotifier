@@ -109,7 +109,7 @@ class EventDisplayDetails():
             self.snooze_time_in_minutes_for_open_video_and_snooze = 5
 
 
-        self.cal_and_account_label_text = parsed_event['cal name'] + " calendar in " + parsed_event['google_account']
+        self.cal_and_account_label_text = parsed_event['cal name'] + " calendar in " + parsed_event['parsed_event_struct'].google_account
 
         self.all_day_event = parsed_event['all_day_event']
 
@@ -539,7 +539,7 @@ class MultipleEventsTable(QWidget):
 
         if selected_row != -1:  # -1 means no row is selected
             # Decide on the Chrome profile to use
-            if (self.parsed_events[selected_row]['google_account'] == 'ofiraz@gmail.com'):
+            if (self.parsed_events[selected_row]['parsed_event_struct'].google_account == 'ofiraz@gmail.com'):
                 profile_name = 'Profile 1'
             else:
                 profile_name = 'Profile 9'
