@@ -2,7 +2,14 @@ import threading
 import time
 import json
 
-from parsed_event import ParsedEvent
+from parsed_event import (
+    ParsedEvent,
+    has_raw_event_changed,
+    get_action_for_parsed_event,
+    ACTION_DISPLAY_EVENT,
+    ACTION_SNOOOZE_EVENT,
+    ACTION_DISMISS_EVENT
+)   
 
 from events_collection import Events_Collection
 
@@ -12,15 +19,6 @@ from google_calendar_utilities import (
 )
 
 from datetime_utils import get_now_datetime
-
-from event_utils import (
-    has_raw_event_changed,
-    parse_event,
-    get_action_for_parsed_event,
-    ACTION_DISPLAY_EVENT,
-    ACTION_SNOOOZE_EVENT,
-    ACTION_DISMISS_EVENT
-)
 
 class Get_Events:
     def __init__(self, globals, start_time, end_time):
@@ -259,14 +257,13 @@ class Get_Events:
 
             # Event not in the any other list
             parsed_event = ParsedEvent(
+                globals = self.globals,
                 google_account = google_account,
                 event_key_str = event_key_str,
                 raw_event = event,
                 cal_name = cal_name)
 
-            self.globals.logger.debug("Event Name " + parsed_event.event_name)
-
-            event_action = parse_event(self.globals.logger, self.globals.events_logger, event, parsed_event)
+            event_action = parsed_event.parse_event()
 
             # Add the event to the new all-events
             new_all_events.add_event(event_key_str, parsed_event)
