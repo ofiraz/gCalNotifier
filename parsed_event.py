@@ -196,37 +196,37 @@ def get_number_of_attendees(event):
 
     return(num_of_attendees)
 
-def parse_event_description(p_logger, meeting_description, parsed_event):
-    if (meeting_description):
-        parsed_event.description = meeting_description
-
-        # Check if the event has gCalNotifier config
-        need_to_record_meeting = re.search(
-            "record:yes", 
-            meeting_description) 
-        if need_to_record_meeting:
-            parsed_event.need_to_record_meeting = True
-
-        close_event_window_when_event_has_ended = re.search(
-            "close_event_window_when_event_has_ended:yes", 
-            meeting_description) 
-        if close_event_window_when_event_has_ended:
-            parsed_event.close_event_window_when_event_has_ended = True
-
-        default_snoozed = re.search(
-            "default_snooze:([0-9]+)", 
-            meeting_description) 
-        if default_snoozed:
-            parsed_event.default_snooze = default_snoozed.group(1)
-    
-    else:
-        parsed_event.description = "No description"
-        
 ACTION_DISPLAY_EVENT = 1
 ACTION_SNOOOZE_EVENT = 2
 ACTION_DISMISS_EVENT = 3
 
 class ParsedEvent:
+    def parse_event_description(self, meeting_description):
+        if (meeting_description):
+            self.description = meeting_description
+
+            # Check if the event has gCalNotifier config
+            need_to_record_meeting = re.search(
+                "record:yes", 
+                meeting_description) 
+            if need_to_record_meeting:
+                self.need_to_record_meeting = True
+
+            close_event_window_when_event_has_ended = re.search(
+                "close_event_window_when_event_has_ended:yes", 
+                meeting_description) 
+            if close_event_window_when_event_has_ended:
+                self.close_event_window_when_event_has_ended = True
+
+            default_snoozed = re.search(
+                "default_snooze:([0-9]+)", 
+                meeting_description) 
+            if default_snoozed:
+                self.default_snooze = default_snoozed.group(1)
+        
+        else:
+            self.description = "No description"
+            
     def get_snoozed_or_display_action_for_parsed_event_based_on_current_time(self):
         delta_diff = datetime.timedelta(minutes = self.minutes_before_to_notify)
         reminder_time = self.start_date - delta_diff
@@ -305,7 +305,7 @@ class ParsedEvent:
         self.event_location = self.raw_event.get('location', "No location")
 
         meeting_description = self.raw_event.get('description')
-        parse_event_description(self.globals.logger, meeting_description, self)
+        self.parse_event_description(meeting_description)
 
         if (has_self_tentative(self.raw_event)):
             # The current user is Tentative fot this event
