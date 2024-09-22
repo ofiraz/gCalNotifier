@@ -5,7 +5,6 @@ import json
 from parsed_event import (
     ParsedEvent,
     has_raw_event_changed,
-    get_action_for_parsed_event,
     ACTION_DISPLAY_EVENT,
     ACTION_SNOOOZE_EVENT,
     ACTION_DISMISS_EVENT
@@ -226,7 +225,7 @@ class Get_Events:
                         event_from_all_events.is_unsnoozed_or_undismissed = False
 
                         # Re compute the needed action for the event that was dismissed or snoozed before
-                        event_action = get_action_for_parsed_event(self.globals.events_logger, event_from_all_events)
+                        event_action = event_from_all_events.get_action_for_parsed_event()
 
                         self.apply_action_on_parsed_event(
                             event_action,

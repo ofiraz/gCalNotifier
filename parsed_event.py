@@ -8,11 +8,11 @@ from deepdiff import DeepDiff
 
 import re
 
-def has_self_declined(event):
+def has_self_declined(raw_event):
     # Check if the event was not declined by the current user
-    if(event.get('attendees')):
+    if(raw_event.get('attendees')):
         # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
-        for attendee in event['attendees']:
+        for attendee in raw_event['attendees']:
             if(attendee.get('self') and attendee['self'] == True and attendee.get('responseStatus') and attendee['responseStatus'] == 'declined'):
                 # The user declined the meeting. No need to display it
                 return(True)
@@ -241,25 +241,25 @@ def get_snoozed_or_display_action_for_parsed_event_based_on_current_time(events_
     # The event needs to be notified
     return(ACTION_DISPLAY_EVENT)
 
-def get_action_for_parsed_event(events_logger, parsed_event):
-    if (parsed_event.has_self_declined):
-        events_logger.info("Event dismissed automatically as it was declined by me. For event: " + parsed_event.event_name)
-
-        return(ACTION_DISMISS_EVENT)
-    
-    if (parsed_event.no_popup_reminder):
-        # No notification reminders
-        events_logger.info("Event dismissed automatically as it does not have any reminders set. For event: " + parsed_event.event_name)
-
-        return(ACTION_DISMISS_EVENT)
-
-    # Check if the time to remind about the event had arrived
-    return(get_snoozed_or_display_action_for_parsed_event_based_on_current_time(
-        events_logger,
-        parsed_event,
-        parsed_event.minutes_before_to_notify))
-
 class ParsedEvent:
+    def get_action_for_parsed_event(self):
+        if (self.has_self_declined):
+            self.globals.events_logger.info("Event dismissed automatically as it was declined by me. For event: " + self.event_name)
+
+            return(ACTION_DISMISS_EVENT)
+        
+        if (self.no_popup_reminder):
+            # No notification reminders
+            self.globals.events_logger.info("Event dismissed automatically as it does not have any reminders set. For event: " + self.event_name)
+
+            return(ACTION_DISMISS_EVENT)
+
+        # Check if the time to remind about the event had arrived
+        return(get_snoozed_or_display_action_for_parsed_event_based_on_current_time(
+            self.globals.events_logger,
+            self,
+            self.minutes_before_to_notify))
+
     def parse_event(self):
         self.globals.logger.debug(nice_json(self.raw_event))
 
