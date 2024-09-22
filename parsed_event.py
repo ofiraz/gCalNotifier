@@ -226,22 +226,22 @@ ACTION_DISPLAY_EVENT = 1
 ACTION_SNOOOZE_EVENT = 2
 ACTION_DISMISS_EVENT = 3
 
-def get_snoozed_or_display_action_for_parsed_event_based_on_current_time(events_logger, parsed_event, minutes_before_to_notify):
-    delta_diff = datetime.timedelta(minutes=minutes_before_to_notify)
-    reminder_time = parsed_event.start_date - delta_diff
-    now_datetime = get_now_datetime()
-    if(now_datetime < reminder_time):
-        # Not the time to remind yet
-        parsed_event.event_wakeup_time = reminder_time
-
-        events_logger.info("Event automatically snoozed as there is time until it should be notified for the first time. For event: " + parsed_event.event_name + " until " + str(parsed_event.event_wakeup_time))
-
-        return(ACTION_SNOOOZE_EVENT)
-
-    # The event needs to be notified
-    return(ACTION_DISPLAY_EVENT)
-
 class ParsedEvent:
+    def get_snoozed_or_display_action_for_parsed_event_based_on_current_time(self):
+        delta_diff = datetime.timedelta(minutes = self.minutes_before_to_notify)
+        reminder_time = self.start_date - delta_diff
+        now_datetime = get_now_datetime()
+        if(now_datetime < reminder_time):
+            # Not the time to remind yet
+            self.event_wakeup_time = reminder_time
+
+            self.globals.events_logger.info("Event automatically snoozed as there is time until it should be notified for the first time. For event: " + self.event_name + " until " + str(self.event_wakeup_time))
+
+            return(ACTION_SNOOOZE_EVENT)
+
+        # The event needs to be notified
+        return(ACTION_DISPLAY_EVENT)
+
     def get_action_for_parsed_event(self):
         if (self.has_self_declined):
             self.globals.events_logger.info("Event dismissed automatically as it was declined by me. For event: " + self.event_name)
@@ -255,10 +255,7 @@ class ParsedEvent:
             return(ACTION_DISMISS_EVENT)
 
         # Check if the time to remind about the event had arrived
-        return(get_snoozed_or_display_action_for_parsed_event_based_on_current_time(
-            self.globals.events_logger,
-            self,
-            self.minutes_before_to_notify))
+        return(self.get_snoozed_or_display_action_for_parsed_event_based_on_current_time())
 
     def parse_event(self):
         self.globals.logger.debug(nice_json(self.raw_event))
@@ -291,9 +288,8 @@ class ParsedEvent:
 
             return
 
-        minutes_before_to_notify = get_max_reminder_in_minutes(self.raw_event)
-        self.minutes_before_to_notify = minutes_before_to_notify
-        if (minutes_before_to_notify == NO_POPUP_REMINDER):
+        self.minutes_before_to_notify = get_max_reminder_in_minutes(self.raw_event)
+        if (self.minutes_before_to_notify == NO_POPUP_REMINDER):
             # No notification reminders
             self.globals.events_logger.info("Event dismissed automatically as it does not have any reminders set. For event: " + self.event_name)
 
@@ -341,10 +337,7 @@ class ParsedEvent:
         self.num_of_attendees = get_number_of_attendees(self.raw_event)
 
         # Check if the time to remind about the event had arrived
-        self.event_action = get_snoozed_or_display_action_for_parsed_event_based_on_current_time(
-            self.globals.events_logger,
-            self,
-            minutes_before_to_notify)
+        self.event_action = self.get_snoozed_or_display_action_for_parsed_event_based_on_current_time()
 
     def __init__(
             self,
