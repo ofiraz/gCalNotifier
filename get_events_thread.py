@@ -263,7 +263,7 @@ class Get_Events:
                 raw_event = event,
                 cal_name = cal_name)
 
-            event_action = parsed_event.parse_event()
+            event_action = parsed_event.event_action
 
             # Add the event to the new all-events
             new_all_events.add_event(event_key_str, parsed_event)

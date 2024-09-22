@@ -263,6 +263,9 @@ class ParsedEvent:
     def parse_event(self):
         self.globals.logger.debug(nice_json(self.raw_event))
 
+        self.event_name = self.raw_event.get('summary', '(No title)')
+        self.globals.logger.debug("Event Name " + self.event_name)
+
         start_day = self.raw_event['start'].get('dateTime')
         if not start_day:
             # An all day event
@@ -284,7 +287,9 @@ class ParsedEvent:
 
             self.has_self_declined = True
 
-            return(ACTION_DISMISS_EVENT)
+            self.event_action = ACTION_DISMISS_EVENT
+
+            return
 
         minutes_before_to_notify = get_max_reminder_in_minutes(self.raw_event)
         self.minutes_before_to_notify = minutes_before_to_notify
@@ -294,7 +299,9 @@ class ParsedEvent:
 
             self.no_popup_reminder = True
 
-            return(ACTION_DISMISS_EVENT)
+            self.event_action = ACTION_DISMISS_EVENT
+            
+            return
 
         # Event needs to be reminded about, continue parsing the event
         self.html_link = self.raw_event['htmlLink']
@@ -334,10 +341,10 @@ class ParsedEvent:
         self.num_of_attendees = get_number_of_attendees(self.raw_event)
 
         # Check if the time to remind about the event had arrived
-        return(get_snoozed_or_display_action_for_parsed_event_based_on_current_time(
+        self.event_action = get_snoozed_or_display_action_for_parsed_event_based_on_current_time(
             self.globals.events_logger,
             self,
-            minutes_before_to_notify))
+            minutes_before_to_notify)
 
     def __init__(
             self,
@@ -351,10 +358,6 @@ class ParsedEvent:
         self.event_key_str = event_key_str
         self.raw_event = raw_event
         self.cal_name = cal_name
-
-        self.event_name = raw_event.get('summary', '(No title)')
-        self.globals.logger.debug("Event Name " + self.event_name)
-
         self.changed = False
         self.deleted = False
         self.is_dismissed = False
@@ -364,14 +367,13 @@ class ParsedEvent:
         self.close_event_window_when_event_has_ended = False
         self.description = ''
         self.default_snooze = False
-        self.start_date = ''
-        self.end_date = ''
         self.event_wakeup_time = ''
         self.has_self_declined = False
         self.no_popup_reminder = False
-        self.all_day_event = False
         self.minutes_before_to_notify = ''
         self.html_link = ''
         self.event_location = ''
         self.video_link = ''
         self.num_of_attendees = 0
+
+        self.parse_event()
