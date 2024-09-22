@@ -22,13 +22,13 @@ def has_self_declined(raw_event):
 
 NO_POPUP_REMINDER = -1
 
-def get_max_reminder_in_minutes(p_event):
+def get_max_reminder_in_minutes(raw_event):
     max_minutes_before = NO_POPUP_REMINDER
 
-    if (p_event['reminders'].get('useDefault') == True):
+    if (raw_event['reminders'].get('useDefault') == True):
         max_minutes_before = 15
     else:
-        override_rule = p_event['reminders'].get('overrides')
+        override_rule = raw_event['reminders'].get('overrides')
         if (override_rule):
             for override_entry in override_rule:
                 if (override_entry['method'] == "popup"):
@@ -116,10 +116,9 @@ class ParsedEvent:
                         if re.search("root\['reminders'\]", key1):
                             # A change in the reminders
                             # Compare the max minutes to notify before in both original and new event
-                            orig_event_max_reminder_in_minutes = get_max_reminder_in_minutes(self.raw_event)
                             new_event_max_reminder_in_minutes = get_max_reminder_in_minutes(new_raw_event)
                             
-                            if (orig_event_max_reminder_in_minutes != new_event_max_reminder_in_minutes):
+                            if (self.minutes_before_to_notify != new_event_max_reminder_in_minutes):
                                 # The max reminder in minutes has changed
                                 self.globals.logger.info("The max reminder in minutes has changed")
                                 return(True)
@@ -150,10 +149,9 @@ class ParsedEvent:
                         if re.search("root\['reminders'\]", key1):
                             # A change in the reminders
                             # Compare the max minutes to notify before in both original and new event
-                            orig_event_max_reminder_in_minutes = get_max_reminder_in_minutes(self.raw_event)
                             new_event_max_reminder_in_minutes = get_max_reminder_in_minutes(new_raw_event)
                             
-                            if (orig_event_max_reminder_in_minutes != new_event_max_reminder_in_minutes):
+                            if (self.minutes_before_to_notify != new_event_max_reminder_in_minutes):
                                 # The max reminder in minutes has changed
                                 self.globals.logger.info("The max reminder in minutes has changed")
                                 return(True)
