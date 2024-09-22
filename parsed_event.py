@@ -67,114 +67,36 @@ ACTION_SNOOOZE_EVENT = 2
 ACTION_DISMISS_EVENT = 3
 
 class ParsedEvent:
-    def has_raw_event_changed(self, new_raw_event):
+    def has_event_changed(self, new_raw_event):
         self.globals.logger.debug("Check for changes")
 
-        diff_result = DeepDiff(self.raw_event, new_raw_event)
-        if (diff_result):
+        if (self.updated != new_raw_event['updated']):
+            print("Event updated field has changed")
 
-            self.globals.logger.debug("Check if relevant changes")
-            self.globals.logger.debug(str(diff_result))
+            # Create a parsed event for the new raw event
+            new_parsed_event = ParsedEvent(
+                self.globals,
+                self.google_account,
+                self.event_key_str,
+                new_raw_event,
+                self.cal_name)
+            
+            if ((self.description != new_parsed_event.description) 
+                or (self.all_day_event != new_parsed_event.all_day_event)
+                or (self.end_date != new_parsed_event.end_date)
+                or (self.event_location != new_parsed_event.event_location)
+                or (self.event_name != new_parsed_event.event_name)
+                or (self.has_self_declined != new_parsed_event.has_self_declined)
+                or (self.html_link != new_parsed_event.html_link)
+                or (self.minutes_before_to_notify != new_parsed_event.minutes_before_to_notify)
+                or (self.no_popup_reminder != new_parsed_event.no_popup_reminder)
+                or (self.start_date != new_parsed_event.start_date)
+                or (self.video_link != new_parsed_event.video_link)):
 
-            for key in diff_result:
-                if (key == 'values_changed'):
-                    for key1 in diff_result['values_changed']:
-                        if (
-                            key1 == "root['etag']" 
-                            or key1 == "root['updated']" 
-                            or key1 == "root['recurringEventId']"
-                            or key1 == "root['conferenceData']['signature']"
-                            or key1 == "root['iCalUID']"
-                        ):
-                            # Not relevant changes
-                            continue
-
-                        if re.search("root\['attendees'\]\[[0-9]+\]\['responseStatus'\]", key1):
-                            # A change in the attendees response
-                            if has_self_declined(new_raw_event):
-                                # The current user has declined the event
-                                self.globals.logger.info("The current user has declined")
-                                return(True)
-
-                            continue
-
-                        if (key1 == "root['extendedProperties']['shared']['meetingParams']"):
-                            # Compare the internal parameters
-                            diff_extended_properties = DeepDiff(diff_result['values_changed'][key1]['new_value'], diff_result['values_changed'][key1]['old_value'])
-                            for key2 in diff_extended_properties:
-                                if (key2 == "invitees_hash"):
-                                    # Not relevant change
-                                    continue
-
-                                # Found a change
-                                self.globals.logger.info("Found a relevant change")
-                                self.globals.logger.info(key2 + ":" + str(diff_extended_properties[key2]))
-                                return(True)
-                            
-                            continue
-
-                        if re.search("root\['reminders'\]", key1):
-                            # A change in the reminders
-                            # Compare the max minutes to notify before in both original and new event
-                            new_event_max_reminder_in_minutes = get_max_reminder_in_minutes(new_raw_event)
-                            
-                            if (self.minutes_before_to_notify != new_event_max_reminder_in_minutes):
-                                # The max reminder in minutes has changed
-                                self.globals.logger.info("The max reminder in minutes has changed")
-                                return(True)
-
-                            continue
-
-                        # Found a change
-                        self.globals.logger.info("Found a relevant change")
-                        self.globals.logger.info(key1 + ":" + str(diff_result['values_changed'][key1]))
-                        return(True)
-                    
-                    continue
-                # key == 'values_changed'
-
-                elif (key == 'iterable_item_added' or key == 'iterable_item_removed' or key == 'dictionary_item_added' or key == 'dictionary_item_removed'):
-                    for key1 in diff_result[key]:
-                        if ((key1 == "root['conferenceData']['signature']")
-                            #or (key1 == "root['organizer']['self']")
-                            #or (key1 == "root['creator']['self']")
-                            ):
-                            # Not relevant changes
-                            continue
-                            
-                        if re.search("root\['attendees'\]\[[0-9]+\]", key1):
-                            # An attendee added - can be ignored
-                            continue
-
-                        if re.search("root\['reminders'\]", key1):
-                            # A change in the reminders
-                            # Compare the max minutes to notify before in both original and new event
-                            new_event_max_reminder_in_minutes = get_max_reminder_in_minutes(new_raw_event)
-                            
-                            if (self.minutes_before_to_notify != new_event_max_reminder_in_minutes):
-                                # The max reminder in minutes has changed
-                                self.globals.logger.info("The max reminder in minutes has changed")
-                                return(True)
-
-                            continue
-
-                        # Found a change
-                        self.globals.logger.info("Found a relevant change")
-                        self.globals.logger.info(key1)
-                        self.globals.logger.info("orig_event")
-                        self.globals.logger.info(nice_json(self.raw_event))
-                        self.globals.logger.info("new_event")
-                        self.globals.logger.info(nice_json(new_raw_event))
-
-                        return(True)
-
-                    continue
-                # key == 'iterable_item_added' or or key == 'iterable_item_removed'
-
-                self.globals.logger.info("Found a relevant change")
-                self.globals.logger.info(key + ":" + str(diff_result[key]))
+                print("Event has changed")
                 return(True)
-
+            
+        # The event has not changed
         return(False)
 
     def has_self_tentative(self):
@@ -263,6 +185,8 @@ class ParsedEvent:
             self.event_name = "Tentative - " + self.event_name
 
         self.globals.logger.debug("Event Name " + self.event_name)
+
+        self.updated = self.raw_event['updated']
 
         start_day = self.raw_event['start'].get('dateTime')
         if not start_day:

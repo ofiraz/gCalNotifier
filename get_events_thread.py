@@ -195,7 +195,7 @@ class Get_Events:
                     continue
                 
                 # We already handled this event in a previous run of the main loop
-                event_changed = event_from_all_events.has_raw_event_changed(event)
+                event_changed = event_from_all_events.has_event_changed(event)
                 
                 if (event_changed == False):
                     # The event has not changed - moving from the current collection to the new one
