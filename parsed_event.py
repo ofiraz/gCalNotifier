@@ -186,21 +186,19 @@ def look_for_video_link_in_meeting_description(p_meeting_description):
     # No known video link found
     return("No Video")
 
-def get_number_of_attendees(event):
-    num_of_attendees = 0
-
-    if(event.get('attendees')):
-        # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
-        for attendee in event['attendees']:
-            num_of_attendees = num_of_attendees + 1
-
-    return(num_of_attendees)
-
 ACTION_DISPLAY_EVENT = 1
 ACTION_SNOOOZE_EVENT = 2
 ACTION_DISMISS_EVENT = 3
 
 class ParsedEvent:
+    def get_number_of_attendees(self):
+        self.num_of_attendees = 0
+
+        if(self.raw_event.get('attendees')):
+            # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
+            for attendee in self.raw_event['attendees']:
+                self.num_of_attendees = self.num_of_attendees + 1
+
     def parse_event_description(self, meeting_description):
         if (meeting_description):
             self.description = meeting_description
@@ -334,7 +332,7 @@ class ParsedEvent:
                     # The event location already contains the video link, no need to show it twice
                     self.video_link = "No Video"
 
-        self.num_of_attendees = get_number_of_attendees(self.raw_event)
+        self.get_number_of_attendees()
 
         # Check if the time to remind about the event had arrived
         self.event_action = self.get_snoozed_or_display_action_for_parsed_event_based_on_current_time()
