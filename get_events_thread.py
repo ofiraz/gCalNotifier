@@ -4,7 +4,6 @@ import json
 
 from parsed_event import (
     ParsedEvent,
-    has_raw_event_changed,
     ACTION_DISPLAY_EVENT,
     ACTION_SNOOOZE_EVENT,
     ACTION_DISMISS_EVENT
@@ -196,10 +195,7 @@ class Get_Events:
                     continue
                 
                 # We already handled this event in a previous run of the main loop
-                event_changed = has_raw_event_changed(
-                    self.globals.logger,
-                    event_from_all_events.raw_event,
-                    event)
+                event_changed = event_from_all_events.has_raw_event_changed(event)
                 
                 if (event_changed == False):
                     # The event has not changed - moving from the current collection to the new one
