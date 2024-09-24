@@ -234,8 +234,6 @@ class Get_Events:
                     continue
 
                 else: # The event has changed
-                    self.globals.logger.info("Event changed " + event_from_all_events.event_name)
-
                     if (event_from_all_events.is_dismissed):
                         # Remove the changed event from the dismissed events, so it will get parsed from scratch
                         self.dismissed_events.remove_event(event_key_str)
