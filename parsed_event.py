@@ -68,10 +68,25 @@ ACTION_DISMISS_EVENT = 3
 
 class ParsedEvent:
     def has_event_changed(self, new_raw_event):
+        fields_to_compare = [
+            "all_day_event",
+            "description",
+            "end_date",
+            "event_location",
+            "event_name",
+            "has_self_declined",
+            "html_link",
+            "minutes_before_to_notify",
+            "no_popup_reminder",
+            "start_date",
+            "video_link"
+        ]
         self.globals.logger.debug("Check for changes")
 
+        #print("getatter + " + getattr(self, "event_name"))
+
         if (self.updated != new_raw_event['updated']):
-            print("Event updated field has changed")
+            print("Event updated field has changed for event - " + self.event_name)
 
             # Create a parsed event for the new raw event
             new_parsed_event = ParsedEvent(
@@ -81,22 +96,17 @@ class ParsedEvent:
                 new_raw_event,
                 self.cal_name)
             
-            if ((self.description != new_parsed_event.description) 
-                or (self.all_day_event != new_parsed_event.all_day_event)
-                or (self.end_date != new_parsed_event.end_date)
-                or (self.event_location != new_parsed_event.event_location)
-                or (self.event_name != new_parsed_event.event_name)
-                or (self.has_self_declined != new_parsed_event.has_self_declined)
-                or (self.html_link != new_parsed_event.html_link)
-                or (self.minutes_before_to_notify != new_parsed_event.minutes_before_to_notify)
-                or (self.no_popup_reminder != new_parsed_event.no_popup_reminder)
-                or (self.start_date != new_parsed_event.start_date)
-                or (self.video_link != new_parsed_event.video_link)):
-
-                print("Event has changed")
-                return(True)
+            for index in range(len(fields_to_compare)):
+                if (getattr(self, fields_to_compare[index]) != getattr(new_parsed_event, fields_to_compare[index])):
+                    print("The field - " + fields_to_compare[index] + " - changed for event - " + self.event_name)
+            
+                    return(True)
             
         # The event has not changed
+        
+        # We will update the updaated field in the case we couldn't identify a change, so we won't need to check it endlessly
+        self.updated = new_raw_event['updated']
+
         return(False)
 
     def has_self_tentative(self):
