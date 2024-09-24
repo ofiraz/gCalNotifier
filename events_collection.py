@@ -114,7 +114,7 @@ class Events_Collection:
         self.release_collection(lock)
 
     def unsnooze_or_undismiss_event(self, event_key_str):
-        print("unsnooze_or_undismiss_event for " + event_key_str)
+        self.c_logger.debug("unsnooze_or_undismiss_event for " + event_key_str)
         lock = self.lock_collection(lock_for_read=False)
 
         if (event_key_str in self.c_events):
@@ -123,7 +123,7 @@ class Events_Collection:
             parsed_event.is_unsnoozed_or_undismissed = True
 
         else:
-            print(event_key_str + " not in collection")
+            self.c_logger.info(event_key_str + " not in collection")
 
         self.release_collection(lock)
 

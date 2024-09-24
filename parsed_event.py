@@ -83,10 +83,8 @@ class ParsedEvent:
         ]
         self.globals.logger.debug("Check for changes")
 
-        #print("getatter + " + getattr(self, "event_name"))
-
         if (self.updated != new_raw_event['updated']):
-            print("Event updated field has changed for event - " + self.event_name)
+            self.globals.logger.info("Event updated field has changed for event - " + self.event_name)
 
             # Create a parsed event for the new raw event
             new_parsed_event = ParsedEvent(
@@ -98,7 +96,7 @@ class ParsedEvent:
             
             for index in range(len(fields_to_compare)):
                 if (getattr(self, fields_to_compare[index]) != getattr(new_parsed_event, fields_to_compare[index])):
-                    print("The field - " + fields_to_compare[index] + " - changed for event - " + self.event_name)
+                    self.globals.logger.info("The field - " + fields_to_compare[index] + " - changed for event - " + self.event_name)
             
                     return(True)
             

@@ -755,5 +755,5 @@ class MultipleEventsTable(QWidget):
                     return
 
         # If we got here the event could not be found - could be a race condition in the case it was removed due to the change marking in the refresh event
-        print("Couldnt find the event to change, handling it as new")
+        self.globals.logger.info("Couldnt find the event to change, handling it as new")
         self.add_event(parsed_event)

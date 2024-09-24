@@ -50,14 +50,14 @@ class TableWindow(QWidget):
         if ((selected_row != -1) and (self.table_widget.item(selected_row, 0).isSelected())):
             event_key_str = self.data[selected_row][0]
 
-            print("Act on event " + str(selected_row) + " with key " + event_key_str)
+            self.globals.logger.debug("Act on event " + str(selected_row) + " with key " + event_key_str)
 
             self.show_events_table_object.act_on_event_cb(event_key_str)
 
             self.table_widget.removeRow(selected_row)
        
         else:
-            print("No row selected")
+            self.globals.logger.debug("No row selected")
 
     def update_table_data(self):
         self.data = self.show_events_table_object.get_data_into_table()
