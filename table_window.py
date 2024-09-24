@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QWidget, QPushButton, QHBoxLayout, QRadioButton
 
 class TableWindow(QWidget):
     def __init__(self, globals, show_events_table_object):
@@ -31,6 +31,19 @@ class TableWindow(QWidget):
 
         self.main_layout.addWidget(self.table_widget)
 
+        # Radio buttons to select wheter to show the non automatic or automatic snoosed/dismissed events
+        self.radio_buttons_h_layout = QHBoxLayout()
+        self.main_layout.addLayout(self.radio_buttons_h_layout)
+
+        self.radio_non_automtic = QRadioButton("Non automatic")
+        self.radio_buttons_h_layout.addWidget(self.radio_non_automtic)
+        self.radio_non_automtic.setChecked(True)
+        self.radio_non_automtic.toggled.connect(self.on_rb_non_automatic_selected)
+
+        self.radio_automtic = QRadioButton("Automatic")
+        self.radio_buttons_h_layout.addWidget(self.radio_automtic)
+        self.radio_automtic.toggled.connect(self.on_rb_automatic_selected)
+        
         self.action_button = QPushButton(self.show_events_table_object.act_button_text)
         self.main_layout.addWidget(self.action_button)
 
@@ -60,25 +73,34 @@ class TableWindow(QWidget):
             self.globals.logger.debug("No row selected")
 
     def update_table_data(self):
-        self.data = self.show_events_table_object.get_data_into_table()
+        self.data = self.show_events_table_object.get_data_into_table(show_non_automatic = self.radio_non_automtic.isChecked())
 
         # Clear old data
         while (self.table_widget.rowCount() > 0):
             self.table_widget.removeRow(0)
         
-        for row in range(len(self.data)):
-            self.table_widget.insertRow(row)
+        if (len(self.data) > 0):
+            for row in range(len(self.data)):
+                self.table_widget.insertRow(row)
 
-            for col in range(1, len(self.data[row])): # Skipping the event key value
-                self.table_widget.setItem(row, col - 1, QTableWidgetItem(str(self.data[row][col])))
+                for col in range(1, len(self.data[row])): # Skipping the event key value
+                    self.table_widget.setItem(row, col - 1, QTableWidgetItem(str(self.data[row][col])))
 
-        total_columns_width = 0
-        for col in range(1, len(self.data[0])): # Skipping the event key value
-            self.table_widget.resizeColumnToContents(col - 1)
-            total_columns_width = total_columns_width + self.table_widget.columnWidth(col - 1)
+            total_columns_width = 0
+            for col in range(1, len(self.data[0])): # Skipping the event key value
+                self.table_widget.resizeColumnToContents(col - 1)
+                total_columns_width = total_columns_width + self.table_widget.columnWidth(col - 1)
 
-        # Set the window width to match the table's width and keep the height flexible
-        self.resize(total_columns_width + 45, self.height())  # Set window width to table's width, keep current height
+            # Set the window width to match the table's width and keep the height flexible
+            self.resize(total_columns_width + 45, self.height())  # Set window width to table's width, keep current height
+
+    def on_rb_non_automatic_selected(self):
+        if self.radio_non_automtic.isChecked():
+            self.update_table_data()
+    
+    def on_rb_automatic_selected(self):
+        if self.radio_automtic.isChecked():
+            self.update_table_data()
     
 class Show_Events_Table_Window():
     def __init__(self, globals, get_events_object):
@@ -91,6 +113,8 @@ class Show_Events_Table_Window():
         self.window_title = ""
         self.act_button_text = ""
         self.act_on_event_cb = None
+
+        self.show_non_automatic = True
 
     def handle_event_to_display(self, event_key_str, parsed_event, events_list):
         return
@@ -105,8 +129,10 @@ class Show_Events_Table_Window():
         self.table_window.activateWindow()
         self.table_window.raise_()
 
-    def get_data_into_table(self):
+    def get_data_into_table(self, show_non_automatic):
         events_list = []
+
+        self.show_non_automatic = show_non_automatic
 
         self.get_events_into_list_function(self.handle_event_to_display, events_list)
 
@@ -127,15 +153,17 @@ class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
 
         
     def handle_event_to_display(self, event_key_str, parsed_event, events_list):
-        snoozed_item = [
-            event_key_str,
-            parsed_event.google_account,
-            parsed_event.cal_name,
-            parsed_event.event_name,
-            parsed_event.event_wakeup_time
-        ]
+        if ((self.show_non_automatic and not parsed_event.automatically_snoozed_dismissed)
+            or (not self.show_non_automatic and parsed_event.automatically_snoozed_dismissed)):
+            snoozed_item = [
+                event_key_str,
+                parsed_event.google_account,
+                parsed_event.cal_name,
+                parsed_event.event_name,
+                parsed_event.event_wakeup_time
+            ]
 
-        events_list.append(snoozed_item)
+            events_list.append(snoozed_item)
 
     def get_sort_value(self, item):
         return(item[4]) # The event wakeup time
@@ -152,15 +180,17 @@ class Show_Dismissed_Events_Table_Window(Show_Events_Table_Window):
 
         
     def handle_event_to_display(self, event_key_str, parsed_event, events_list):
-        dismissed_item = [
-            event_key_str,
-            parsed_event.google_account,
-            parsed_event.cal_name,
-            parsed_event.event_name,
-            parsed_event.end_date
-        ]
+        if ((self.show_non_automatic and not parsed_event.automatically_snoozed_dismissed)
+            or (not self.show_non_automatic and parsed_event.automatically_snoozed_dismissed)):
+            dismissed_item = [
+                event_key_str,
+                parsed_event.google_account,
+                parsed_event.cal_name,
+                parsed_event.event_name,
+                parsed_event.end_date
+            ]
 
-        events_list.append(dismissed_item)
+            events_list.append(dismissed_item)
 
     def get_sort_value(self, item):
         return(item[4]) # End date

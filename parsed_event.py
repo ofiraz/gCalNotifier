@@ -84,7 +84,7 @@ class ParsedEvent:
         self.globals.logger.debug("Check for changes")
 
         if (self.updated != new_raw_event['updated']):
-            self.globals.logger.info("Event updated field has changed for event - " + self.event_name)
+            self.globals.logger.debug("Event updated field has changed for event - " + self.event_name)
 
             # Create a parsed event for the new raw event
             new_parsed_event = ParsedEvent(
@@ -163,6 +163,8 @@ class ParsedEvent:
 
             self.globals.events_logger.debug("Event automatically snoozed as there is time until it should be notified for the first time. For event: " + self.event_name + " until " + str(self.event_wakeup_time))
 
+            self.automatically_snoozed_dismissed = True
+
             return(ACTION_SNOOOZE_EVENT)
 
         # The event needs to be notified
@@ -172,11 +174,15 @@ class ParsedEvent:
         if (self.has_self_declined):
             self.globals.events_logger.debug("Event dismissed automatically as it was declined by me. For event: " + self.event_name)
 
+            self.automatically_snoozed_dismissed = True
+
             return(ACTION_DISMISS_EVENT)
         
         if (self.no_popup_reminder):
             # No notification reminders
             self.globals.events_logger.debug("Event dismissed automatically as it does not have any reminders set. For event: " + self.event_name)
+
+            self.automatically_snoozed_dismissed = True
 
             return(ACTION_DISMISS_EVENT)
 
@@ -217,6 +223,8 @@ class ParsedEvent:
 
             self.has_self_declined = True
 
+            self.automatically_snoozed_dismissed = True
+
             self.event_action = ACTION_DISMISS_EVENT
 
             return
@@ -227,6 +235,8 @@ class ParsedEvent:
             self.globals.events_logger.debug("Event dismissed automatically as it does not have any reminders set. For event: " + self.event_name)
 
             self.no_popup_reminder = True
+
+            self.automatically_snoozed_dismissed = True
 
             self.event_action = ACTION_DISMISS_EVENT
             
@@ -297,5 +307,6 @@ class ParsedEvent:
         self.event_location = ''
         self.video_link = ''
         self.num_of_attendees = 0
+        self.automatically_snoozed_dismissed = False
 
         self.parse_event()

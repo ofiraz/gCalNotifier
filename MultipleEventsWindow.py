@@ -403,6 +403,8 @@ class MultipleEventsTable(QWidget):
                 
             self.globals.events_to_snooze.add_event(self.parsed_events[selected_row].event_key_str, parsed_event)
 
+            parsed_event.automatically_snoozed_dismissed = False
+
             self.remove_event(selected_row)
 
     def on_dismiss_event_pressed(self):
@@ -413,6 +415,7 @@ class MultipleEventsTable(QWidget):
             now_datetime = get_now_datetime()
 
             parsed_event = self.parsed_events[selected_row]
+            parsed_event.automatically_snoozed_dismissed = False
 
             if (now_datetime < parsed_event.end_date):
                 self.globals.events_to_dismiss.add_event(parsed_event.event_key_str, parsed_event)
