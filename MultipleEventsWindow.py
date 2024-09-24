@@ -399,7 +399,7 @@ class MultipleEventsTable(QWidget):
                 delta_diff = datetime.timedelta(minutes=snooze_time_in_minutes)
                 parsed_event.event_wakeup_time = now_datetime + delta_diff
 
-            self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event.event_name + " until " + str(parsed_event.event_wakeup_time))
+            self.globals.events_logger.debug("Event snoozed by user, for event: " + parsed_event.event_name + " until " + str(parsed_event.event_wakeup_time))
                 
             self.globals.events_to_snooze.add_event(self.parsed_events[selected_row].event_key_str, parsed_event)
 
@@ -567,7 +567,7 @@ class MultipleEventsTable(QWidget):
             delta_diff = datetime.timedelta(minutes=event_display_details.snooze_time_in_minutes_for_open_video_and_snooze)
             parsed_event.event_wakeup_time = now_datetime + delta_diff
 
-            self.globals.events_logger.info("Event snoozed by user, for event: " + parsed_event.event_name + " until " + str(parsed_event.event_wakeup_time))
+            self.globals.events_logger.debug("Event snoozed by user, for event: " + parsed_event.event_name + " until " + str(parsed_event.event_wakeup_time))
 
             self.globals.events_to_snooze.add_event(self.parsed_events[selected_row].event_key_str, parsed_event)
 

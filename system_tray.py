@@ -101,7 +101,7 @@ class app_system_tray(QMainWindow):
         self.multiple_events_windows.activateWindow()
         self.multiple_events_windows.raise_()      
 
-        self.globals.events_logger.info("Displaying event:" + parsed_event.event_name)
+        self.globals.events_logger.debug("Displaying event:" + parsed_event.event_name)
 
     def present_relevant_events(self):
         at_list_one_event_presented = False
@@ -160,7 +160,7 @@ class app_system_tray(QMainWindow):
         self.logs_window.raise_()
 
     def clear_dismissed_and_snoozed(self):      
-        self.globals.events_logger.info("Clearing dismissed and snoozed")
+        self.globals.events_logger.debug("Clearing dismissed and snoozed")
 
         self.globals.resest_is_needed()
 

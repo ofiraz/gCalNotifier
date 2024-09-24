@@ -103,7 +103,7 @@ class ParsedEvent:
                     return(True)
             
         # The event has not changed
-        
+
         # We will update the updaated field in the case we couldn't identify a change, so we won't need to check it endlessly
         self.updated = new_raw_event['updated']
 
@@ -163,7 +163,7 @@ class ParsedEvent:
             # Not the time to remind yet
             self.event_wakeup_time = reminder_time
 
-            self.globals.events_logger.info("Event automatically snoozed as there is time until it should be notified for the first time. For event: " + self.event_name + " until " + str(self.event_wakeup_time))
+            self.globals.events_logger.debug("Event automatically snoozed as there is time until it should be notified for the first time. For event: " + self.event_name + " until " + str(self.event_wakeup_time))
 
             return(ACTION_SNOOOZE_EVENT)
 
@@ -172,13 +172,13 @@ class ParsedEvent:
 
     def get_action_for_parsed_event(self):
         if (self.has_self_declined):
-            self.globals.events_logger.info("Event dismissed automatically as it was declined by me. For event: " + self.event_name)
+            self.globals.events_logger.debug("Event dismissed automatically as it was declined by me. For event: " + self.event_name)
 
             return(ACTION_DISMISS_EVENT)
         
         if (self.no_popup_reminder):
             # No notification reminders
-            self.globals.events_logger.info("Event dismissed automatically as it does not have any reminders set. For event: " + self.event_name)
+            self.globals.events_logger.debug("Event dismissed automatically as it does not have any reminders set. For event: " + self.event_name)
 
             return(ACTION_DISMISS_EVENT)
 
@@ -215,7 +215,7 @@ class ParsedEvent:
 
         # Check if the event was not declined by the current user
         if has_self_declined(self.raw_event):
-            self.globals.events_logger.info("Event dismissed automatically as it was declined by me. For event: " + self.event_name)
+            self.globals.events_logger.debug("Event dismissed automatically as it was declined by me. For event: " + self.event_name)
 
             self.has_self_declined = True
 
@@ -226,7 +226,7 @@ class ParsedEvent:
         self.minutes_before_to_notify = get_max_reminder_in_minutes(self.raw_event)
         if (self.minutes_before_to_notify == NO_POPUP_REMINDER):
             # No notification reminders
-            self.globals.events_logger.info("Event dismissed automatically as it does not have any reminders set. For event: " + self.event_name)
+            self.globals.events_logger.debug("Event dismissed automatically as it does not have any reminders set. For event: " + self.event_name)
 
             self.no_popup_reminder = True
 
