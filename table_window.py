@@ -116,8 +116,15 @@ class Show_Events_Table_Window():
 
         self.show_non_automatic = True
 
-    def handle_event_to_display(self, event_key_str, parsed_event, events_list):
+    def get_event_data_item_into_structure(self, parsed_event):
         return
+    
+    def handle_event_to_display(self, parsed_event, events_list):
+        if ((self.show_non_automatic and not parsed_event.automatically_snoozed_dismissed)
+            or (not self.show_non_automatic and parsed_event.automatically_snoozed_dismissed)):
+            item = self.get_event_data_item_into_structure(parsed_event)
+
+            events_list.append(item)
     
     def get_sort_value(self, item):
         return None
@@ -152,18 +159,16 @@ class Show_Snoozed_Events_Table_Window(Show_Events_Table_Window):
         self.act_on_event_cb = self.globals.snoozed_events.unsnooze_or_undismiss_event
 
         
-    def handle_event_to_display(self, event_key_str, parsed_event, events_list):
-        if ((self.show_non_automatic and not parsed_event.automatically_snoozed_dismissed)
-            or (not self.show_non_automatic and parsed_event.automatically_snoozed_dismissed)):
-            snoozed_item = [
-                event_key_str,
-                parsed_event.google_account,
-                parsed_event.cal_name,
-                parsed_event.event_name,
-                parsed_event.event_wakeup_time
-            ]
+    def get_event_data_item_into_structure(self, parsed_event):
+        snoozed_item = [
+            parsed_event.event_key_str,
+            parsed_event.google_account,
+            parsed_event.cal_name,
+            parsed_event.event_name,
+            parsed_event.event_wakeup_time
+        ]
 
-            events_list.append(snoozed_item)
+        return(snoozed_item)
 
     def get_sort_value(self, item):
         return(item[4]) # The event wakeup time
@@ -179,18 +184,16 @@ class Show_Dismissed_Events_Table_Window(Show_Events_Table_Window):
         self.act_on_event_cb = self.globals.dismissed_events.unsnooze_or_undismiss_event
 
         
-    def handle_event_to_display(self, event_key_str, parsed_event, events_list):
-        if ((self.show_non_automatic and not parsed_event.automatically_snoozed_dismissed)
-            or (not self.show_non_automatic and parsed_event.automatically_snoozed_dismissed)):
-            dismissed_item = [
-                event_key_str,
-                parsed_event.google_account,
-                parsed_event.cal_name,
-                parsed_event.event_name,
-                parsed_event.end_date
-            ]
+    def get_event_data_item_into_structure(self, parsed_event):
+        dismissed_item = [
+            parsed_event.event_key_str,
+            parsed_event.google_account,
+            parsed_event.cal_name,
+            parsed_event.event_name,
+            parsed_event.end_date
+        ]
 
-            events_list.append(dismissed_item)
+        return(dismissed_item)
 
     def get_sort_value(self, item):
         return(item[4]) # End date
