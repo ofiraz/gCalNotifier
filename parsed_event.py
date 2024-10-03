@@ -95,8 +95,15 @@ class ParsedEvent:
                 self.cal_name)
             
             for index in range(len(fields_to_compare)):
-                if (getattr(self, fields_to_compare[index]) != getattr(new_parsed_event, fields_to_compare[index])):
-                    self.globals.logger.info("The field - " + fields_to_compare[index] + " - changed for event - " + self.event_name)
+                field_name = fields_to_compare[index]
+                value_before = getattr(self, field_name)
+                value_after = getattr(new_parsed_event, field_name)
+
+                if (value_before != value_after):
+                    self.globals.logger.info(
+                        "The field - " + field_name + " - changed for event - " + self.event_name + ". "
+                        + "Value before - " + str(value_before) + ". " 
+                        + "Value after - " + str(value_after))
             
                     return(True)
             
