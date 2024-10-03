@@ -68,6 +68,7 @@ class TableWindow(QWidget):
             self.show_events_table_object.act_on_event_cb(event_key_str)
 
             self.table_widget.removeRow(selected_row)
+            del self.data[selected_row]
        
         else:
             self.globals.logger.debug("No row selected")
