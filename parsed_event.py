@@ -167,9 +167,6 @@ class ParsedEvent:
                 meeting_description) 
             if default_snoozed:
                 self.default_snooze = default_snoozed.group(1)
-        
-        else:
-            self.description = "No description"
             
     def get_snoozed_or_display_action_for_parsed_event_based_on_current_time(self):
         delta_diff = datetime.timedelta(minutes = self.minutes_before_to_notify)

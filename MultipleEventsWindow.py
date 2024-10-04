@@ -280,7 +280,7 @@ class MultipleEventsTable(QWidget):
             "Initial text - to replaced with the initial event text",
             "Initial text - to replaced with the initial event text")
         
-        self.tab_widget = self.add_empty_tab_widget(self.main_layout)
+        self.add_empty_tab_widget(self.main_layout)
         
         # Add the new event
         self.add_event(parsed_event)
@@ -577,28 +577,23 @@ class MultipleEventsTable(QWidget):
             self.remove_event(selected_row)
 
     def add_empty_tab_widget(self, layout):
-        new_tab_widget = QTabWidget()  # Create a new tab widget
-        new_tab_widget.setFixedHeight(310)
+        self.tab_widget = QTabWidget()  # Create a new tab widget
+        self.tab_widget.setFixedHeight(310)
 
         # Create a tab for the description
         self.description_tab = QTextBrowser()
         self.description_tab.setOpenExternalLinks(True)
-        new_tab_widget.addTab(self.description_tab, "Description")
 
         # Create the tab for the raw event
         self.raw_event_tab = QTextBrowser()
         self.raw_event_tab.setOpenExternalLinks(True)
-        new_tab_widget.addTab(self.raw_event_tab, "Raw Event")
 
         # Create the tab for the attachments
         self.attachments_tab = QTextBrowser()
         self.attachments_tab.setOpenExternalLinks(True)
-        new_tab_widget.addTab(self.attachments_tab, "Attachments")
 
-        layout.addWidget(new_tab_widget)  # Add the new tab widget to the layout
-        
-        return new_tab_widget
-    
+        layout.addWidget(self.tab_widget)  # Add the new tab widget to the layout
+            
     def build_html_for_the_attachments_tab(self, parsed_event):
         html_text = ""
 
@@ -611,14 +606,19 @@ class MultipleEventsTable(QWidget):
         return html_text
 
     def update_tab_widget(self, parsed_event):
-        # Update the content of the description tab
-        self.description_tab.setHtml(parsed_event.description)
+        if (len(parsed_event.attachments) > 0):
+            # There are attachments - add the tab and its content
+            self.tab_widget.addTab(self.attachments_tab, "Attachments")
+            self.attachments_tab.setHtml(self.build_html_for_the_attachments_tab(parsed_event))
 
-        # Update the content of the raw event tab
+        if (parsed_event.description != ""):
+            # There is a description - add the tab and its content
+            self.tab_widget.addTab(self.description_tab, "Description")
+            self.description_tab.setHtml(parsed_event.description)
+
+        # Add the raw event tab and its content
+        self.tab_widget.addTab(self.raw_event_tab, "Raw Event")
         self.raw_event_tab.setText(nice_json(parsed_event.raw_event))
-
-        # Update the content of the attachments tab
-        self.attachments_tab.setHtml(self.build_html_for_the_attachments_tab(parsed_event))
 
     def on_snooze_general(self, button):
         minutes_to_snooze = int(button.property("customData"))
@@ -655,9 +655,16 @@ class MultipleEventsTable(QWidget):
 
                 self.add_snooze_buttons(event_display_details)         
 
+    def remove_all_tabs(self):
+        tab_count = self.tab_widget.count()
+        for index in range(tab_count - 1, -1, -1):
+            self.tab_widget.removeTab(index)
+
     def add_event_details_widgets(self, row):
         # Clear the previous dynamic details presented
         self.delete_widgets_in_dynamic_layouts()
+
+        self.remove_all_tabs()
 
         parsed_event = self.parsed_events[row]
         event_display_details = self.events_display_details[row]
