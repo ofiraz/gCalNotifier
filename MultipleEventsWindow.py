@@ -583,20 +583,32 @@ class MultipleEventsTable(QWidget):
         # Create a tab for the description
         self.description_tab = QTextBrowser()
         self.description_tab.setOpenExternalLinks(True)
-
-
-        # Add the tab to the tab widget
         new_tab_widget.addTab(self.description_tab, "Description")
 
         # Create the tab for the raw event
         self.raw_event_tab = QTextBrowser()
-
-        # Add the tab to the tab widget
+        self.raw_event_tab.setOpenExternalLinks(True)
         new_tab_widget.addTab(self.raw_event_tab, "Raw Event")
+
+        # Create the tab for the attachments
+        self.attachments_tab = QTextBrowser()
+        self.attachments_tab.setOpenExternalLinks(True)
+        new_tab_widget.addTab(self.attachments_tab, "Attachments")
 
         layout.addWidget(new_tab_widget)  # Add the new tab widget to the layout
         
         return new_tab_widget
+    
+    def build_html_for_the_attachments_tab(self, parsed_event):
+        html_text = ""
+
+        if (len(parsed_event.attachments) == 0):
+            html_text = "No attachments"
+        else:
+            for attachment in parsed_event.attachments:
+                html_text = html_text + "<p><a href=\"" + attachment.file_url + "\">" + attachment.title +"</a></p>"
+
+        return html_text
 
     def update_tab_widget(self, parsed_event):
         # Update the content of the description tab
@@ -604,6 +616,9 @@ class MultipleEventsTable(QWidget):
 
         # Update the content of the raw event tab
         self.raw_event_tab.setText(nice_json(parsed_event.raw_event))
+
+        # Update the content of the attachments tab
+        self.attachments_tab.setHtml(self.build_html_for_the_attachments_tab(parsed_event))
 
     def on_snooze_general(self, button):
         minutes_to_snooze = int(button.property("customData"))

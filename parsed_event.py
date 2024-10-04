@@ -66,10 +66,16 @@ ACTION_DISPLAY_EVENT = 1
 ACTION_SNOOOZE_EVENT = 2
 ACTION_DISMISS_EVENT = 3
 
+class Attachment:
+    def __init__(self, file_url, title):
+        self.file_url = file_url
+        self.title = title
+
 class ParsedEvent:
     def has_event_changed(self, new_raw_event):
         fields_to_compare = [
             "all_day_event",
+            "attachments",
             "description",
             "end_date",
             "event_location",
@@ -133,6 +139,11 @@ class ParsedEvent:
             # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
             for attendee in self.raw_event['attendees']:
                 self.num_of_attendees = self.num_of_attendees + 1
+
+    def parse_attachments(self):
+        if(self.raw_event.get('attachments')):
+            for attachment in self.raw_event['attachments']:
+                self.attachments.append(Attachment(attachment['fileUrl'], attachment['title']))
 
     def parse_event_description(self, meeting_description):
         if (meeting_description):
@@ -282,6 +293,8 @@ class ParsedEvent:
 
         self.get_number_of_attendees()
 
+        self.parse_attachments()
+
         # Check if the time to remind about the event had arrived
         self.event_action = self.get_snoozed_or_display_action_for_parsed_event_based_on_current_time()
 
@@ -315,5 +328,6 @@ class ParsedEvent:
         self.video_link = ''
         self.num_of_attendees = 0
         self.automatically_snoozed_dismissed = False
+        self.attachments = []
 
         self.parse_event()
