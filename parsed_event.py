@@ -75,7 +75,6 @@ class ParsedEvent:
     def has_event_changed(self, new_raw_event):
         fields_to_compare = [
             "all_day_event",
-            "attachments",
             "description",
             "end_date",
             "event_location",
@@ -111,6 +110,28 @@ class ParsedEvent:
                         + "Value before - " + str(value_before) + ". " 
                         + "Value after - " + str(value_after))
             
+                    return(True)
+                
+            # Compare the attachments
+            if (len(self.attachments) != len(new_parsed_event.attachments)):
+                self.globals.logger.info(
+                    "The number of attachments changed for event - " + self.event_name + ". "
+                    + "Number of attachments before - " + str(len(self.attachments)) + ". " 
+                    + "Number of attachments after - " + str(len(new_parsed_event.attachments)))
+                
+                return(True)
+            
+            for index in range(len(self.attachments)):
+                if (self.attachments[index].file_url != new_parsed_event.attachments[index].file_url):
+                    self.globals.logger.info(
+                        "The file url of attachment - " + self.attachments[index].file_url + " - changed for event - " + self.event_name)
+                    
+                    return(True)
+                
+                if (self.attachments[index].title != new_parsed_event.attachments[index].title):
+                    self.globals.logger.info(
+                        "The title of attachment - " + self.attachments[index].title + " - changed for event - " + self.event_name)
+                    
                     return(True)
             
         # The event has not changed
