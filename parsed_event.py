@@ -4,9 +4,9 @@ from json_utils import nice_json
 
 from datetime_utils import get_now_datetime
 
-from deepdiff import DeepDiff
-
 import re
+
+import validators
 
 def has_self_declined(raw_event):
     # Check if the event was not declined by the current user
@@ -50,17 +50,18 @@ video_links_reg_exs = [
     "(https://app.gather.town/app/[a-zA-Z0-9-%_./?=]*)" # Gather
 ]
 
-def look_for_video_link_in_meeting_description(p_meeting_description):
-    for reg_ex in video_links_reg_exs:
-        video_url_in_description = re.search(
-            reg_ex,
-            p_meeting_description)
+def look_for_video_link_in_string(text):
+    if (text):
+        for reg_ex in video_links_reg_exs:
+            video_url_in_description = re.search(
+                reg_ex,
+                text)
 
-        if video_url_in_description:
-            return(video_url_in_description.group(1))
+            if video_url_in_description:
+                return True, video_url_in_description.group(1)
 
     # No known video link found
-    return("No Video")
+    return False, ''
 
 ACTION_DISPLAY_EVENT = 1
 ACTION_SNOOOZE_EVENT = 2
@@ -225,6 +226,56 @@ class ParsedEvent:
         # Check if the time to remind about the event had arrived
         return(self.get_snoozed_or_display_action_for_parsed_event_based_on_current_time())
 
+    def identify_video_and_location_data(self):
+        self.video_link = "No Video"
+
+        # Look for a video link in the video entry point
+        conf_data = self.raw_event.get('conferenceData')
+        if (conf_data):
+            entry_points = conf_data.get('entryPoints')
+            if (entry_points):
+                for entry_point in entry_points:
+                    entry_point_type = entry_point.get('entryPointType')
+                    if (entry_point_type and entry_point_type == 'video'):
+                        uri = entry_point.get('uri')
+                        if (uri):
+                            self.video_link = uri
+
+        if (self.description != ''):
+            # Look for a video link in the description
+            valid_video_link_in_description, self.video_link_in_description = look_for_video_link_in_string(self.description)
+
+            if (valid_video_link_in_description):
+                if (self.video_link == "No Video"):
+                    self.video_link = self.video_link_in_description
+                elif (self.video_link != self.video_link_in_description):
+                    self.separate_video_link_from_description = True
+
+        # Get the event location
+        self.event_location = self.raw_event.get('location', "No location")
+                
+        if (self.event_location != "No location"):
+            # Look for a video link in the location
+            valid_video_link_in_location, self.video_link_in_location = look_for_video_link_in_string(self.event_location)
+
+            if (valid_video_link_in_location):
+                if (self.video_link == "No Video"):
+                    self.video_link = self.video_link_in_location
+                elif ((self.video_link != self.video_link_in_location) and (self.video_link_in_description != self.video_link_in_location)):
+                    self.separate_video_link_from_location = True
+
+            # Check if the event location conains a URL
+            valid_url = validators.url(self.event_location)
+            if (valid_url):
+                if (self.event_location != self.video_link_in_location):
+                    # This means that the URL in the location is not a video URL
+                    self.display_location_as_url = True
+                
+                # Otherwise we don't want to show the location URL, as we will have it as a video URL from the location
+            else:
+                # The event location is not a URL, we would like to show its data as such
+                self.display_location = True
+
     def parse_event(self):
         self.globals.logger.debug(nice_json(self.raw_event))
 
@@ -280,34 +331,12 @@ class ParsedEvent:
 
         # Event needs to be reminded about, continue parsing the event
         self.html_link = self.raw_event['htmlLink']
-
-        self.event_location = self.raw_event.get('location', "No location")
-
+      
         meeting_description = self.raw_event.get('description')
         self.parse_event_description(meeting_description)
 
-        # Get the video conf data
-        self.video_link = "No Video"
-        conf_data = self.raw_event.get('conferenceData')
-        if (conf_data):
-            entry_points = conf_data.get('entryPoints')
-            if (entry_points):
-                for entry_point in entry_points:
-                    entry_point_type = entry_point.get('entryPointType')
-                    if (entry_point_type and entry_point_type == 'video'):
-                        uri = entry_point.get('uri')
-                        if (uri):
-                            self.video_link = uri
-
-        if (self.video_link == "No Video"):
-            # Didn't find a video link in the expected location, let's see if there is a video link in the 
-            # description.
-            if (meeting_description):
-                self.video_link = look_for_video_link_in_meeting_description(meeting_description)
-
-                if (self.video_link == self.event_location):
-                    # The event location already contains the video link, no need to show it twice
-                    self.video_link = "No Video"
+        # Get the video conf data and the location data
+        self.identify_video_and_location_data()
 
         self.get_number_of_attendees()
 
@@ -343,7 +372,13 @@ class ParsedEvent:
         self.minutes_before_to_notify = ''
         self.html_link = ''
         self.event_location = ''
+        self.display_location = False
+        self.display_location_as_url = False
         self.video_link = ''
+        self.video_link_in_description = ''
+        self.separate_video_link_from_description = False
+        self.video_link_in_location = ''
+        self.separate_video_link_from_location = False
         self.num_of_attendees = 0
         self.automatically_snoozed_dismissed = False
         self.attachments = []
