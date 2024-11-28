@@ -82,8 +82,6 @@ class ParsedEvent:
             "event_name",
             "has_self_declined",
             "html_link",
-            "minutes_before_to_notify",
-            "no_popup_reminder",
             "start_date",
             "video_link"
         ]
@@ -134,12 +132,29 @@ class ParsedEvent:
                         "The title of attachment - " + self.attachments[index].title + " - changed for event - " + self.event_name)
                     
                     return(True)
+                
+            # Event though we couldn't identify a change according to the fields that we are scanning, we will update the updated field, 
+            # so we won't need to check it endlessly
+            self.updated = new_raw_event['updated']
+       
+        else:
+            '''
+            The updated field does not change if the notifications data changes. Per ChatGPT:
+            In Google Calendar, the updated field for an event reflects changes to the event’s primary properties that impact the event itself, 
+            such as the title, description, start/end time, location, or attendees. However, reminders are considered per-user settings rather 
+            than event-level properties. These settings are personal and do not affect the actual event, so they do not update the updated 
+            timestamp.
+            '''
+            new_event_minutes_before_to_notify = get_max_reminder_in_minutes(new_raw_event)
+            if (new_event_minutes_before_to_notify != self.minutes_before_to_notify):
+                self.globals.logger.info(
+                    "The minutes before to notify - changed for event - " + self.event_name + ". "
+                    + "Value before - " + str(self.minutes_before_to_notify) + ". " 
+                    + "Value after - " + str(new_event_minutes_before_to_notify))
+                
+                return(True)
             
         # The event has not changed
-
-        # We will update the updaated field in the case we couldn't identify a change, so we won't need to check it endlessly
-        self.updated = new_raw_event['updated']
-
         return(False)
 
     def has_self_tentative(self):
