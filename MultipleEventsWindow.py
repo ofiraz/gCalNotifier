@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QTabWidget, QTextBrowser
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QTabWidget, QTextBrowser, QMessageBox
 from PyQt5 import (QtCore, QtGui)
 import subprocess
 from datetime_utils import get_now_datetime
@@ -368,20 +368,39 @@ class MultipleEventsTable(QWidget):
 
             self.remove_event(selected_row)
 
+    def ask_for_confirmation_for_dismiss(self, event_name):
+        # Create a QMessageBox
+        reply = QMessageBox.question(
+            self, 
+            "Confirmation", 
+            "Are you sure you want to dismiss '" + event_name + "'?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        # Handle the user's response
+        if reply == QMessageBox.Yes:
+            return True
+        else:
+            return False
+
     def on_dismiss_event_pressed(self):
         # Get the index of the current selected row
         selected_row = self.table_widget.currentRow()
 
         if selected_row != -1:  # -1 means no row is selected
-            now_datetime = get_now_datetime()
-
             parsed_event = self.parsed_events[selected_row]
-            parsed_event.automatically_snoozed_dismissed = False
 
-            if (now_datetime < parsed_event.end_date):
-                self.globals.events_to_dismiss.add_event(parsed_event.event_key_str, parsed_event)
+            dismiss_confirmed = self.ask_for_confirmation_for_dismiss(parsed_event.event_name)
 
-            self.remove_event(selected_row)
+            if (dismiss_confirmed):
+                parsed_event.automatically_snoozed_dismissed = False
+
+                now_datetime = get_now_datetime()
+
+                if (now_datetime < parsed_event.end_date):
+                    self.globals.events_to_dismiss.add_event(parsed_event.event_key_str, parsed_event)
+
+                self.remove_event(selected_row)
 
     def update_table_cell(self, row, column, new_value):
         item = self.table_widget.item(row, column)
