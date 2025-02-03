@@ -145,14 +145,16 @@ class ParsedEvent:
             than event-level properties. These settings are personal and do not affect the actual event, so they do not update the updated 
             timestamp.
             '''
-            new_event_minutes_before_to_notify = get_max_reminder_in_minutes(new_raw_event)
-            if (new_event_minutes_before_to_notify != self.minutes_before_to_notify):
-                self.globals.logger.info(
-                    "The minutes before to notify - changed for event - " + self.event_name + ". "
-                    + "Value before - " + str(self.minutes_before_to_notify) + ". " 
-                    + "Value after - " + str(new_event_minutes_before_to_notify))
-                
-                return(True)
+            # However, if the event has self declined, there is no value to compare the notification time, as it is not relevant
+            if (not self.has_self_declined):
+                new_event_minutes_before_to_notify = get_max_reminder_in_minutes(new_raw_event)
+                if (new_event_minutes_before_to_notify != self.minutes_before_to_notify):
+                    self.globals.logger.info(
+                        "The minutes before to notify - changed for event - " + self.event_name + ". "
+                        + "Value before - " + str(self.minutes_before_to_notify) + ". " 
+                        + "Value after - " + str(new_event_minutes_before_to_notify))
+                    
+                    return(True)
             
         # The event has not changed
         return(False)
