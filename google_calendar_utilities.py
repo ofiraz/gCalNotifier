@@ -146,6 +146,7 @@ def get_events_from_google_cal_with_try(logger, google_account, cal_id, start_ti
             if (
                 (excType in Networking_excTypes) 
                 or ((excType == "OSError") and (excMesg in Networking_OSError_excMesg))
+                or ((excType == "HttpError") and ("'message': 'Backend Error'" in excMesg))
             ):
                 # Exceptions that chould be intermittent due to networking issues.
 
