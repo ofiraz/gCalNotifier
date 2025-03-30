@@ -29,3 +29,7 @@ icon-with-number.png
 gCalNotifier.txt
 icons/icons8-calendar-ice-cream.zip
 icons/icons8-calendar-kmg-design-outline-color.zip
+MultipleEventsWindow.py
+.gitignore
+icons/.DS_Store
+.DS_Store
