@@ -287,15 +287,15 @@ class MultipleEventsTable(QWidget):
 
         elif (parsed_event.end_date <= now_datetime):
             # Event has ended
-            time_since_event_ended = now_datetime - parsed_event.end_date
+            # time_since_event_ended = now_datetime - parsed_event.end_date
             
-            time_string = self.get_time_diff_in_string(time_since_event_ended) + " since event ended"
+            time_string = "Ended" # self.get_time_diff_in_string(time_since_event_ended) + " since event ended"
 
         else:
             # Event started but did not end yet
-            time_since_event_started = now_datetime - parsed_event.start_date
+            # time_since_event_started = now_datetime - parsed_event.start_date
            
-            time_string = self.get_time_diff_in_string(time_since_event_started) + " since event started"
+            time_string = "Started" # self.get_time_diff_in_string(time_since_event_started) + " since event started"
 
         return(time_string)
 
