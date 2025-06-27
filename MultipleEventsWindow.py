@@ -99,6 +99,7 @@ class EventDisplayDetails():
 
         self.video_label_exists = False
         self.mulitple_attendees_and_video_link_missing = False
+        self.consider_standing_up = False
         self.separate_video_link_from_description = parsed_event.separate_video_link_from_description
         self.separate_video_link_from_location = parsed_event.separate_video_link_from_location
         self.video_link = parsed_event.video_link
@@ -143,6 +144,9 @@ class EventDisplayDetails():
             self.event_name = "*** " + parsed_event.event_name
         else:
             self.event_name = parsed_event.event_name
+
+        # We want to suggest standing up, if the coming event is with other people
+        self.consider_standing_up = parsed_event.num_of_attendees > 1
 
 WAKEUP_INTERVAL = 15
 
@@ -654,6 +658,13 @@ class MultipleEventsTable(QWidget):
             self.add_label(
                 self.warnings_layout,
                 "There are multiple attendees in this meeting, but there is no video link!!!", 
+                highlight=True)
+
+        if (event_display_details.consider_standing_up):
+            # The event has more than one participant, suggest standing up
+            self.add_label(
+                self.warnings_layout,
+                "There are multiple attendees in this meeting, stand up, if you are not already?", 
                 highlight=True)
 
         if (event_display_details.need_to_record_meeting):
