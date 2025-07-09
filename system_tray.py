@@ -24,6 +24,7 @@ class app_system_tray(QMainWindow):
         super(app_system_tray, self).__init__()
 
         self.globals = globals
+        self.globals.app_system_tray = self
         self.get_events_object = get_events_object
         self.c_num_of_displayed_events = 0
 
@@ -98,8 +99,8 @@ class app_system_tray(QMainWindow):
         self.multiple_events_windows.move(0,0)
 
         self.multiple_events_windows.show()
-        self.multiple_events_windows.activateWindow()
-        self.multiple_events_windows.raise_()      
+        #self.multiple_events_windows.activateWindow()
+        #self.multiple_events_windows.raise_()      
 
         self.globals.events_logger.debug("Displaying event:" + parsed_event.event_name)
 
@@ -167,6 +168,14 @@ class app_system_tray(QMainWindow):
     def quit_app(self):
         # Close the app
         self.globals.app.quit()
+
+    def pop_up_nofitication(self, message):
+        self.system_tray.showMessage(
+            "gCalNotifier",
+            message,
+            QSystemTrayIcon.Information,
+            0
+        )
 
     def update_app_icon(self):
         set_icon_with_number(self.globals.app, self.c_num_of_displayed_events, sys_tray=self.system_tray, show_number_in_icon = True)
