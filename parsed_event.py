@@ -42,7 +42,7 @@ video_links_reg_exs = [
     "Click here to join the meeting<(https://teams.microsoft.com/l/meetup-join/.*)>", # Teams  
     "(https://teams.microsoft.com/l/meetup-join/[a-zA-Z0-9-%_./?=]*)", # Teams 
     "(https://.*.teams.microsoft.us/l/meetup-join/[a-zA-Z0-9-%_./?=]*)", # GOV/DOD Teams 
-    "[<>](https://[a-zA-Z0-9-]*\.webex\.com/[a-zA-Z0-9-]*/j\.php\?MTID=[a-zA-Z0-9-]*)[<>]", # Webex
+    "(https://[a-zA-Z0-9-]*\.webex\.com/[a-zA-Z0-9-]*/j\.php\?MTID=[a-zA-Z0-9-]*)", # Webex
     "(https://[a-zA-Z0-9-]*\.webex\.com/meet/[a-zA-Z0-9-\.]*)", # https://rbcteams.webex.com/meet/julian.sequeira
     "(https://[a-zA-Z0-9-]*\.webex\.com/join/[a-zA-Z0-9-\.]*)", # https://rbcteams.webex.com/join/j
     "(https://chime.aws/[0-9]*)", # AWS Chimes
@@ -206,6 +206,13 @@ class ParsedEvent:
                 meeting_description) 
             if default_snoozed:
                 self.default_snooze = default_snoozed.group(1)
+
+            dont_send_os_notification = re.search(
+                "send_os_notification:no", 
+                meeting_description)
+            if dont_send_os_notification:
+                self.send_os_notification = False
+ 
             
     def get_snoozed_or_display_action_for_parsed_event_based_on_current_time(self):
         delta_diff = datetime.timedelta(minutes = self.minutes_before_to_notify)
@@ -381,6 +388,7 @@ class ParsedEvent:
         self.is_unsnoozed_or_undismissed = False
         self.need_to_record_meeting = False
         self.close_event_window_when_event_has_ended = False
+        self.send_os_notification = True
         self.description = ''
         self.default_snooze = False
         self.event_wakeup_time = ''

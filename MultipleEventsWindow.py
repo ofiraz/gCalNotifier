@@ -34,6 +34,8 @@ class EventDisplayDetails():
         self.snooze_times_strings_for_combo_box = []
         self.snooze_times_in_minutes = []
 
+        self.send_os_notification = parsed_event.send_os_notification
+
         self.default_snooze = parsed_event.default_snooze
         if (self.default_snooze):
             # Add the default snooze as the first item
@@ -321,8 +323,9 @@ class MultipleEventsTable(QWidget):
             self.parsed_events.append(parsed_event)
             self.events_display_details.append(event_display_details)
 
-            # Display the evnet on the system tray (notifications)
-            self.globals.app_system_tray.pop_up_nofitication(event_display_details.event_name)
+            if (event_display_details.send_os_notification):
+                # Display the evnet on the system tray (notifications)
+                self.globals.app_system_tray.pop_up_nofitication(event_display_details.event_name)
 
             if (row_count == 0):
                 self.select_event(0)
