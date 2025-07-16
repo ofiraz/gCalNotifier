@@ -33,3 +33,4 @@ MultipleEventsWindow.py
 .gitignore
 icons/.DS_Store
 .DS_Store
+per_event_setting_db.json

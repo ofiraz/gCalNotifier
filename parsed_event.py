@@ -189,31 +189,24 @@ class ParsedEvent:
             self.description = meeting_description
 
             # Check if the event has gCalNotifier config
-            need_to_record_meeting = re.search(
+            need_to_record_meeting = re.search( # Move to db_settings
                 "record:yes", 
                 meeting_description) 
             if need_to_record_meeting:
                 self.need_to_record_meeting = True
 
-            close_event_window_when_event_has_ended = re.search(
+            close_event_window_when_event_has_ended = re.search( # Move to db_settings
                 "close_event_window_when_event_has_ended:yes", 
                 meeting_description) 
             if close_event_window_when_event_has_ended:
                 self.close_event_window_when_event_has_ended = True
 
-            default_snoozed = re.search(
+            default_snoozed = re.search( # Move to db_settings
                 "default_snooze:([0-9]+)", 
                 meeting_description) 
             if default_snoozed:
                 self.default_snooze = default_snoozed.group(1)
 
-            dont_send_os_notification = re.search(
-                "send_os_notification:no", 
-                meeting_description)
-            if dont_send_os_notification:
-                self.send_os_notification = False
- 
-            
     def get_snoozed_or_display_action_for_parsed_event_based_on_current_time(self):
         delta_diff = datetime.timedelta(minutes = self.minutes_before_to_notify)
         reminder_time = self.start_date - delta_diff

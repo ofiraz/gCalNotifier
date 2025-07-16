@@ -14,6 +14,8 @@ from google_calendar_utilities import (
     get_calendar_list_for_account
 )
 
+from per_event_setting_db import Per_Event_Setting_DB
+
 from PyQt5.QtWidgets import (
     QApplication
 )
@@ -31,6 +33,8 @@ class app_globals:
         self.displayed_events = Events_Collection(self.logger, "displayed_events")
         self.events_to_dismiss = Events_Collection(self.logger, "events_to_dismiss")
         self.events_to_snooze = Events_Collection(self.logger, "events_to_snooze")
+
+        self.per_event_setting_db = Per_Event_Setting_DB()
 
         self.app = QApplication(sys.argv)
 

@@ -1,5 +1,7 @@
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QTabWidget, QTextBrowser, QMessageBox
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QTabWidget, QTextBrowser, QMessageBox, QMenu, QAction, QWidgetAction
 from PyQt5 import (QtCore, QtGui)
+from PyQt5.QtCore import Qt, QPoint
+
 import subprocess
 from datetime_utils import get_now_datetime
 import datetime
@@ -7,6 +9,9 @@ from tzlocal import get_localzone
 from json_utils import nice_json
 import threading
 import re
+
+# Setting names
+EVENT_SETTING_SHOW_OS_NOTIFICATION = "show os notification"
 
 class EventDisplayDetails():
     def update_snooze_times_for_event(self):
@@ -33,8 +38,6 @@ class EventDisplayDetails():
 
         self.snooze_times_strings_for_combo_box = []
         self.snooze_times_in_minutes = []
-
-        self.send_os_notification = parsed_event.send_os_notification
 
         self.default_snooze = parsed_event.default_snooze
         if (self.default_snooze):
@@ -63,7 +66,8 @@ class EventDisplayDetails():
             self.snooze_times_strings_for_combo_box.append(self.snooze_times_future[index][1])
             self.snooze_times_in_minutes.append(self.snooze_times_future[index][0])
 
-    def __init__(self, parsed_event):
+    def __init__(self, globals, parsed_event):
+        self.globals = globals
         self.parsed_event = parsed_event
 
         indicate_issues_with_the_event = False
@@ -133,7 +137,7 @@ class EventDisplayDetails():
                 # We expect a video link as there are multiple attendees for this meeting
 
                 # Let's check if we have our special sign
-                is_no_video_ok = re.search(
+                is_no_video_ok = re.search( # Move to db_settings
                     'NO_VIDEO_OK',
                     parsed_event.description)
 
@@ -149,6 +153,11 @@ class EventDisplayDetails():
 
         # We want to suggest standing up, if the coming event is with other people
         self.consider_standing_up = parsed_event.num_of_attendees > 1
+
+        self.send_os_notification = self.globals.per_event_setting_db.get_event_setting(
+            self.event_name,
+            EVENT_SETTING_SHOW_OS_NOTIFICATION,
+            True)
 
 WAKEUP_INTERVAL = 15
 
@@ -191,6 +200,10 @@ class MultipleEventsTable(QWidget):
 
         # Hide the row headers (vertical headers)
         self.table_widget.verticalHeader().setVisible(False)
+
+        # Enable custom context menu
+        self.table_widget.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table_widget.customContextMenuRequested.connect(self.show_context_menu)
 
         self.main_layout = QVBoxLayout()
         self.setLayout(self.main_layout)
@@ -312,7 +325,7 @@ class MultipleEventsTable(QWidget):
             # Insert a new row at the end of the table
             self.table_widget.insertRow(row_count)
 
-            event_display_details = EventDisplayDetails(parsed_event)
+            event_display_details = EventDisplayDetails(self.globals, parsed_event)
 
             self.table_widget.setItem(row_count, 0, QTableWidgetItem(event_display_details.event_name))
             self.table_widget.setItem(row_count, 1, QTableWidgetItem(self.get_time_until_event_start(parsed_event)))
@@ -771,7 +784,7 @@ class MultipleEventsTable(QWidget):
                     # Found the event - update all of its fields
                     self.parsed_events[row] = parsed_event
 
-                    event_display_details = EventDisplayDetails(parsed_event)
+                    event_display_details = EventDisplayDetails(self.globals, parsed_event)
                     self.events_display_details[row] = event_display_details
 
                     self.update_table_cell(row, 0, event_display_details.event_name)
@@ -791,3 +804,63 @@ class MultipleEventsTable(QWidget):
         # If we got here the event could not be found - could be a race condition in the case it was removed due to the change marking in the refresh event
         self.globals.logger.info("Couldnt find the event to change, handling it as new")
         self.add_event(parsed_event)
+
+    def create_context_menu_item_for_toggle_on_off(self, event_name, item_name, current_value, menu):
+        if (current_value == True):
+            title_toggle_value = "off"
+        else:
+            title_toggle_value = "on"
+
+        menu_item_label = "Turn " + title_toggle_value + " " + item_name
+        toggle_action = QAction(menu_item_label, self)
+        toggle_action.triggered.connect(lambda: self.toggle_option(item_name, not current_value, event_name))
+        menu.addAction(toggle_action)
+
+    def show_context_menu(self, pos: QPoint):
+        item = self.table_widget.itemAt(pos)
+        if item is not None:
+            row = item.row()
+            event_display_details = self.events_display_details[row]
+
+            menu = QMenu(self)
+
+            # Add a title
+            title_label = QLabel(event_display_details.event_name)
+            title_label.setStyleSheet("font-weight: bold; padding: 4px;")
+
+            title_widget = QWidgetAction(self)
+            title_widget.setDefaultWidget(title_label)
+
+            menu.addAction(title_widget)
+            menu.addSeparator()
+
+            # Add an action for controlling the OS notifications for the event
+            self.create_context_menu_item_for_toggle_on_off(
+                event_display_details.event_name,
+                EVENT_SETTING_SHOW_OS_NOTIFICATION,
+                event_display_details.send_os_notification,
+                menu)
+
+            # action1 = QAction("Option 1", self)
+            # action1.triggered.connect(lambda: self.handle_action(row, "Option 1"))
+            # action1.setCheckable(True)
+            # action1.setChecked(True)  # ✅ This adds the checkmark
+
+            # action2 = QAction("Option 2", self)
+            # action2.triggered.connect(lambda: self.handle_action(row, "Option 2"))
+
+            # menu.addAction(action1)
+            # menu.addAction(action2)
+
+            menu.exec_(self.table_widget.viewport().mapToGlobal(pos))
+
+    # def handle_action(self, row, action_name):
+    #     print(f"{action_name} selected on row {row}")
+   
+    def toggle_option(self, option_name, toggle_on, event_name):
+        print(f"Turn {option_name} to {toggle_on} for {event_name}")
+
+        self.globals.per_event_setting_db.set_event_setting(
+            event_name,
+            option_name,
+            toggle_on)
