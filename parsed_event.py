@@ -83,7 +83,8 @@ class ParsedEvent:
             "has_self_declined",
             "html_link",
             "start_date",
-            "video_link"
+            "video_link",
+            "is_tentative"
         ]
         self.globals.logger.debug("Check for changes")
 
@@ -298,9 +299,7 @@ class ParsedEvent:
 
         self.event_name = self.raw_event.get('summary', '(No title)')
 
-        if (self.has_self_tentative()):
-            # The current user is Tentative fot this event
-            self.event_name = "Tentative - " + self.event_name
+        self.is_tentative = self.has_self_tentative()
 
         self.globals.logger.debug("Event Name " + self.event_name)
 

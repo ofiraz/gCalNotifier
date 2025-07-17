@@ -146,10 +146,15 @@ class EventDisplayDetails():
                     self.mulitple_attendees_and_video_link_missing = True
                     indicate_issues_with_the_event = True
 
+        self.event_name = parsed_event.event_name
+        self.event_name_to_display = self.event_name
+
+        self.is_tentative = parsed_event.is_tentative
+        if (parsed_event.is_tentative):
+            self.event_name_to_display = "Tentative - " + self.event_name_to_display
+
         if indicate_issues_with_the_event:
-            self.event_name = "*** " + parsed_event.event_name
-        else:
-            self.event_name = parsed_event.event_name
+            self.event_name_to_display = "*** " + self.event_name_to_display
 
         # We want to suggest standing up, if the coming event is with other people
         self.consider_standing_up = parsed_event.num_of_attendees > 1
@@ -327,7 +332,7 @@ class MultipleEventsTable(QWidget):
 
             event_display_details = EventDisplayDetails(self.globals, parsed_event)
 
-            self.table_widget.setItem(row_count, 0, QTableWidgetItem(event_display_details.event_name))
+            self.table_widget.setItem(row_count, 0, QTableWidgetItem(event_display_details.event_name_to_display))
             self.table_widget.setItem(row_count, 1, QTableWidgetItem(self.get_time_until_event_start(parsed_event)))
 
             self.table_widget.resizeColumnToContents(0)
@@ -338,7 +343,7 @@ class MultipleEventsTable(QWidget):
 
             if (event_display_details.send_os_notification):
                 # Display the evnet on the system tray (notifications)
-                self.globals.app_system_tray.pop_up_nofitication(event_display_details.event_name)
+                self.globals.app_system_tray.pop_up_nofitication(event_display_details.event_name_to_display)
 
             if (row_count == 0):
                 self.select_event(0)
@@ -787,7 +792,7 @@ class MultipleEventsTable(QWidget):
                     event_display_details = EventDisplayDetails(self.globals, parsed_event)
                     self.events_display_details[row] = event_display_details
 
-                    self.update_table_cell(row, 0, event_display_details.event_name)
+                    self.update_table_cell(row, 0, event_display_details.event_name_to_display)
                     self.update_table_cell(row, 1, self.get_time_until_event_start(parsed_event))
 
                     self.table_widget.resizeColumnToContents(0)
