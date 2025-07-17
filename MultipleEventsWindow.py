@@ -804,6 +804,10 @@ class MultipleEventsTable(QWidget):
                     if (selected_row == row):  # -1 means no row is selected
                         self.add_event_details_widgets(row)
 
+                    if (event_display_details.send_os_notification):
+                        # Display the evnet on the system tray (notifications)
+                        self.globals.app_system_tray.pop_up_nofitication(event_display_details.event_name_to_display)
+
                     return
 
         # If we got here the event could not be found - could be a race condition in the case it was removed due to the change marking in the refresh event
