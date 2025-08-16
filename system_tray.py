@@ -11,6 +11,13 @@ from PyQt5 import QtCore
 from set_icon_with_number import set_icon_with_number
 
 import sys
+import subprocess
+
+from AppKit import NSApplication, NSApplicationActivationPolicyRegular
+
+import AppKit
+import time
+
 
 sys.path.insert(1, '/Users/ofir/git/personal/pyqt-realtime-log-widget')
 from pyqt_realtime_log_widget import LogWidget
@@ -169,13 +176,79 @@ class app_system_tray(QMainWindow):
         # Close the app
         self.globals.app.quit()
 
+    def bounce_dock_icon_once(self):
+        """Make the dock icon bounce once."""
+        try:          
+            # Create and configure NSApplication properly
+            app = NSApplication.sharedApplication()
+            app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
+            app.activateIgnoringOtherApps_(True)
+            
+            # Small delay to let activation take effect
+            time.sleep(0.2)
+            
+            # Move to background so bounce is visible
+            script_unfocus = '''tell application "Finder" to activate'''
+            subprocess.run(['osascript', '-e', script_unfocus], check=False, capture_output=True, timeout=2)
+            
+            time.sleep(0.5)
+            
+            # Request attention - use INFORMATIONAL for single bounce
+            result = app.requestUserAttention_(AppKit.NSInformationalRequest)
+            
+            if result >= 0:
+                print("✅ Single bounce request succeeded!")
+
+            else:
+                print("❌ Single bounce request failed!")
+                print(f"NSInformationalRequest result: {result}")
+
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            print(f"Exception in bounce_once: {e}")
+            import traceback
+            traceback.print_exc()   
+    
+    def continuous_dock_icon_bounce(self):     
+        try:            
+            # Setup NSApplication properly
+            app = NSApplication.sharedApplication()
+            app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
+            app.activateIgnoringOtherApps_(True)
+            
+            time.sleep(0.2)
+            
+            # Move to background so bounce is visible
+            #script_unfocus = '''tell application "Finder" to activate'''
+            #subprocess.run(['osascript', '-e', script_unfocus], check=False, capture_output=True, timeout=2)
+            
+            #time.sleep(0.5)
+            
+            # Use NSCriticalRequest for continuous bouncing
+            attention_request_id = app.requestUserAttention_(AppKit.NSCriticalRequest)
+            
+            if attention_request_id >= 0:
+                print("✅ Continuous bouncing started!")
+            else:
+                print("❌ Continuous bouncing failed!")
+                print(f"Continuous bounce NSCriticalRequest result: {attention_request_id}")
+            
+        except Exception as e:
+            print(f"Continuous bounce setup failed: {e}")
+
     def pop_up_nofitication(self, message):
-        self.system_tray.showMessage(
-            "gCalNotifier",
-            message,
-            QSystemTrayIcon.Information,
-            0
-        )
+        dock_icon_bounce_notification = True
+
+        if (dock_icon_bounce_notification):
+            self.continuous_dock_icon_bounce()
+        
+        else:       
+            self.system_tray.showMessage(
+                "gCalNotifier",
+                message,
+                QSystemTrayIcon.Information,
+                0
+            )
 
     def update_app_icon(self):
         set_icon_with_number(self.globals.app, self.c_num_of_displayed_events, sys_tray=self.system_tray, show_number_in_icon = True)
