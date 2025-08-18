@@ -96,18 +96,18 @@ class app_system_tray(QMainWindow):
         if (self.multiple_events_windows == None):
             self.multiple_events_windows = MultipleEventsTable(self.globals, parsed_event)
 
+            self.multiple_events_windows.setFixedWidth(730)
+
+            # Show the window on the main monitor
+            monitor = QDesktopWidget().screenGeometry(0)
+            self.multiple_events_windows.move(0,0)
+
+            self.multiple_events_windows.show()
+            #self.multiple_events_windows.activateWindow()
+            #self.multiple_events_windows.raise_()      
+
         else:
             self.multiple_events_windows.add_event(parsed_event)
-
-        self.multiple_events_windows.setFixedWidth(730)
-
-        # Show the window on the main monitor
-        monitor = QDesktopWidget().screenGeometry(0)
-        self.multiple_events_windows.move(0,0)
-
-        self.multiple_events_windows.show()
-        #self.multiple_events_windows.activateWindow()
-        #self.multiple_events_windows.raise_()      
 
         self.globals.events_logger.debug("Displaying event:" + parsed_event.event_name)
 
@@ -252,3 +252,11 @@ class app_system_tray(QMainWindow):
 
     def update_app_icon(self):
         set_icon_with_number(self.globals.app, self.c_num_of_displayed_events, sys_tray=self.system_tray, show_number_in_icon = True)
+
+        # Update the window title
+        if (not self.multiple_events_windows is None):
+            if (self.c_num_of_displayed_events > 0):
+                self.multiple_events_windows.setWindowTitle("gCalNotifier - showing " + str(self.c_num_of_displayed_events) + " active events")
+            else:
+                self.multiple_events_windows.setWindowTitle("gCalNotifier - no active events")
+

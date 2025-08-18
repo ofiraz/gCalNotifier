@@ -276,6 +276,8 @@ class MultipleEventsTable(QWidget):
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.update_display_on_timer)
 
+        self.setWindowTitle("gCalNofitifier - Starting...")
+
         # Set timer to wake up in a minute
         self.timer.start(WAKEUP_INTERVAL * 1000)
 
@@ -361,8 +363,8 @@ class MultipleEventsTable(QWidget):
         del self.events_display_details[row]
 
         # Close the windows if there are no more events presneted
-        if (self.table_widget.rowCount() == 0):
-            self.close()
+        #if (self.table_widget.rowCount() == 0):
+        #    self.close()
 
     def remove_event(self, row):
         with self.events_lock:
