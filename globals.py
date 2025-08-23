@@ -20,6 +20,20 @@ from PyQt5.QtWidgets import (
     QApplication
 )
 
+from PyQt5.QtCore import QEvent
+
+class MyApp(QApplication):
+    def __init__(self, globals, *args, **kwargs):        
+        super().__init__(*args, **kwargs)
+        self.globals = globals
+
+    def event(self, e):
+        if e.type() == QEvent.ApplicationActivate:
+            # Show the window only when dock icon is clicked
+            if (self.globals.multiple_events_window != None) and (not self.globals.multiple_events_window.isVisible()):
+                self.globals.multiple_events_window.show_window()
+        return super().event(e)
+
 class app_globals:
     def __init__(self):
         self.config = app_config()
@@ -36,10 +50,12 @@ class app_globals:
 
         self.per_event_setting_db = Per_Event_Setting_DB()
 
-        self.app = QApplication(sys.argv)
+        self.app = MyApp(self, sys.argv)
 
         self.reset_needed = False
         self.reset_needed_lock = threading.Lock()
+
+        self.multiple_events_window = None
 
     def prep_google_accounts_and_calendars(self):
         for google_account in self.config.google_accounts:

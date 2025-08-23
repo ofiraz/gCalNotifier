@@ -2,9 +2,7 @@ from PyQt5.QtWidgets import (
     QSystemTrayIcon,
     QMenu,
     QAction,
-    QMainWindow,
-    QDesktopWidget
-)
+    QMainWindow)
 
 from PyQt5 import QtCore
 
@@ -34,8 +32,6 @@ class app_system_tray(QMainWindow):
         self.globals.app_system_tray = self
         self.get_events_object = get_events_object
         self.c_num_of_displayed_events = 0
-
-        self.multiple_events_windows = None
 
         # Create the system_tray
         self.system_tray = QSystemTrayIcon(self)
@@ -93,21 +89,12 @@ class app_system_tray(QMainWindow):
         self.update_app_icon()
 
     def show_window(self, parsed_event):
-        if (self.multiple_events_windows == None):
-            self.multiple_events_windows = MultipleEventsTable(self.globals, parsed_event)
-
-            self.multiple_events_windows.setFixedWidth(730)
-
-            # Show the window on the main monitor
-            monitor = QDesktopWidget().screenGeometry(0)
-            self.multiple_events_windows.move(0,0)
-
-            self.multiple_events_windows.show()
-            #self.multiple_events_windows.activateWindow()
-            #self.multiple_events_windows.raise_()      
+        if (self.globals.multiple_events_window == None):
+            print("Creating MultipleEventsTable")
+            self.globals.multiple_events_window = MultipleEventsTable(self.globals, parsed_event)
 
         else:
-            self.multiple_events_windows.add_event(parsed_event)
+            self.globals.multiple_events_window.add_event(parsed_event)
 
         self.globals.events_logger.debug("Displaying event:" + parsed_event.event_name)
 
@@ -121,8 +108,8 @@ class app_system_tray(QMainWindow):
             
             if(self.globals.displayed_events.is_event_in(event_key_str)):
                 # The event is already displayed with older data, mark it so the new data will be reflected for the event
-                if (self.multiple_events_windows):
-                    self.multiple_events_windows.update_event(parsed_event)
+                if (self.globals.multiple_events_window):
+                    self.globals.multiple_events_window.update_event(parsed_event)
 
             else: # A totaly new event
                 # Add the new event to the displayed events list    
@@ -254,9 +241,9 @@ class app_system_tray(QMainWindow):
         set_icon_with_number(self.globals.app, self.c_num_of_displayed_events, sys_tray=self.system_tray, show_number_in_icon = True)
 
         # Update the window title
-        if (not self.multiple_events_windows is None):
+        if (self.globals.multiple_events_window != None):
             if (self.c_num_of_displayed_events > 0):
-                self.multiple_events_windows.setWindowTitle("gCalNotifier - showing " + str(self.c_num_of_displayed_events) + " active events")
+                self.globals.multiple_events_window.setWindowTitle("gCalNotifier - showing " + str(self.c_num_of_displayed_events) + " active events")
             else:
-                self.multiple_events_windows.setWindowTitle("gCalNotifier - no active events")
+                self.globals.multiple_events_window.setWindowTitle("gCalNotifier - no active events")
 

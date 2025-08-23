@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QTabWidget, QTextBrowser, QMessageBox, QMenu, QAction, QWidgetAction
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QVBoxLayout, QHBoxLayout, QWidget, QPushButton, QLabel, QTabWidget, QTextBrowser, QMessageBox, QMenu, QAction, QWidgetAction #, QDesktopWidget
 from PyQt5 import (QtCore, QtGui)
 from PyQt5.QtCore import Qt, QPoint
 
@@ -363,8 +363,21 @@ class MultipleEventsTable(QWidget):
         del self.events_display_details[row]
 
         # Close the windows if there are no more events presneted
-        #if (self.table_widget.rowCount() == 0):
-        #    self.close()
+        if (self.table_widget.rowCount() == 0):
+            self.close()
+
+    def show_window(self):
+        if (self.table_widget.rowCount() > 0):
+            self.setFixedWidth(730)
+
+            # Show the window on the main monitor
+            #monitor = QDesktopWidget().screenGeometry(0)
+            self.move(0,0)
+
+            self.show()
+
+            #self.globals.multiple_events_window.activateWindow()
+            #self.globals.multiple_events_window.raise_()      
 
     def remove_event(self, row):
         with self.events_lock:
