@@ -360,6 +360,9 @@ class MultipleEventsTable(QWidget):
 
             self.globals.icon_manager.set_icon_with_events(self.num_of_notification_events, self.num_of_no_notification_events)
 
+            if (self.num_of_notification_events > 0):
+                self.globals.icon_manager.continuous_dock_icon_bounce()
+
     def select_event(self, row_number):
         self.table_widget.selectRow(row_number)
 
@@ -495,6 +498,9 @@ class MultipleEventsTable(QWidget):
 
             if selected_row != -1:  # -1 means no row is selected
                 self.update_event_details_widgets_on_timer(selected_row)
+
+            if (self.num_of_notification_events > 0):
+                self.globals.icon_manager.continuous_dock_icon_bounce()
 
             # Sleep for another minute
             self.timer.start(WAKEUP_INTERVAL * 1000)
@@ -840,6 +846,9 @@ class MultipleEventsTable(QWidget):
                     if (event_display_details.send_os_notification):
                         # Display the evnet on the system tray (notifications)
                         self.globals.app_system_tray.pop_up_nofitication(event_display_details.event_name_to_display)
+
+                    if (self.num_of_notification_events > 0):
+                        self.globals.icon_manager.continuous_dock_icon_bounce()
 
                     return
 
