@@ -191,6 +191,9 @@ class MultipleEventsTable(QWidget):
         self.parsed_events = []
         self.events_display_details = []
 
+        self.num_of_notification_events = 0
+        self.num_of_no_notification_events = 0
+
         # Make the QTableWidget read-only
         self.table_widget.setEditTriggers(QTableWidget.NoEditTriggers)
 
@@ -344,12 +347,18 @@ class MultipleEventsTable(QWidget):
             self.events_display_details.append(event_display_details)
 
             if (event_display_details.send_os_notification):
-                # Display the evnet on the system tray (notifications)
+                # We should have a notification due to this event
+                self.num_of_notification_events += 1
                 self.globals.app_system_tray.pop_up_nofitication(event_display_details.event_name_to_display)
+            else:
+                # This event does not require a notification
+                self.num_of_no_notification_events += 1
 
             if (row_count == 0):
                 self.select_event(0)
                 self.add_event_details_widgets(0)
+
+            self.globals.icon_manager.set_icon_with_events(self.num_of_notification_events, self.num_of_no_notification_events)
 
     def select_event(self, row_number):
         self.table_widget.selectRow(row_number)
@@ -359,8 +368,17 @@ class MultipleEventsTable(QWidget):
 
         self.table_widget.removeRow(row)
 
+        if (self.events_display_details[row].send_os_notification):
+            # This event required a notification
+            self.num_of_notification_events -= 1
+        else:
+            # This event did not require a notification
+            self.num_of_no_notification_events -= 1
+
         del self.parsed_events[row]
         del self.events_display_details[row]
+
+        self.globals.icon_manager.set_icon_with_events(self.num_of_notification_events, self.num_of_no_notification_events)
 
         # Close the windows if there are no more events presneted
         if (self.table_widget.rowCount() == 0):

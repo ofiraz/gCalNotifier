@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import (
 
 from PyQt5 import QtCore
 
-from set_icon_with_number import set_icon_with_number
+from icon_manager import *
 
 import sys
 import subprocess
@@ -37,7 +37,7 @@ class app_system_tray(QMainWindow):
         self.system_tray = QSystemTrayIcon(self)
 
         # Set the app icon
-        self.update_app_icon()
+        self.globals.icon_manager = icon_manager(self.globals.app, self.system_tray)
 
         self.system_tray.setVisible(True)
 
@@ -86,8 +86,6 @@ class app_system_tray(QMainWindow):
     def remove_event_from_display_cb(self, parse_event):
         self.c_num_of_displayed_events = self.c_num_of_displayed_events - 1
 
-        self.update_app_icon()
-
     def show_window(self, parsed_event):
         if (self.globals.multiple_events_window == None):
             print("Creating MultipleEventsTable")
@@ -116,9 +114,6 @@ class app_system_tray(QMainWindow):
                 at_list_one_event_presented = True       
                 self.globals.displayed_events.add_event(event_key_str, parsed_event)
                 self.show_window(parsed_event)
-
-        if (at_list_one_event_presented):
-            self.update_app_icon()
 
     def present_relevant_events_in_windows(self):
         self.globals.logger.debug("Presenting relevant events")
@@ -236,14 +231,3 @@ class app_system_tray(QMainWindow):
                 QSystemTrayIcon.Information,
                 0
             )
-
-    def update_app_icon(self):
-        set_icon_with_number(self.globals.app, self.c_num_of_displayed_events, sys_tray=self.system_tray, show_number_in_icon = True)
-
-        # Update the window title
-        if (self.globals.multiple_events_window != None):
-            if (self.c_num_of_displayed_events > 0):
-                self.globals.multiple_events_window.setWindowTitle("gCalNotifier - showing " + str(self.c_num_of_displayed_events) + " active events")
-            else:
-                self.globals.multiple_events_window.setWindowTitle("gCalNotifier - no active events")
-
