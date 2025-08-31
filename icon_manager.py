@@ -29,14 +29,17 @@ class icon_manager():
 
     def set_icon_with_events(self, num_of_events_with_notifications, num_of_events_with_no_nofitications):
         if (num_of_events_with_notifications > 0):
+            print(f"Red icon - {num_of_events_with_notifications}")
             # Show a red bell
             background = 'icons8-red-bell-64.png'
 
-        elif (num_of_events_with_no_nofitications >0):
+        elif (num_of_events_with_no_nofitications > 0):
+            print(f"Yellow icon - {num_of_events_with_no_nofitications}")
             # Show a yellow bell
             background = 'icons8-yellow-bell-64.png'
 
         else:
+            print("Gray icon")
             # No events to show
             self.set_icon_no_events()
 

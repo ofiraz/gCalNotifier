@@ -347,12 +347,18 @@ class MultipleEventsTable(QWidget):
             self.events_display_details.append(event_display_details)
 
             if (event_display_details.send_os_notification):
+                print("Added a notficagtion event")
+
                 # We should have a notification due to this event
                 self.num_of_notification_events += 1
                 self.globals.app_system_tray.pop_up_nofitication(event_display_details.event_name_to_display)
             else:
+                print("Added a non notficagtion event")
+
                 # This event does not require a notification
                 self.num_of_no_notification_events += 1
+
+            print(f"witn notification {self.num_of_notification_events} without {self.num_of_no_notification_events}")
 
             if (row_count == 0):
                 self.select_event(0)
@@ -372,11 +378,15 @@ class MultipleEventsTable(QWidget):
         self.table_widget.removeRow(row)
 
         if (self.events_display_details[row].send_os_notification):
+            print("Removed a notficagtion event")
             # This event required a notification
             self.num_of_notification_events -= 1
         else:
+            print("Removed a no notficagtion event")
             # This event did not require a notification
             self.num_of_no_notification_events -= 1
+
+        print(f"witn notification {self.num_of_notification_events} without {self.num_of_no_notification_events}")
 
         del self.parsed_events[row]
         del self.events_display_details[row]
