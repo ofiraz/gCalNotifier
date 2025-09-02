@@ -171,6 +171,17 @@ class DynamicWidgetDetails():
         self.layout = layout
         self.widget = widget
 
+ACTION_ADD = 1
+ACTION_UPDATE = 2
+ACTION_REMOVE = 3
+ACTION_TIMER = 4
+
+BOUNCE_ICON_ACTIONS = {ACTION_ADD, ACTION_UPDATE, ACTION_TIMER}
+UPDATE_ICON_ACTIONS = {ACTION_ADD, ACTION_UPDATE, ACTION_REMOVE}
+POP_UP_NOTIFICATION_ACTION = {ACTION_ADD, ACTION_UPDATE}
+
+MINUTES_BETWEEN_BOUNCE_ON_TIMER = 1
+
 class MultipleEventsTable(QWidget):
     def add_dynamic_layout(self, layout):
         self.main_layout.addLayout(layout)
@@ -193,6 +204,8 @@ class MultipleEventsTable(QWidget):
 
         self.num_of_notification_events = 0
         self.num_of_no_notification_events = 0
+
+        self.last_icon_bounce_time = datetime.datetime.now()
 
         # Make the QTableWidget read-only
         self.table_widget.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -351,7 +364,6 @@ class MultipleEventsTable(QWidget):
 
                 # We should have a notification due to this event
                 self.num_of_notification_events += 1
-                self.globals.app_system_tray.pop_up_nofitication(event_display_details.event_name_to_display)
             else:
                 print("Added a non notficagtion event")
 
@@ -364,10 +376,10 @@ class MultipleEventsTable(QWidget):
                 self.select_event(0)
                 self.add_event_details_widgets(0)
 
-            self.globals.icon_manager.set_icon_with_events(self.num_of_notification_events, self.num_of_no_notification_events)
-
-            if (self.num_of_notification_events > 0):
-                self.globals.icon_manager.continuous_dock_icon_bounce()
+            self.visibly_reflect_events(
+                ACTION_ADD,
+                event_display_details.send_os_notification,
+                event_display_details.event_name_to_display)
 
     def select_event(self, row_number):
         self.table_widget.selectRow(row_number)
@@ -391,7 +403,7 @@ class MultipleEventsTable(QWidget):
         del self.parsed_events[row]
         del self.events_display_details[row]
 
-        self.globals.icon_manager.set_icon_with_events(self.num_of_notification_events, self.num_of_no_notification_events)
+        self.visibly_reflect_events(ACTION_REMOVE)
 
         # Close the windows if there are no more events presneted
         if (self.table_widget.rowCount() == 0):
@@ -509,8 +521,7 @@ class MultipleEventsTable(QWidget):
             if selected_row != -1:  # -1 means no row is selected
                 self.update_event_details_widgets_on_timer(selected_row)
 
-            if (self.num_of_notification_events > 0):
-                self.globals.icon_manager.continuous_dock_icon_bounce()
+            self.visibly_reflect_events(ACTION_TIMER)
 
             # Sleep for another minute
             self.timer.start(WAKEUP_INTERVAL * 1000)
@@ -853,12 +864,10 @@ class MultipleEventsTable(QWidget):
                     if (selected_row == row):  # -1 means no row is selected
                         self.add_event_details_widgets(row)
 
-                    if (event_display_details.send_os_notification):
-                        # Display the evnet on the system tray (notifications)
-                        self.globals.app_system_tray.pop_up_nofitication(event_display_details.event_name_to_display)
-
-                    if (self.num_of_notification_events > 0):
-                        self.globals.icon_manager.continuous_dock_icon_bounce()
+                    self.visibly_reflect_events(
+                        ACTION_UPDATE,
+                        event_display_details.send_os_notification,
+                        event_display_details.event_name_to_display)
 
                     return
 
@@ -925,3 +934,30 @@ class MultipleEventsTable(QWidget):
             event_name,
             option_name,
             toggle_on)
+        
+    def visibly_reflect_events(self, action, pop_up_notification = False, event_text = ""):
+        # Decide a continuous bounce of the icon is needed
+        if ((action in BOUNCE_ICON_ACTIONS) and  (self.num_of_notification_events > 0)):
+            should_bounce = True
+
+            # Bounce only every MINUTES_BETWEEN_BOUNCE_ON_TIMER minutes if the event is the timer event
+            if (action == ACTION_TIMER):
+                now = datetime.datetime.now()
+                diff = now - self.last_icon_bounce_time
+
+                if (diff < datetime.timedelta(minutes=MINUTES_BETWEEN_BOUNCE_ON_TIMER)):
+                    should_bounce = False
+
+            if should_bounce:
+                self.globals.icon_manager.continuous_dock_icon_bounce()
+                self.last_icon_bounce_time = datetime.datetime.now()
+
+        # Update the icon 
+        if (action in UPDATE_ICON_ACTIONS):
+            self.globals.icon_manager.set_icon_with_events(
+                self.num_of_notification_events, 
+                self.num_of_no_notification_events)
+            
+        # Pop up a notification for the event
+        if ((action in POP_UP_NOTIFICATION_ACTION) and pop_up_notification):
+            self.globals.app_system_tray.pop_up_nofitication(event_text)
