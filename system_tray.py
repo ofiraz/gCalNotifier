@@ -8,8 +8,6 @@ from PyQt5 import QtCore
 
 from icon_manager import *
 
-import sys
-
 from MultipleEventsWindow import *
 
 class app_system_tray(QMainWindow):
@@ -28,21 +26,6 @@ class app_system_tray(QMainWindow):
         self.globals.icon_manager = icon_manager(self.globals.app, self.system_tray)
 
         self.system_tray.setVisible(True)
-
-        # Create the system_tray_menu
-        self.system_tray_menu = QMenu()
-
-        self.reset_menu_item = QAction("Reset")
-        self.reset_menu_item.triggered.connect(self.clear_dismissed_and_snoozed)
-        self.system_tray_menu.addAction(self.reset_menu_item)
-
-        # Add a Quit option to the menu.
-        self.quit_menu_item = QAction("Quit")
-        self.quit_menu_item.triggered.connect(self.quit_app)
-        self.system_tray_menu.addAction(self.quit_menu_item)
-
-        # Add the menu to the system_tray
-        self.system_tray.setContextMenu(self.system_tray_menu)
 
         # Prevent the closing of the system tray when the last event window closes
         self.globals.app.setQuitOnLastWindowClosed(False) 
@@ -97,15 +80,6 @@ class app_system_tray(QMainWindow):
         self.present_relevant_events()
 
         self.timer.start(int(self.globals.config.refresh_frequency/2) * 1000)
-
-    def clear_dismissed_and_snoozed(self):      
-        self.globals.events_logger.debug("Clearing dismissed and snoozed")
-
-        self.globals.resest_is_needed()
-
-    def quit_app(self):
-        # Close the app
-        self.globals.app.quit()
 
     def pop_up_nofitication(self, message):
         show_os_notifications = False

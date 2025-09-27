@@ -57,10 +57,10 @@ class DockMenuHandler(NSObject):
     def displayLogs_(self, sender):
         self.globals.open_logs_window()
 
+    # Reset
     @objc.IBAction
-    def quitApp_(self, sender):
-        print("👋 Quitting from Dock menu!")
-        self.qt_app.quit()
+    def displayReset_(self, sender):
+        self.globals.clear_dismissed_and_snoozed()
 
     def add_menu_item(self, menu, menu_item_text, menu_item_callback_in_str):
         menu_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
@@ -93,14 +93,11 @@ class DockMenuHandler(NSObject):
             "Logs", 
             "displayLogs:")
 
-        # Separator
-        menu.addItem_(NSMenuItem.separatorItem())
-
-        # "Quit"
+        # Reset
         self.add_menu_item(
             menu,
-            "Quit",
-            "quitApp:")
+            "Reset", 
+            "displayReset:")
 
         return menu
 
@@ -192,3 +189,9 @@ class app_globals:
         self.logs_window.show()
         self.logs_window.activateWindow()
         self.logs_window.raise_()
+
+    def clear_dismissed_and_snoozed(self):      
+        self.events_logger.debug("Clearing dismissed and snoozed")
+
+        self.resest_is_needed()
+
