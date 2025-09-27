@@ -10,11 +10,6 @@ from icon_manager import *
 
 import sys
 
-sys.path.insert(1, '/Users/ofir/git/personal/pyqt-realtime-log-widget')
-from pyqt_realtime_log_widget import LogWidget
-
-from table_window import Show_Snoozed_Events_Table_Window, Show_Dismissed_Events_Table_Window
-
 from MultipleEventsWindow import *
 
 class app_system_tray(QMainWindow):
@@ -36,18 +31,6 @@ class app_system_tray(QMainWindow):
 
         # Create the system_tray_menu
         self.system_tray_menu = QMenu()
-
-        self.display_snoozed_menu_item = QAction("Display snoozed events")
-        self.display_snoozed_menu_item.triggered.connect(self.display_snoozed_events)
-        self.system_tray_menu.addAction(self.display_snoozed_menu_item)
-
-        self.display_dismissed_menu_item = QAction("Display dismissed events")
-        self.display_dismissed_menu_item.triggered.connect(self.display_dismissed_events)
-        self.system_tray_menu.addAction(self.display_dismissed_menu_item)
-
-        self.logs_menu_item = QAction("Logs")
-        self.logs_menu_item.triggered.connect(self.open_logs_window)
-        self.system_tray_menu.addAction(self.logs_menu_item)
 
         self.reset_menu_item = QAction("Reset")
         self.reset_menu_item.triggered.connect(self.clear_dismissed_and_snoozed)
@@ -114,33 +97,6 @@ class app_system_tray(QMainWindow):
         self.present_relevant_events()
 
         self.timer.start(int(self.globals.config.refresh_frequency/2) * 1000)
-
-    def display_snoozed_events(self):
-        self.show_snoozed_events_window = Show_Snoozed_Events_Table_Window(self.globals, self.get_events_object)
-
-        self.show_snoozed_events_window.open_window_with_events()
-
-    def display_dismissed_events(self):
-        self.show_dismissed_events_window = Show_Dismissed_Events_Table_Window(self.globals, self.get_events_object)
-
-        self.show_dismissed_events_window.open_window_with_events()
-
-    def open_logs_window(self):       
-        self.logs_window = LogWidget(warn_before_close=False)
-
-        filename = "/Users/ofir/git/personal/gCalNotifier/EventsLog.log"
-        comm = "tail -n 1000 -f " + filename
-
-        self.logs_window.setCommand(comm)
-
-        self.logs_window.setWindowTitle("Logs")
-
-        self.logs_window.setFixedWidth(730 + 100)
-        self.logs_window.setFixedHeight(650 + 100)
-
-        self.logs_window.show()
-        self.logs_window.activateWindow()
-        self.logs_window.raise_()
 
     def clear_dismissed_and_snoozed(self):      
         self.globals.events_logger.debug("Clearing dismissed and snoozed")

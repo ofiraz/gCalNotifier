@@ -28,6 +28,9 @@ import objc
 
 from table_window import Show_Snoozed_Events_Table_Window, Show_Dismissed_Events_Table_Window
 
+sys.path.insert(1, '/Users/ofir_1/git/personal/pyqt-realtime-log-widget')
+from pyqt_realtime_log_widget import LogWidget
+
 class DockMenuHandler(NSObject):
     """Objective-C class that owns the Dock menu actions"""
 
@@ -49,6 +52,10 @@ class DockMenuHandler(NSObject):
     def displayDismissedEvents_(self, sender):
         self.globals.display_dismissed_events()
 
+    # Logs
+    @objc.IBAction
+    def displayLogs_(self, sender):
+        self.globals.open_logs_window()
 
     @objc.IBAction
     def quitApp_(self, sender):
@@ -71,6 +78,13 @@ class DockMenuHandler(NSObject):
         )
         display_dismissed_events_item.setTarget_(self)  # 🔑 explicitly set the target
         menu.addItem_(display_dismissed_events_item)
+
+        # Logs
+        display_logs_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "Logs", "displayLogs:", ""
+        )
+        display_logs_item.setTarget_(self)  # 🔑 explicitly set the target
+        menu.addItem_(display_logs_item)
 
         # Separator
         menu.addItem_(NSMenuItem.separatorItem())
@@ -156,5 +170,19 @@ class app_globals:
 
         self.show_dismissed_events_window.open_window_with_events()
 
+    def open_logs_window(self): 
+        self.logs_window = LogWidget(warn_before_close=False)
 
+        filename = "/Users/ofir_1/git/personal/gCalNotifier/EventsLog.log"
+        comm = "tail -n 1000 -f " + filename
 
+        self.logs_window.setCommand(comm)
+
+        self.logs_window.setWindowTitle("Logs")
+
+        self.logs_window.setFixedWidth(730 + 100)
+        self.logs_window.setFixedHeight(650 + 100)
+
+        self.logs_window.show()
+        self.logs_window.activateWindow()
+        self.logs_window.raise_()
