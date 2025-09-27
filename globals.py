@@ -62,39 +62,45 @@ class DockMenuHandler(NSObject):
         print("👋 Quitting from Dock menu!")
         self.qt_app.quit()
 
+    def add_menu_item(self, menu, menu_item_text, menu_item_callback_in_str):
+        menu_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            menu_item_text,
+            menu_item_callback_in_str,
+            "")
+        
+        menu_item.setTarget_(self)  # 🔑 explicitly set the target
+        menu.addItem_(menu_item)
+
+
     def build_menu(self):
         menu = NSMenu.alloc().init()
 
         # Display snoozed events
-        display_snoozed_events_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Display snoozed events", "displaySnoozedEvents:", ""
-        )
-        display_snoozed_events_item.setTarget_(self)  # 🔑 explicitly set the target
-        menu.addItem_(display_snoozed_events_item)
+        self.add_menu_item(
+            menu,
+            "Display snoozed events", 
+            "displaySnoozedEvents:")
 
         # Display dismissed events
-        display_dismissed_events_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Display dismissed events", "displayDismissedEvents:", ""
-        )
-        display_dismissed_events_item.setTarget_(self)  # 🔑 explicitly set the target
-        menu.addItem_(display_dismissed_events_item)
+        self.add_menu_item(
+            menu,
+            "Display dismissed events", 
+            "displayDismissedEvents:")
 
         # Logs
-        display_logs_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Logs", "displayLogs:", ""
-        )
-        display_logs_item.setTarget_(self)  # 🔑 explicitly set the target
-        menu.addItem_(display_logs_item)
+        self.add_menu_item(
+            menu,
+            "Logs", 
+            "displayLogs:")
 
         # Separator
         menu.addItem_(NSMenuItem.separatorItem())
 
         # "Quit"
-        quit_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
-            "Quit", "quitApp:", ""
-        )
-        quit_item.setTarget_(self)  # 🔑 explicitly set the target
-        menu.addItem_(quit_item)
+        self.add_menu_item(
+            menu,
+            "Quit",
+            "quitApp:")
 
         return menu
 
