@@ -22,6 +22,74 @@ from PyQt5.QtWidgets import (
 
 from PyQt5.QtCore import QEvent
 
+# macOS Cocoa bridge
+from Cocoa import NSApplication, NSMenu, NSMenuItem, NSObject
+import objc
+
+from table_window import Show_Snoozed_Events_Table_Window, Show_Dismissed_Events_Table_Window
+
+class DockMenuHandler(NSObject):
+    """Objective-C class that owns the Dock menu actions"""
+
+    def initWithApp_andWindow_(self, qt_app, globals):
+        self = objc.super(DockMenuHandler, self).init()
+        if self is None:
+            return None
+        self.qt_app = qt_app
+        self.globals = globals
+        return self
+
+    # Display snoozed events
+    @objc.IBAction
+    def displaySnoozedEvents_(self, sender):
+        self.globals.display_snoozed_events()
+
+    # Display dismissed events
+    @objc.IBAction
+    def displayDismissedEvents_(self, sender):
+        self.globals.display_dismissed_events()
+
+
+    @objc.IBAction
+    def quitApp_(self, sender):
+        print("👋 Quitting from Dock menu!")
+        self.qt_app.quit()
+
+    def build_menu(self):
+        menu = NSMenu.alloc().init()
+
+        # Display snoozed events
+        display_snoozed_events_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "Display snoozed events", "displaySnoozedEvents:", ""
+        )
+        display_snoozed_events_item.setTarget_(self)  # 🔑 explicitly set the target
+        menu.addItem_(display_snoozed_events_item)
+
+        # Display dismissed events
+        display_dismissed_events_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "Display dismissed events", "displayDismissedEvents:", ""
+        )
+        display_dismissed_events_item.setTarget_(self)  # 🔑 explicitly set the target
+        menu.addItem_(display_dismissed_events_item)
+
+        # Separator
+        menu.addItem_(NSMenuItem.separatorItem())
+
+        # "Quit"
+        quit_item = NSMenuItem.alloc().initWithTitle_action_keyEquivalent_(
+            "Quit", "quitApp:", ""
+        )
+        quit_item.setTarget_(self)  # 🔑 explicitly set the target
+        menu.addItem_(quit_item)
+
+        return menu
+
+
+def set_dock_menu(handler: DockMenuHandler):
+    ns_app = NSApplication.sharedApplication()
+    dock_menu = handler.build_menu()
+    ns_app.setDockMenu_(dock_menu)
+
 class MyApp(QApplication):
     def __init__(self, globals, *args, **kwargs):        
         super().__init__(*args, **kwargs)
@@ -52,10 +120,15 @@ class app_globals:
 
         self.app = MyApp(self, sys.argv)
 
+        # Set the right click menu for the app from the dock icon
+        self.handler = DockMenuHandler.alloc().initWithApp_andWindow_(self.app, self)
+        set_dock_menu(self.handler)
+
         self.reset_needed = False
         self.reset_needed_lock = threading.Lock()
 
         self.multiple_events_window = None
+        self.get_events_object = None
 
     def prep_google_accounts_and_calendars(self):
         for google_account in self.config.google_accounts:
@@ -72,5 +145,16 @@ class app_globals:
     def reset_done(self):
         with self.reset_needed_lock:
             self.reset_needed = False
+
+    def display_snoozed_events(self):
+        self.show_snoozed_events_window = Show_Snoozed_Events_Table_Window(self, self.get_events_object)
+
+        self.show_snoozed_events_window.open_window_with_events()
+
+    def display_dismissed_events(self):
+        self.show_dismissed_events_window = Show_Dismissed_Events_Table_Window(self, self.get_events_object)
+
+        self.show_dismissed_events_window.open_window_with_events()
+
 
 

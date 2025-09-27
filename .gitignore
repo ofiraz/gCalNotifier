@@ -34,3 +34,4 @@ MultipleEventsWindow.py
 icons/.DS_Store
 .DS_Store
 per_event_setting_db.json
+dock_menu.py
