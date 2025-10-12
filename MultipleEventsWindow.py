@@ -178,7 +178,6 @@ ACTION_TIMER = 4
 
 BOUNCE_ICON_ACTIONS = {ACTION_ADD, ACTION_UPDATE, ACTION_TIMER}
 UPDATE_ICON_ACTIONS = {ACTION_ADD, ACTION_UPDATE, ACTION_REMOVE}
-POP_UP_NOTIFICATION_ACTION = {ACTION_ADD, ACTION_UPDATE}
 
 MINUTES_BETWEEN_BOUNCE_ON_TIMER = 1
 
@@ -957,7 +956,3 @@ class MultipleEventsTable(QWidget):
             self.globals.icon_manager.set_icon_with_events(
                 self.num_of_notification_events, 
                 self.num_of_no_notification_events)
-            
-        # Pop up a notification for the event
-        if ((action in POP_UP_NOTIFICATION_ACTION) and pop_up_notification):
-            self.globals.app_system_tray.pop_up_nofitication(event_text)

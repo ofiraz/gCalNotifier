@@ -1,8 +1,4 @@
-from PyQt5.QtWidgets import (
-    QSystemTrayIcon,
-    QMenu,
-    QAction,
-    QMainWindow)
+from PyQt5.QtWidgets import QMainWindow
 
 from PyQt5 import QtCore
 
@@ -11,21 +7,20 @@ from icon_manager import *
 from MultipleEventsWindow import *
 
 class app_system_tray(QMainWindow):
-    def __init__(self, globals, get_events_object):
+    def __init__(self, globals):
         super(app_system_tray, self).__init__()
 
         self.globals = globals
         self.globals.app_system_tray = self
-        self.get_events_object = get_events_object
         self.c_num_of_displayed_events = 0
 
         # Create the system_tray
-        self.system_tray = QSystemTrayIcon(self)
+        #self.system_tray = QSystemTrayIcon(self)
 
         # Set the app icon
-        self.globals.icon_manager = icon_manager(self.globals.app, self.system_tray)
+        self.globals.icon_manager = icon_manager(self.globals.app) #, self.system_tray)
 
-        self.system_tray.setVisible(True)
+        #self.system_tray.setVisible(True)
 
         # Prevent the closing of the system tray when the last event window closes
         self.globals.app.setQuitOnLastWindowClosed(False) 
@@ -37,7 +32,7 @@ class app_system_tray(QMainWindow):
         self.timer.timeout.connect(self.present_relevant_events_in_windows) 
         self.timer.start(int(self.globals.config.refresh_frequency/2) * 1000)
 
-        self.system_tray.show()
+        #self.system_tray.show()
 
     def add_event_to_display_cb(self, parsed_event):
         self.c_num_of_displayed_events = self.c_num_of_displayed_events + 1
@@ -56,7 +51,6 @@ class app_system_tray(QMainWindow):
         self.globals.events_logger.debug("Displaying event:" + parsed_event.event_name)
 
     def present_relevant_events(self):
-        at_list_one_event_presented = False
         while True:
             event_key_str, parsed_event = self.globals.events_to_present.pop()
             if (event_key_str == None):
@@ -70,7 +64,6 @@ class app_system_tray(QMainWindow):
 
             else: # A totaly new event
                 # Add the new event to the displayed events list    
-                at_list_one_event_presented = True       
                 self.globals.displayed_events.add_event(event_key_str, parsed_event)
                 self.show_window(parsed_event)
 
@@ -80,14 +73,3 @@ class app_system_tray(QMainWindow):
         self.present_relevant_events()
 
         self.timer.start(int(self.globals.config.refresh_frequency/2) * 1000)
-
-    def pop_up_nofitication(self, message):
-        show_os_notifications = False
-
-        if (show_os_notifications):
-            self.system_tray.showMessage(
-                "gCalNotifier",
-                message,
-                QSystemTrayIcon.Information,
-                0
-            )

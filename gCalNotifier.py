@@ -25,6 +25,6 @@ if __name__ == "__main__":
     
     g_globals.get_events_object = Get_Events(g_globals, start_time, end_time)
 
-    sys_tray = app_system_tray(g_globals, g_globals.get_events_object)
+    sys_tray = app_system_tray(g_globals)
 
     g_globals.app.exec_()

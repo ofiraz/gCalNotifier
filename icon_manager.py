@@ -11,9 +11,9 @@ NO_REMINDERS_ICON = 'icons8-gray-bell-64.png'
 REMINDERS_EXIST_ICON = 'icons8-yellow-bell-64.png'
 
 class icon_manager():
-    def __init__(self, app, sys_tray):
+    def __init__(self, app): #, sys_tray):
         self.app = app
-        self.sys_tray = sys_tray
+        #self.sys_tray = sys_tray
 
         self.set_icon_no_events()
 
@@ -21,7 +21,7 @@ class icon_manager():
         icon = QtGui.QIcon(icon_file)
         self.app.setWindowIcon(icon)
 
-        self.sys_tray.setIcon(icon)
+        #self.sys_tray.setIcon(icon)
     
     def set_icon_no_events(self):
         # Show a gray bell
