@@ -47,14 +47,3 @@ class Per_Event_Setting_DB():
 
         # Write the json from the memory to the file
         self.update_db_file()
-
-# if __name__ == "__main__":
-#     events_setting_db = per_event_setting_db()
-
-#     print(events_setting_db.get_event_setting("test1", "os_notifications1", False))
-#     events_setting_db.set_event_setting("test1", "os_notificatio4", False)
-#     print(events_setting_db.get_event_setting("test1", "os_notifications1", False))
-#     events_setting_db.set_event_setting("test2", "something else2", True)
-#     print(events_setting_db.get_event_setting("test2", "something else2", False))
-#     print(events_setting_db.get_event_setting("test2", "something else3", False))
-

@@ -359,17 +359,17 @@ class MultipleEventsTable(QWidget):
             self.events_display_details.append(event_display_details)
 
             if (event_display_details.send_os_notification):
-                print("Added a notficagtion event")
+                self.globals.logger.debug("Added a notficagtion event")
 
                 # We should have a notification due to this event
                 self.num_of_notification_events += 1
             else:
-                print("Added a non notficagtion event")
+                self.globals.logger.debug("Added a non notficagtion event")
 
                 # This event does not require a notification
                 self.num_of_no_notification_events += 1
 
-            print(f"witn notification {self.num_of_notification_events} without {self.num_of_no_notification_events}")
+            self.globals.logger.debug(f"witn notification {self.num_of_notification_events} without {self.num_of_no_notification_events}")
 
             if (row_count == 0):
                 self.select_event(0)
@@ -389,15 +389,15 @@ class MultipleEventsTable(QWidget):
         self.table_widget.removeRow(row)
 
         if (self.events_display_details[row].send_os_notification):
-            print("Removed a notficagtion event")
+            self.globals.logger.debug("Removed a notficagtion event")
             # This event required a notification
             self.num_of_notification_events -= 1
         else:
-            print("Removed a no notficagtion event")
+            self.globals.logger.debug("Removed a no notficagtion event")
             # This event did not require a notification
             self.num_of_no_notification_events -= 1
 
-        print(f"witn notification {self.num_of_notification_events} without {self.num_of_no_notification_events}")
+        self.globals.logger.debug(f"witn notification {self.num_of_notification_events} without {self.num_of_no_notification_events}")
 
         del self.parsed_events[row]
         del self.events_display_details[row]
@@ -923,11 +923,8 @@ class MultipleEventsTable(QWidget):
 
             menu.exec_(self.table_widget.viewport().mapToGlobal(pos))
 
-    # def handle_action(self, row, action_name):
-    #     print(f"{action_name} selected on row {row}")
-   
     def toggle_option(self, option_name, toggle_on, event_name):
-        print(f"Turn {option_name} to {toggle_on} for {event_name}")
+        self.globals.logger.debug(f"Turn {option_name} to {toggle_on} for {event_name}")
 
         self.globals.per_event_setting_db.set_event_setting(
             event_name,

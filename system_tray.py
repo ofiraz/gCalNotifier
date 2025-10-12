@@ -42,7 +42,6 @@ class app_system_tray(QMainWindow):
 
     def show_window(self, parsed_event):
         if (self.globals.multiple_events_window == None):
-            print("Creating MultipleEventsTable")
             self.globals.multiple_events_window = MultipleEventsTable(self.globals, parsed_event)
 
         else:
