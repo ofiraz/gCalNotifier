@@ -101,14 +101,8 @@ class icon_manager():
             app = NSApplication.sharedApplication()
             app.setActivationPolicy_(NSApplicationActivationPolicyRegular)
             app.activateIgnoringOtherApps_(True)
-            
-            time.sleep(0.2)
-            
-            # Move to background so bounce is visible
-            script_unfocus = '''tell application "Finder" to activate'''
-            subprocess.run(['osascript', '-e', script_unfocus], check=False, capture_output=True, timeout=2)
-            
-            time.sleep(0.5)
+                      
+            time.sleep(0.7)
             
             # Use NSCriticalRequest for continuous bouncing
             attention_request_id = app.requestUserAttention_(AppKit.NSCriticalRequest)
