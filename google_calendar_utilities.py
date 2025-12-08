@@ -124,7 +124,8 @@ Networking_excTypes = {
     "ConnectionResetError",
     "TransportError",
     "SSLCertVerificationError",
-    "SSLEOFError"
+    "SSLEOFError",
+    "ConnectionRefusedError"
 }
 
 Networking_OSError_excMesg = {
