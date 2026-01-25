@@ -39,14 +39,11 @@ class EventDisplayDetails():
         self.snooze_times_strings_for_combo_box = []
         self.snooze_times_in_minutes = []
 
-        self.default_snooze = parsed_event.default_snooze
-        if (self.default_snooze):
-            # Add the default snooze as the first item
-            self.snooze_times_strings_for_combo_box.append("Default " + self.default_snooze + " minutes")
-            self.snooze_times_in_minutes.append(int(self.default_snooze))
-
         now_datetime = get_now_datetime()
         if (parsed_event.start_date > now_datetime):
+            # Show the default snooze only if the event has started
+            self.default_snooze = False
+
             # Event start did not arrive yet - add all needed before snooze buttons
             time_to_event_start = parsed_event.start_date - now_datetime
             time_to_event_in_minutes = int(time_to_event_start.seconds / 60)
@@ -61,6 +58,15 @@ class EventDisplayDetails():
 
                     self.snooze_times_strings_for_combo_box.append(self.snooze_times_before[index][1])
                     self.snooze_times_in_minutes.append(snooze_time)
+
+        else: # No pre start snooze
+            self.default_snooze = parsed_event.default_snooze
+            
+            if (self.default_snooze):
+                # Add the default snooze as the first item
+                self.snooze_times_strings_for_combo_box.append("Default " + self.default_snooze + " minutes")
+                self.snooze_times_in_minutes.append(int(self.default_snooze))
+
             
         for index in range(len(self.snooze_times_future)):
             self.snooze_times_strings_for_combo_box.append(self.snooze_times_future[index][1])
@@ -695,7 +701,7 @@ class MultipleEventsTable(QWidget):
     def add_snooze_buttons(self, event_display_details):
         event_display_details.update_snooze_times_for_event()
 
-        # Update the default snooze button to with the correct text and snooze time
+        # Update the default snooze button with the correct text and snooze time
         button_text = event_display_details.snooze_times_strings_for_combo_box[0]
         button_minutes = event_display_details.snooze_times_in_minutes[0]
         self.update_button(
