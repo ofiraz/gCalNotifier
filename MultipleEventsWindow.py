@@ -749,12 +749,14 @@ class MultipleEventsTable(QWidget):
                 "There are multiple attendees in this meeting, but there is no video link!!!", 
                 highlight=True)
 
+        """
         if (event_display_details.consider_standing_up):
             # The event has more than one participant, suggest standing up
             self.add_label(
                 self.warnings_layout,
                 "There are multiple attendees in this meeting, stand up, if you are not already?", 
                 highlight=True)
+        """
 
         if (event_display_details.need_to_record_meeting):
             self.add_label(
