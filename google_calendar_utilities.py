@@ -63,7 +63,7 @@ def get_calendar_list_for_account(logger, google_account):
                     'calendar id' : calendar_list_entry['id']
                 }
                 calendar_list_for_account.append(calendar_list_entry_to_add)
-            logger.info(prefix_text + " " + calendar_list_entry['summary'] + " " + calendar_list_entry['id'])
+            logger.info(prefix_text + " " + calendar_list_entry['summary']) # + " " + calendar_list_entry['id'])
 
         page_token = calendar_list.get('nextPageToken')
         if not page_token:
