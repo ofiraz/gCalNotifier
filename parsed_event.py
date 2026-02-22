@@ -8,18 +8,6 @@ import re
 
 import validators
 
-def has_self_declined(raw_event):
-    # Check if the event was not declined by the current user
-    if(raw_event.get('attendees')):
-        # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
-        for attendee in raw_event['attendees']:
-            if(attendee.get('self') and attendee['self'] == True and attendee.get('responseStatus') and attendee['responseStatus'] == 'declined'):
-                # The user declined the meeting. No need to display it
-                return(True)
-
-    # The event was not declined by the current user
-    return(False)
-
 NO_POPUP_REMINDER = -1
 
 def get_max_reminder_in_minutes(raw_event):
@@ -160,18 +148,35 @@ class ParsedEvent:
         # The event has not changed
         return(False)
 
-    def has_self_tentative(self):
-        # Check if the current user is tentative for the evnet
+    def check_event_attendees(self):
+        # Check different stuff about the attendees of the event
+
+        # If I (self) decline the event we don't need to continue in the loop.
+        # If not declined, but we match the two other criterias, we don't need to continue in the loop
+
         if(self.raw_event.get('attendees')):
             # The event has attendees - walk on the attendees and look for the attendee that belongs to the current account
             for attendee in self.raw_event['attendees']:
-                if(attendee.get('self') and attendee['self'] == True and attendee.get('responseStatus') and attendee['responseStatus'] == 'tentative'):
-                    # The current user is tentative for the meeting.
-                    return(True)
+                if(attendee.get('self')):
+                    # This is me
+                    if (attendee['self'] == True and attendee.get('responseStatus')):
+                        response_status = attendee['responseStatus']
+                        if (response_status == 'declined'):
+                            # The user declined the meeting. No need to display it
+                            self.has_self_declined = True
+                            return
 
-        # The current user is not tentative for the meeting.
-        return(False)
+                        if(response_status == 'tentative'):
+                            # The current user is tentative for the meeting.
+                            self.is_tentative = True
 
+                else:
+                    if (attendee.get('email') == 'dor@anjuna.io'):
+                        self.a_meeting_with_dor = True
+
+                if (self.is_tentative and self.a_meeting_with_dor):
+                    return
+        
     def get_number_of_attendees(self):
         self.num_of_attendees = 0
 
@@ -299,8 +304,6 @@ class ParsedEvent:
 
         self.event_name = self.raw_event.get('summary', '(No title)')
 
-        self.is_tentative = self.has_self_tentative()
-
         self.globals.logger.debug("Event Name " + self.event_name)
 
         self.updated = self.raw_event['updated']
@@ -320,11 +323,11 @@ class ParsedEvent:
             self.start_date=datetime.datetime.strptime(start_day, '%Y-%m-%dT%H:%M:%S%z').astimezone()
             self.end_date=datetime.datetime.strptime(end_day, '%Y-%m-%dT%H:%M:%S%z').astimezone()
 
-        # Check if the event was not declined by the current user
-        if has_self_declined(self.raw_event):
-            self.globals.events_logger.debug("Event dismissed automatically as it was declined by me. For event: " + self.event_name)
+        self.check_event_attendees()
 
-            self.has_self_declined = True
+        # Check if the event was not declined by the current user
+        if self.has_self_declined:
+            self.globals.events_logger.debug("Event dismissed automatically as it was declined by me. For event: " + self.event_name)
 
             self.automatically_snoozed_dismissed = True
 
@@ -385,6 +388,8 @@ class ParsedEvent:
         self.default_snooze = False
         self.event_wakeup_time = ''
         self.has_self_declined = False
+        self.is_tentative = False
+        self.a_meeting_with_dor = False
         self.no_popup_reminder = False
         self.minutes_before_to_notify = ''
         self.html_link = ''

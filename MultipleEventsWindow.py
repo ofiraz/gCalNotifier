@@ -79,6 +79,11 @@ class EventDisplayDetails():
         indicate_issues_with_the_event = False
 
         self.need_to_record_meeting = parsed_event.need_to_record_meeting
+
+        self.a_meeting_with_dor = parsed_event.a_meeting_with_dor
+        if (self.a_meeting_with_dor):
+            self.need_to_record_meeting = True
+
         if (self.need_to_record_meeting):
             indicate_issues_with_the_event = True
             self.snooze_time_in_minutes_for_open_video_and_snooze = 1
@@ -542,8 +547,7 @@ class MultipleEventsTable(QWidget):
             values = "{r}, {g}, {b}, {a}".format(r = color.red(),
                                                 g = color.green(),
                                                 b = color.blue(),
-                                                a = alpha
-                                                )
+                                                a = alpha)
             new_label.setStyleSheet("QLabel { background-color: rgba("+values+"); }")
 
         layout.addWidget(new_label)  # Add the new tab widget to the layout
@@ -762,6 +766,12 @@ class MultipleEventsTable(QWidget):
             self.add_label(
                 self.warnings_layout,
                 "Remember to record!!!", 
+                highlight=True)
+            
+        if(event_display_details.a_meeting_with_dor):
+            self.add_label(
+                self.warnings_layout,
+                "A meeting with Dor, record and have transcript!!!",
                 highlight=True)
 
         self.add_snooze_buttons(event_display_details)
