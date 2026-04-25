@@ -170,9 +170,9 @@ class ParsedEvent:
                             # The current user is tentative for the meeting.
                             self.is_tentative = True
 
-                else:
-                    if (attendee.get('email') == 'dor@anjuna.io'):
-                        self.a_meeting_with_dor = True
+                #else:
+                #    if (attendee.get('email') == 'dor@anjuna.io'):
+                #        self.a_meeting_with_dor = True
 
                 if (self.is_tentative and self.a_meeting_with_dor):
                     return
